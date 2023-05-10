@@ -9,9 +9,9 @@ pub struct View {
     /// The column number of the first column being displayed
     start_col: usize,
     /// The number of lines being displayed
-    height: usize,
+    pub height: usize,
     /// The number of columns being displayed
-    width: usize,
+    pub width: usize,
 }
 
 impl View {
@@ -24,6 +24,21 @@ impl View {
             height,
             width,
         }
+    }
+
+    pub fn resize(&mut self, height: usize, width: usize) {
+        self.height = height;
+        self.width = width;
+    }
+
+    pub fn get_line(&self, index: usize) -> String {
+        let line = self
+            .file
+            .get_line(index + self.start_line)
+            .unwrap_or_default();
+        let start = self.start_col.min(line.len());
+        let end = (self.start_col + self.width).min(line.len());
+        String::from_utf8_lossy(&line[start..end]).to_string()
     }
 }
 
@@ -62,5 +77,19 @@ mod tests {
     fn view_to_string() {
         let view = View::new(File::from_bytes(b"Hello, World !\n"), 1, 10);
         assert_eq!(view.to_string(), "Hello, Wor");
+    }
+
+    #[test]
+    fn view_resize() {
+        let mut view = View::new(File::new(), 10, 10);
+        view.resize(20, 20);
+        assert_eq!(view.height, 20);
+        assert_eq!(view.width, 20);
+    }
+
+    #[test]
+    fn view_get_line() {
+        let view = View::new(File::from_bytes(b"Hello, World !\n"), 1, 10);
+        assert_eq!(view.get_line(0), "Hello, Wor");
     }
 }

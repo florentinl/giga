@@ -1,4 +1,6 @@
-use crate::{file::File, view::View};
+use std::{thread::sleep, time::Duration};
+
+use crate::{file::File, tui::display, tui::get_term_size, view::View};
 
 /// Editor structure
 /// represents the state of the program
@@ -13,7 +15,7 @@ impl Editor {
     pub fn new(file_name: Option<&str>) -> Self {
         Self {
             file_name: file_name.map(|s| s.to_string()),
-            view: View::new(File::new(), 10, 20)
+            view: View::new(File::new(), 10, 20),
         }
     }
 
@@ -29,12 +31,16 @@ impl Editor {
     }
 
     pub fn run(&mut self) {
-        // Print the name of the file if it exists
-        if let Some(file_name) = &self.file_name {
-            println!("Editing {}", file_name);
+        // set view size
+        let (height, width) = get_term_size();
+        self.view.resize(height as usize, width as usize);
+
+        //loop for display
+        loop {
+            // display the view
+            display(&self.view);
+            sleep(Duration::from_millis(100));
         }
-        // Print the content for now
-        println!("{}", self.view.to_string());
     }
 }
 

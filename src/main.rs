@@ -1,5 +1,6 @@
 mod editor;
 mod file;
+mod tui;
 mod view;
 
 fn main() {
