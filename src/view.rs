@@ -44,19 +44,12 @@ impl View {
 
 impl ToString for View {
     fn to_string(&self) -> String {
-        self.file
-            .content
-            .iter()
-            .skip(self.start_line)
-            .take(self.height)
-            .map(|line| {
-                let start = self.start_col.min(line.len());
-                let end = (self.start_col + self.width).min(line.len());
-
-                String::from_utf8_lossy(&line[start..end]).to_string()
-            })
-            .collect::<Vec<String>>()
-            .join("\n")
+        let mut result = String::new();
+        for line in 0..self.height {
+            result.push_str(&self.get_line(line));
+            result.push('\n');
+        }
+        result
     }
 }
 
