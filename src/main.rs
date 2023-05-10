@@ -8,4 +8,18 @@ fn main() {
 
     // Optional file to edit
     let file: Option<&str> = args.get(1).map(|s| s.as_str());
+
+    let editor = match file {
+        Some(path) => editor::Editor::open(path),
+        None => Ok(editor::Editor::new()),
+    };
+
+    match editor {
+        Ok(mut editor) => {
+            editor.run();
+        },
+        Err(e) => {
+            eprintln!("Error: {}", e);
+        },
+    }
 }

@@ -21,6 +21,14 @@ impl Editor {
             content,
         })
     }
+
+    pub fn run(&mut self) {
+        // Print the content for now
+        for line in &self.content {
+            let line = String::from_utf8_lossy(line);
+            println!("{}", line);
+        }
+    }
 }
 
 
