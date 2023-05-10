@@ -4,7 +4,8 @@ mod buffer;
 fn main() {
     let args = std::env::args().collect::<Vec<String>>();
     if args.len() > 2 {
-        println!("Usage: giga [file]")
+        println!("Usage: giga [file]");
+        std::process::exit(1);
     }
 
     // Optional file to edit
