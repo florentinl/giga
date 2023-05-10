@@ -15,14 +15,14 @@ const LINE_NUMBER_WIDTH: u16 = 4;
 
 pub struct Tui {
     // Async input reader (stdin)
-    input: AsyncReader,
+    input: std::io::Stdin,
     stdout: RawTerminal<std::io::Stdout>,
 }
 
 impl Tui {
     pub fn new() -> Self {
         Self {
-            input: termion::async_stdin(),
+            input: std::io::stdin(),
             stdout: std::io::stdout().into_raw_mode().unwrap(),
         }
     }
@@ -95,9 +95,7 @@ impl Tui {
 
     pub fn read_input(&mut self) -> Option<u8> {
         let mut buf = [0; 1];
-        match self.input.read(&mut buf) {
-            Ok(1) => Some(buf[0]),
-            _ => None,
-        }
+        while self.input.lock().read(&mut buf).unwrap_or_default() == 0 {}
+        Some(buf[0])
     }
 }

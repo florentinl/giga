@@ -43,6 +43,13 @@ impl View {
         let end = (self.start_col + self.width).min(line.len());
         String::from_utf8_lossy(&line[start..end]).to_string()
     }
+
+    pub fn navigate(&mut self, dx: isize, dy: isize) {
+        let (mut x, mut y) = self.cursor;
+        x = (x as isize + dx).max(0) as usize;
+        y = (y as isize + dy).max(0) as usize;
+        self.cursor = (x, y);
+    }
 }
 
 impl ToString for View {
@@ -55,7 +62,6 @@ impl ToString for View {
             .map(|i| self.get_line(i))
             .collect::<Vec<_>>()
             .join("\n")
-
     }
 }
 

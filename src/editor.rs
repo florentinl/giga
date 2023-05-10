@@ -1,9 +1,6 @@
 use std::thread::sleep;
 
-use crate::{
-    file::File,
-    view::View, tui::Tui,
-};
+use crate::{file::File, tui::Tui, view::View};
 
 /// Editor structure
 /// represents the state of the program
@@ -48,12 +45,21 @@ impl Editor {
         self.tui.draw_view(&self.view, &self.file_name);
         sleep(core::time::Duration::from_secs(5));
         loop {
-            // // parse input events into commands
-            // let command = self.tui.read_input();
-            // // redraw the view if needed
-            // if matches!(command, Some(_)) {
-            //     self.tui.draw_view(&self.view, &self.file_name);
-            // }
+            // parse input events into commands
+            let command = self.tui.read_input();
+            // redraw the view if needed
+            if command.is_none() {
+                continue;
+            }
+
+            match command.unwrap() {
+                b'q' => break,
+                b'j' => self.view.navigate(0, 1),
+                b'k' => self.view.navigate(0, -1),
+                b'h' => self.view.navigate(-1, 0),
+                b'l' => self.view.navigate(1, 0),
+                _ => {}
+            }
         }
     }
 }
