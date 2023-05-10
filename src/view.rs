@@ -12,6 +12,8 @@ pub struct View {
     pub height: usize,
     /// The number of columns being displayed
     pub width: usize,
+    /// The position of the cursor in the view
+    cursor: (usize, usize),
 }
 
 impl View {
@@ -23,6 +25,7 @@ impl View {
             start_col: 0,
             height,
             width,
+            cursor: (0, 0),
         }
     }
 
@@ -40,6 +43,12 @@ impl View {
         let end = (self.start_col + self.width).min(line.len());
         String::from_utf8_lossy(&line[start..end]).to_string()
     }
+
+    pub fn navigate(&mut self, dx: isize, dy: isize) {
+        self.cursor.0 = (self.cursor.0 as isize + dx).max(0) as usize;
+        self.cursor.1 = (self.cursor.1 as isize + dy).max(0) as usize;
+    }
+
 }
 
 impl ToString for View {

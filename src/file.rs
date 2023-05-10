@@ -1,7 +1,7 @@
 /// The File structure is the in-memory representation of the full file being edited.
 /// It is a vector of lines, each line being a vector of bytes.
 pub struct File {
-    pub content: Vec<Vec<u8>>,
+    content: Vec<Vec<u8>>,
 }
 
 impl File {
@@ -11,6 +11,7 @@ impl File {
         }
     }
 
+    /// Create a File abstraction from a byte array
     pub fn from_bytes(bytes: &[u8]) -> Self {
         let content = bytes
             .split(|&c| c == b'\n')
@@ -25,6 +26,7 @@ impl File {
         self.content.get(index).cloned()
     }
 
+    /// Get the number of lines in the file
     pub fn len(&self) -> usize {
         self.content.len()
     }
@@ -45,38 +47,38 @@ mod tests {
     use super::*;
 
     #[test]
-    fn buffer_new_empty() {
-        let buffer = File::new();
-        assert_eq!(buffer.content.len(), 0);
+    fn file_new_empty() {
+        let file = File::new();
+        assert_eq!(file.content.len(), 0);
     }
 
     #[test]
-    fn buffer_from_bytes() {
-        let buffer = File::from_bytes(b"Hello, World !");
-        assert_eq!(buffer.content.len(), 1);
-        assert_eq!(buffer.content[0], "Hello, World !".as_bytes());
+    fn file_from_bytes() {
+        let file = File::from_bytes(b"Hello, World !");
+        assert_eq!(file.content.len(), 1);
+        assert_eq!(file.content[0], "Hello, World !".as_bytes());
     }
 
     #[test]
-    fn buffer_to_string() {
-        let buffer = File::from_bytes(b"Hello, World !");
-        assert_eq!(buffer.to_string(), "Hello, World !");
+    fn file_to_string() {
+        let file = File::from_bytes(b"Hello, World !");
+        assert_eq!(file.to_string(), "Hello, World !");
     }
 
     #[test]
-    fn buffer_get_line() {
-        let buffer = File::from_bytes(b"Hello, World !\n");
+    fn file_get_line() {
+        let file = File::from_bytes(b"Hello, World !\n");
         assert_eq!(
-            buffer.get_line(0),
+            file.get_line(0),
             Some("Hello, World !".as_bytes().to_vec())
         );
-        assert_eq!(buffer.get_line(1), Some("".as_bytes().to_vec()));
-        assert_eq!(buffer.get_line(2), None);
+        assert_eq!(file.get_line(1), Some("".as_bytes().to_vec()));
+        assert_eq!(file.get_line(2), None);
     }
 
     #[test]
-    fn buffer_get_len() {
-        let buffer = File::from_bytes(b"Hello, World !\n");
-        assert_eq!(buffer.len(), 2);
+    fn file_get_len() {
+        let file = File::from_bytes(b"Hello, World !\n");
+        assert_eq!(file.len(), 2);
     }
 }
