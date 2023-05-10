@@ -48,17 +48,18 @@ impl View {
         self.cursor.0 = (self.cursor.0 as isize + dx).max(0) as usize;
         self.cursor.1 = (self.cursor.1 as isize + dy).max(0) as usize;
     }
-
 }
 
 impl ToString for View {
     fn to_string(&self) -> String {
-        let mut result = String::new();
-        for line in 0..self.height {
-            result.push_str(&self.get_line(line));
-            result.push('\n');
-        }
-        result
+        let bottom = self
+            .height
+            .min(self.file.len().saturating_sub(self.start_line));
+
+        (0..bottom)
+            .map(|i| self.get_line(i))
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 }
 
