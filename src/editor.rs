@@ -1,6 +1,6 @@
 use std::{thread::sleep, time::Duration};
 
-use crate::{file::File, tui::display, tui::get_term_size, view::View};
+use crate::{file::File, tui::display, tui::{get_term_size, init}, view::View};
 
 /// Editor structure
 /// represents the state of the program
@@ -32,13 +32,14 @@ impl Editor {
 
     pub fn run(&mut self) {
         // set view size
-        let (height, width) = get_term_size();
-        self.view.resize(height as usize, width as usize);
-
+        let (width, height) = get_term_size();
+        // height - 1 to leave space for the status bar
+        self.view.resize((height-1) as usize, width as usize);
+        init();
         //loop for display
         loop {
             // display the view
-            display(&self.view);
+            display(&self.view, &self.file_name);
             sleep(Duration::from_millis(100));
         }
     }
