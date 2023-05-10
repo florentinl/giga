@@ -10,9 +10,9 @@ pub struct Editor {
 }
 
 impl Editor {
-    pub fn new() -> Self {
+    pub fn new(file_name: Option<&str>) -> Self {
         Self {
-            file_name: None,
+            file_name: file_name.map(|s| s.to_string()),
             buffer: Buffer::new(),
         }
     }
@@ -45,9 +45,9 @@ mod tests {
 
     #[test]
     fn editor_new_empty() {
-        let editor = Editor::new();
+        let editor = Editor::new(Some("filename"));
         assert_eq!(editor.buffer.to_string(), "");
-        assert_eq!(editor.file_name, None)
+        assert_eq!(editor.file_name, Some("filename".to_string()));
     }
 
     #[test]
