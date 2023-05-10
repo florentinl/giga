@@ -5,6 +5,8 @@ use termion::clear;
 use termion::color;
 use termion::cursor;
 
+const line_number_width: u16 = 4;
+
 pub fn get_term_size() -> (u16, u16) {
     termion::terminal_size().unwrap()
 }
@@ -30,12 +32,18 @@ fn status_bar(file_name: String, height: u16, width: u16) -> () {
 }
 
 fn line_number(line: usize) -> () {
+    let number = match line {
+        0..=9 => format!("  {}", line),
+        10..=99 => format!(" {}", line),
+        _ => line.to_string(),
+    };
+
     print!(
         "{}{}{}{}{}",
         cursor::Goto(1, (line + 1) as u16),
         color::Fg(color::Blue),
-        line.to_string(),
-        cursor::Goto(3, (line + 1) as u16),
+        number,
+        cursor::Goto(line_number_width, (line + 1) as u16),
         color::Fg(color::Reset),
     );
 }
@@ -48,7 +56,7 @@ pub fn display(view: &View, file_name: &Option<String>) {
         line_number(line);
         print!(
             "{}{}",
-            cursor::Goto(3, (line + 1) as u16),
+            cursor::Goto(line_number_width + 1, (line + 1) as u16),
             view.get_line(line)
         );
     }
