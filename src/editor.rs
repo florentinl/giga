@@ -48,4 +48,11 @@ mod tests {
         ];
         assert_eq!(editor.content, expected);
     }
+
+    #[test]
+    fn editor_open_error() {
+        let path = "tests/does_not_exist.txt";
+        let editor = Editor::open(path);
+        assert!(editor.is_err());
+    }
 }
