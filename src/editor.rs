@@ -3,7 +3,7 @@ use std::{thread::sleep, time::Duration};
 use crate::{
     file::File,
     tui::display,
-    tui::{get_term_size, init},
+    tui::{get_term_size, clear},
     view::View,
 };
 
@@ -40,7 +40,7 @@ impl Editor {
         let (width, height) = get_term_size();
         // height - 1 to leave space for the status bar
         self.view.resize((height - 1) as usize, width as usize);
-        init();
+        clear();
         //loop for display
         loop {
             // display the view

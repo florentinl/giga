@@ -12,7 +12,7 @@ pub fn get_term_size() -> (u16, u16) {
 }
 
 /// initialize the terminal
-pub fn init() {
+pub fn clear() {
     // clear the screen
     print!("{}{}", cursor::Goto(1, 1), clear::All);
 }
