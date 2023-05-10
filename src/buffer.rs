@@ -19,7 +19,6 @@ impl Buffer {
 
         Self { content }
     }
-
 }
 
 impl ToString for Buffer {
@@ -31,7 +30,6 @@ impl ToString for Buffer {
             .join("\n")
     }
 }
-
 
 #[cfg(test)]
 mod tests {

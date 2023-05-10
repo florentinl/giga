@@ -21,12 +21,10 @@ impl Editor {
         let content = std::fs::read(path)?;
         let content = Buffer::from_bytes(&content);
 
-        let file_name = Path::new(path)
-            .file_name()
-            .map(|s| s.to_str().map(|s| s.to_string()))
-            .flatten();
-
-        Ok(Self { file_name, buffer: content })
+        Ok(Self {
+            file_name: Some(path.to_string()),
+            buffer: content,
+        })
     }
 
     pub fn run(&mut self) {
@@ -60,7 +58,7 @@ mod tests {
 
         let expected = "Hello, World !\n";
         assert_eq!(editor.buffer.to_string(), expected);
-        assert_eq!(editor.file_name, Some("sample.txt".to_string()));
+        assert_eq!(editor.file_name, Some("tests/sample.txt".to_string()));
     }
 
     #[test]

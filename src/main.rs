@@ -1,5 +1,5 @@
-mod editor;
 mod buffer;
+mod editor;
 
 fn main() {
     let args = std::env::args().collect::<Vec<String>>();
