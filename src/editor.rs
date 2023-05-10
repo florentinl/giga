@@ -1,10 +1,8 @@
-use std::{thread::sleep, time::Duration};
+use std::thread::sleep;
 
 use crate::{
     file::File,
-    tui::display,
-    tui::{get_term_size, clear},
-    view::View,
+    view::View, tui::Tui,
 };
 
 /// Editor structure
@@ -14,6 +12,8 @@ pub struct Editor {
     file_name: Option<String>,
     /// The current view of the file
     view: View,
+    /// The Tui responsible for drawing the editor
+    tui: Tui,
 }
 
 impl Editor {
@@ -21,6 +21,7 @@ impl Editor {
         Self {
             file_name: file_name.map(|s| s.to_string()),
             view: View::new(File::new(), 10, 20),
+            tui: Tui::new(),
         }
     }
 
@@ -32,20 +33,27 @@ impl Editor {
         Ok(Self {
             file_name: Some(path.to_string()),
             view,
+            tui: Tui::new(),
         })
     }
 
     pub fn run(&mut self) {
         // set view size
-        let (width, height) = get_term_size();
+        let (width, height) = self.tui.get_term_size();
         // height - 1 to leave space for the status bar
         self.view.resize((height - 1) as usize, width as usize);
-        clear();
-        //loop for display
+
+        // draw initial view
+        self.tui.clear();
+        self.tui.draw_view(&self.view, &self.file_name);
+        sleep(core::time::Duration::from_secs(5));
         loop {
-            // display the view
-            display(&self.view, &self.file_name);
-            sleep(Duration::from_millis(100));
+            // // parse input events into commands
+            // let command = self.tui.read_input();
+            // // redraw the view if needed
+            // if matches!(command, Some(_)) {
+            //     self.tui.draw_view(&self.view, &self.file_name);
+            // }
         }
     }
 }
