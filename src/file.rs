@@ -1,10 +1,10 @@
-/// The Buffer is the in-memory representation of the full file being edited.
+/// The File structure is the in-memory representation of the full file being edited.
 /// It is a vector of lines, each line being a vector of bytes.
-pub struct Buffer {
+pub struct File {
     content: Vec<Vec<u8>>,
 }
 
-impl Buffer {
+impl File {
     pub fn new() -> Self {
         Self {
             content: Vec::new(),
@@ -21,7 +21,7 @@ impl Buffer {
     }
 }
 
-impl ToString for Buffer {
+impl ToString for File {
     fn to_string(&self) -> String {
         self.content
             .iter()
@@ -37,20 +37,20 @@ mod tests {
 
     #[test]
     fn buffer_new_empty() {
-        let buffer = Buffer::new();
+        let buffer = File::new();
         assert_eq!(buffer.content.len(), 0);
     }
 
     #[test]
     fn buffer_from_bytes() {
-        let buffer = Buffer::from_bytes(b"Hello, World !");
+        let buffer = File::from_bytes(b"Hello, World !");
         assert_eq!(buffer.content.len(), 1);
         assert_eq!(buffer.content[0], "Hello, World !".as_bytes());
     }
 
     #[test]
     fn buffer_to_string() {
-        let buffer = Buffer::from_bytes(b"Hello, World !");
+        let buffer = File::from_bytes(b"Hello, World !");
         assert_eq!(buffer.to_string(), "Hello, World !");
     }
 }

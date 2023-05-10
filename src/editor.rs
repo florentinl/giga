@@ -1,27 +1,29 @@
-use crate::buffer::Buffer;
+use crate::file::File;
 
 /// Editor structure
 /// represents the state of the program
 pub struct Editor {
+    /// The name of the file being edited
     file_name: Option<String>,
-    buffer: Buffer,
+    /// The content of the file being edited
+    file: File,
 }
 
 impl Editor {
     pub fn new(file_name: Option<&str>) -> Self {
         Self {
             file_name: file_name.map(|s| s.to_string()),
-            buffer: Buffer::new(),
+            file: File::new(),
         }
     }
 
     pub fn open(path: &str) -> Result<Self, std::io::Error> {
         let content = std::fs::read(path)?;
-        let content = Buffer::from_bytes(&content);
+        let content = File::from_bytes(&content);
 
         Ok(Self {
             file_name: Some(path.to_string()),
-            buffer: content,
+            file: content,
         })
     }
 
@@ -31,7 +33,7 @@ impl Editor {
             println!("Editing {}", file_name);
         }
         // Print the content for now
-        println!("{}", self.buffer.to_string());
+        println!("{}", self.file.to_string());
     }
 }
 
@@ -42,7 +44,7 @@ mod tests {
     #[test]
     fn editor_new_empty() {
         let editor = Editor::new(Some("filename"));
-        assert_eq!(editor.buffer.to_string(), "");
+        assert_eq!(editor.file.to_string(), "");
         assert_eq!(editor.file_name, Some("filename".to_string()));
     }
 
@@ -55,7 +57,7 @@ mod tests {
         let editor = editor.unwrap();
 
         let expected = "Hello, World !\n";
-        assert_eq!(editor.buffer.to_string(), expected);
+        assert_eq!(editor.file.to_string(), expected);
         assert_eq!(editor.file_name, Some("tests/sample.txt".to_string()));
     }
 
