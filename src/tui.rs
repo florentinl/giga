@@ -5,7 +5,7 @@ use termion::clear;
 use termion::color;
 use termion::cursor;
 
-const line_number_width: u16 = 4;
+const LINE_NUMBER_WIDTH: u16 = 4;
 
 pub fn get_term_size() -> (u16, u16) {
     termion::terminal_size().unwrap()
@@ -43,7 +43,7 @@ fn line_number(line: usize) -> () {
         cursor::Goto(1, (line + 1) as u16),
         color::Fg(color::Blue),
         number,
-        cursor::Goto(line_number_width, (line + 1) as u16),
+        cursor::Goto(LINE_NUMBER_WIDTH, (line + 1) as u16),
         color::Fg(color::Reset),
     );
 }
@@ -56,7 +56,7 @@ pub fn display(view: &View, file_name: &Option<String>) {
         line_number(line);
         print!(
             "{}{}",
-            cursor::Goto(line_number_width + 1, (line + 1) as u16),
+            cursor::Goto(LINE_NUMBER_WIDTH + 1, (line + 1) as u16),
             view.get_line(line)
         );
     }
