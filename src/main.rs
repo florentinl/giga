@@ -1,5 +1,6 @@
 mod editor;
 mod file;
+mod view;
 
 fn main() {
     let args = std::env::args().collect::<Vec<String>>();
