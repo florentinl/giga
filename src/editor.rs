@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use crate::buffer::Buffer;
 
 /// Editor structure
