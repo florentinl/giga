@@ -1,30 +1,32 @@
 use std::path::Path;
 
+use crate::buffer::Buffer;
+
 /// Editor structure
 /// represents the state of the program
 pub struct Editor {
     file_name: Option<String>,
-    content: Vec<Vec<u8>>,
+    buffer: Buffer,
 }
 
 impl Editor {
     pub fn new() -> Self {
         Self {
             file_name: None,
-            content: Vec::new(),
+            buffer: Buffer::new(),
         }
     }
 
     pub fn open(path: &str) -> Result<Self, std::io::Error> {
         let content = std::fs::read(path)?;
-        let content = content.split(|&c| c == b'\n').map(|s| s.to_vec()).collect();
+        let content = Buffer::from_bytes(&content);
 
         let file_name = Path::new(path)
             .file_name()
             .map(|s| s.to_str().map(|s| s.to_string()))
             .flatten();
 
-        Ok(Self { file_name, content })
+        Ok(Self { file_name, buffer: content })
     }
 
     pub fn run(&mut self) {
@@ -33,10 +35,7 @@ impl Editor {
             println!("Editing {}", file_name);
         }
         // Print the content for now
-        for line in &self.content {
-            let line = String::from_utf8_lossy(line);
-            println!("{}", line);
-        }
+        println!("{}", self.buffer.to_string());
     }
 }
 
@@ -47,7 +46,7 @@ mod tests {
     #[test]
     fn editor_new_empty() {
         let editor = Editor::new();
-        assert_eq!(editor.content.len(), 0);
+        assert_eq!(editor.buffer.to_string(), "");
         assert_eq!(editor.file_name, None)
     }
 
@@ -59,8 +58,8 @@ mod tests {
 
         let editor = editor.unwrap();
 
-        let expected = vec!["Hello, World !".as_bytes(), "".as_bytes()];
-        assert_eq!(editor.content, expected);
+        let expected = "Hello, World !\n";
+        assert_eq!(editor.buffer.to_string(), expected);
         assert_eq!(editor.file_name, Some("sample.txt".to_string()));
     }
 
