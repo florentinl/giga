@@ -52,11 +52,7 @@ impl View {
         self.navigate_y(dy);
 
         // We move onto the new column
-        let (mut x, y) = self.cursor;
-        let line = self.file.get_line(y + self.start_line).unwrap_or_default();
-        x = (x as isize + dx).max(0).min(line.len() as isize) as usize;
-
-        self.cursor = (x, y);
+        self.navigate_x(dx)
     }
     /// Navigate along the y axis and eventually scroll the view
     fn navigate_y(&mut self, dy: isize) {
@@ -75,9 +71,34 @@ impl View {
                 .max(0) as usize;
             new_y = (view_height - 1).min(file_height - 1);
         } else {
-            new_y = new_y.max(0).min(view_height - 1);
+            new_y = new_y.max(0).min(file_height - 1);
         }
         self.cursor.1 = new_y as usize;
+    }
+
+    /// Navigate along the x axis and eventually scroll the view
+    fn navigate_x(&mut self, dx: isize) {
+        let line_len = self
+            .file
+            .get_line(self.cursor.1 + self.start_line)
+            .unwrap_or_default()
+            .len() as isize;
+        let left = self.start_col as isize;
+        let width = self.width as isize;
+
+        // calculate the absolute position of the cursor
+        let abs_x = (self.cursor.0 as isize + dx + left).max(0).min(line_len);
+        let rel_x = abs_x - left;
+
+        if rel_x < 0 {
+            self.start_col = (left + rel_x).max(0) as usize;
+            self.cursor.0 = 0;
+        } else if rel_x >= width {
+            self.start_col = ((left + rel_x).min(line_len) - width + 1).max(0) as usize;
+            self.cursor.0 = (width - 1) as usize;
+        } else {
+            self.cursor.0 = rel_x as usize;
+        }
     }
 
     pub fn insert(&mut self, c: char) {
@@ -222,5 +243,24 @@ mod tests {
         view.navigate(0, -1);
         assert_eq!(view.cursor, (0, 0));
         assert_eq!(view.start_line, 0);
+    }
+
+    #[test]
+    fn view_navigate_scroll_x() {
+        let mut view = View::new(
+            File::from_bytes(b"Hello, World !\nWelcome to the moon!"),
+            1,
+            10,
+        );
+        view.navigate(9, 0);
+        assert_eq!(view.cursor, (9, 0));
+        assert_eq!(view.start_col, 0);
+        view.navigate(1, 0);
+        assert_eq!(view.cursor, (9, 0));
+        assert_eq!(view.start_col, 1);
+        view.navigate(20, 0);
+        assert_eq!(view.get_line(0), ", World !");
+        assert_eq!(view.cursor, (9, 0));
+        assert_eq!(view.start_col, 5);
     }
 }
