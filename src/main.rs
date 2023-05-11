@@ -1,3 +1,4 @@
+mod command;
 mod editor;
 mod file;
 mod tui;

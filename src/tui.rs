@@ -4,7 +4,6 @@ use std::io::Write;
 use termion::clear;
 use termion::color;
 use termion::cursor;
-use termion::style;
 use termion::raw::IntoRawMode;
 use termion::raw::RawTerminal;
 
@@ -34,8 +33,34 @@ impl Tui {
         write!(self.stdout, "{}", cursor::Goto(1, 1)).unwrap_or_default();
     }
 
-    pub fn draw_status_bar(&mut self, file_name: String, mode_insert: &bool , height: u16, width: u16) {
-        let mode: String = if *mode_insert { String::from("INSERT ") } else { String::from("NORMAL ") };
+    pub fn cleanup(&mut self) {
+        // Flush the stdout buffer
+        self.stdout.flush().unwrap_or_default();
+        // Clear the screen with the "\x1B[3J" escape code (clear screen and scrollback buffer)
+        write!(self.stdout, "{}", clear::All).unwrap_or_default();
+        write!(self.stdout, "{}", "\x1B[3J").unwrap_or_default();
+        // Move the cursor to the top left
+        write!(self.stdout, "{}", cursor::Goto(1, 1)).unwrap_or_default();
+        // Reset the terminal colors
+        write!(self.stdout, "{}", color::Fg(color::Reset)).unwrap_or_default();
+        write!(self.stdout, "{}", color::Bg(color::Reset)).unwrap_or_default();
+        // Reset the terminal cursor
+        write!(self.stdout, "{}", cursor::Show).unwrap_or_default();
+        self.stdout.suspend_raw_mode().unwrap_or_default();
+    }
+
+    pub fn draw_status_bar(
+        &mut self,
+        file_name: String,
+        mode_insert: &bool,
+        height: u16,
+        width: u16,
+    ) {
+        let mode: String = if *mode_insert {
+            String::from("INSERT ")
+        } else {
+            String::from("NORMAL ")
+        };
         let padding = width - file_name.len() as u16 - mode.len() as u16;
         write!(
             self.stdout,

@@ -1,4 +1,6 @@
-use crate::{file::File, tui::Tui, view::View};
+use std::process::exit;
+
+use crate::{command::Command, file::File, tui::Tui, view::View};
 use termion::input::TermRead;
 
 /// Editor structure
@@ -10,7 +12,6 @@ pub struct Editor {
     view: View,
     /// The Tui responsible for drawing the editor
     tui: Tui,
-
     /// The mode of the editor
     mode_insert: bool,
 }
@@ -38,51 +39,35 @@ impl Editor {
         })
     }
 
+    fn execute(&mut self, cmd: Command) {
+        match cmd {
+            Command::Quit => {
+                self.tui.cleanup();
+                exit(0);
+            }
+            _ => {}
+        }
+    }
+
     pub fn run(&mut self) {
         // set view size
         let (width, height) = self.tui.get_term_size();
         // height - 1 to leave space for the status bar
         self.view.resize((height - 1) as usize, width as usize);
 
-        // // Spawn a thread to asynchronously read input from stdin
-        // let queue = self.command_queue.clone();
-        // let _input_thread = std::thread::spawn(|| {
-        //     Self::process_input(queue);
-        // });
-
         // draw initial view
         self.tui.clear();
-        self.tui.draw_view(&self.view, &self.file_name, &self.mode_insert);
+        self.tui
+            .draw_view(&self.view, &self.file_name, &self.mode_insert);
 
         let stdin = std::io::stdin().keys();
 
         for c in stdin {
-            match c.unwrap_or(termion::event::Key::Char(char::from('j'))) {
-                termion::event::Key::Char('q') => {
-                    self.tui.clear();
-                    break;
+            if let Ok(c) = c {
+                if let Ok(cmd) = Command::parse(c) {
+                    self.execute(cmd);
+                    self.tui.draw_view(&self.view, &self.file_name, &self.mode_insert)
                 }
-                termion::event::Key::Char('j') => {
-                    self.view.navigate(0, 1);
-                    self.tui.draw_view(&self.view, &self.file_name, &self.mode_insert);
-                }
-                termion::event::Key::Char('k') => {
-                    self.view.navigate(0, -1);
-                    self.tui.draw_view(&self.view, &self.file_name, &self.mode_insert);
-                }
-                termion::event::Key::Char('h') => {
-                    self.view.navigate(-1, 0);
-                    self.tui.draw_view(&self.view, &self.file_name, &self.mode_insert);
-                }
-                termion::event::Key::Char('l') => {
-                    self.view.navigate(1, 0);
-                    self.tui.draw_view(&self.view, &self.file_name, &self.mode_insert);
-                }
-                termion::event::Key::Char('i') => {
-                    self.mode_insert = !self.mode_insert;
-                    self.tui.draw_view(&self.view, &self.file_name, &self.mode_insert);
-                }
-                _ => {}
             }
         }
     }
