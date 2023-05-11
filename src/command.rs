@@ -1,5 +1,7 @@
 use termion::event::Key;
 
+use crate::editor::Mode;
+
 /// Commands that can be executed by the editor
 #[derive(Debug, PartialEq)]
 pub enum Command {
@@ -9,23 +11,26 @@ pub enum Command {
     Move(isize, isize),
     /// Save the file
     Save,
+    /// Toggle mode
+    ToggleMode,
 }
 
 impl Command {
     /// Parse a command from a byte
-    pub fn parse(key: Key) -> Result<Self, &'static str> {
-        match key {
-            Key::Char('q') => Ok(Command::Quit),
-            Key::Char('j') => Ok(Command::Move(0, 1)),
-            Key::Char('k') => Ok(Command::Move(0, -1)),
-            Key::Char('h') => Ok(Command::Move(-1, 0)),
-            Key::Char('l') => Ok(Command::Move(1, 0)),
-            Key::Char('w') => Ok(Command::Save),
+    pub fn parse(key: Key, mode: &Mode) -> Result<Self, &'static str> {
+        match (mode, key) {
+            (Mode::Normal, Key::Char('q')) => Ok(Command::Quit),
+            (Mode::Normal, Key::Char('j')) => Ok(Command::Move(0, 1)),
+            (Mode::Normal, Key::Char('k')) => Ok(Command::Move(0, -1)),
+            (Mode::Normal, Key::Char('h')) => Ok(Command::Move(-1, 0)),
+            (Mode::Normal, Key::Char('l')) => Ok(Command::Move(1, 0)),
+            (Mode::Normal, Key::Char('w')) => Ok(Command::Save),
+            (Mode::Normal, Key::Char('i')) => Ok(Command::ToggleMode),
+            (Mode::Insert, Key::Esc) => Ok(Command::ToggleMode),
             _ => Err("Invalid command"),
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -33,12 +38,41 @@ mod tests {
 
     #[test]
     fn parse_command() {
-        assert_eq!(Command::parse(Key::Char('q')), Ok(Command::Quit));
-        assert_eq!(Command::parse(Key::Char('j')), Ok(Command::Move(0, 1)));
-        assert_eq!(Command::parse(Key::Char('k')), Ok(Command::Move(0, -1)));
-        assert_eq!(Command::parse(Key::Char('h')), Ok(Command::Move(-1, 0)));
-        assert_eq!(Command::parse(Key::Char('l')), Ok(Command::Move(1, 0)));
-        assert_eq!(Command::parse(Key::Char('w')), Ok(Command::Save));
-        assert_eq!(Command::parse(Key::Char('x')), Err("Invalid command"));
+        assert_eq!(
+            Command::parse(Key::Char('q'), &Mode::Normal),
+            Ok(Command::Quit)
+        );
+        assert_eq!(
+            Command::parse(Key::Char('j'), &Mode::Normal),
+            Ok(Command::Move(0, 1))
+        );
+        assert_eq!(
+            Command::parse(Key::Char('k'), &Mode::Normal),
+            Ok(Command::Move(0, -1))
+        );
+        assert_eq!(
+            Command::parse(Key::Char('h'), &Mode::Normal),
+            Ok(Command::Move(-1, 0))
+        );
+        assert_eq!(
+            Command::parse(Key::Char('l'), &Mode::Normal),
+            Ok(Command::Move(1, 0))
+        );
+        assert_eq!(
+            Command::parse(Key::Char('w'), &Mode::Normal),
+            Ok(Command::Save)
+        );
+        assert_eq!(
+            Command::parse(Key::Char('i'), &Mode::Normal),
+            Ok(Command::ToggleMode)
+        );
+        assert_eq!(
+            Command::parse(Key::Esc, &Mode::Insert),
+            Ok(Command::ToggleMode)
+        );
+        assert_eq!(
+            Command::parse(Key::Char('q'), &Mode::Insert),
+            Err("Invalid command")
+        );
     }
 }

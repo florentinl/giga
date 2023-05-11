@@ -13,7 +13,15 @@ pub struct Editor {
     /// The Tui responsible for drawing the editor
     tui: Tui,
     /// The mode of the editor
-    mode_insert: bool,
+    mode: Mode,
+}
+
+/// Mode of the editor
+pub enum Mode {
+    /// Normal mode
+    Normal,
+    /// Insert mode
+    Insert,
 }
 
 impl Editor {
@@ -22,7 +30,7 @@ impl Editor {
             file_name: file_name.map(|s| s.to_string()),
             view: View::new(File::new(), 10, 20),
             tui: Tui::new(),
-            mode_insert: false,
+            mode: Mode::Normal
         }
     }
 
@@ -35,7 +43,7 @@ impl Editor {
             file_name: Some(path.to_string()),
             view,
             tui: Tui::new(),
-            mode_insert: false,
+            mode: Mode::Normal,
         })
     }
 
@@ -58,15 +66,15 @@ impl Editor {
         // draw initial view
         self.tui.clear();
         self.tui
-            .draw_view(&self.view, &self.file_name, &self.mode_insert);
+            .draw_view(&self.view, &self.file_name, &self.mode);
 
         let stdin = std::io::stdin().keys();
 
         for c in stdin {
             if let Ok(c) = c {
-                if let Ok(cmd) = Command::parse(c) {
+                if let Ok(cmd) = Command::parse(c, &self.mode) {
                     self.execute(cmd);
-                    self.tui.draw_view(&self.view, &self.file_name, &self.mode_insert)
+                    self.tui.draw_view(&self.view, &self.file_name, &self.mode)
                 }
             }
         }

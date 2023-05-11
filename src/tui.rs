@@ -1,4 +1,5 @@
 extern crate termion;
+use crate::editor::Mode;
 use crate::view::View;
 use std::io::Write;
 use termion::clear;
@@ -52,14 +53,13 @@ impl Tui {
     pub fn draw_status_bar(
         &mut self,
         file_name: String,
-        mode_insert: &bool,
+        mode: &Mode,
         height: u16,
         width: u16,
     ) {
-        let mode: String = if *mode_insert {
-            String::from("INSERT ")
-        } else {
-            String::from("NORMAL ")
+        let mode: String = match mode {
+            Mode::Normal => "NORMAL ".to_string(),
+            Mode::Insert => "INSERT ".to_string(),
         };
         let padding = width - file_name.len() as u16 - mode.len() as u16;
         write!(
@@ -93,7 +93,7 @@ impl Tui {
         .unwrap_or_default();
     }
 
-    pub fn draw_view(&mut self, view: &View, file_name: &Option<String>, mode_insert: &bool) {
+    pub fn draw_view(&mut self, view: &View, file_name: &Option<String>, mode: &Mode) {
         self.clear();
         let height = view.height;
         let width = view.width;
@@ -109,7 +109,7 @@ impl Tui {
         }
         // print the status bar
         let name = file_name.clone().unwrap_or("New File".to_string());
-        self.draw_status_bar(name, mode_insert, height as u16, width as u16);
+        self.draw_status_bar(name, mode, height as u16, width as u16);
         print!("{}", cursor::Goto(1, 1));
 
         // move the cursor to the correct position
