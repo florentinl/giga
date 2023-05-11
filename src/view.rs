@@ -105,7 +105,7 @@ impl View {
         match c {
             '\n' => {
                 let (x, y) = self.cursor;
-                self.file.insert(y, x, b'\n');
+                self.file.split_line(y, x);
                 self.navigate(-(x as isize), 1);
             }
             '\t' => {
@@ -130,9 +130,9 @@ impl View {
             (0, _) => {
                 // get previous line length
                 let line = self.file.get_line(y - 1).unwrap_or_default();
-                let dx = line.len() as isize - 1;
+                let dx = line.len() as isize;
                 let dy = -1;
-                self.file.delete(y - 1, line.len() - 1);
+                self.file.delete(y, x);
                 self.navigate(dx, dy)
             }
             (_, _) => {

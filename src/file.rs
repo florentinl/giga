@@ -1,3 +1,5 @@
+use std::vec;
+
 /// The File structure is the in-memory representation of the full file being edited.
 /// It is a vector of lines, each line being a vector of bytes.
 pub struct File {
@@ -7,7 +9,7 @@ pub struct File {
 impl File {
     pub fn new() -> Self {
         Self {
-            content: Vec::new(),
+            content: vec![vec![]],
         }
     }
 
@@ -44,8 +46,19 @@ impl File {
     pub fn delete(&mut self, line: usize, col: usize){
         if line >= self.content.len() {
             return;
+        } else if col == 0 {
+            self.content.remove(line);
         } else {
             self.content[line].remove(col);
+        }
+    }
+
+    pub fn split_line(&mut self, line: usize, col: usize) {
+        if line >= self.content.len() {
+            return;
+        } else {
+            let new_line = self.content[line].split_off(col);
+            self.content.insert(line + 1, new_line);
         }
     }
 }
