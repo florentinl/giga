@@ -132,7 +132,7 @@ impl View {
                 let line = self.file.get_line(y - 1).unwrap_or_default();
                 let dx = line.len() as isize;
                 let dy = -1;
-                self.file.delete(y, x);
+                self.file.join_line(y);
                 self.navigate(dx, dy)
             }
             (_, _) => {

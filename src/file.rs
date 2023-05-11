@@ -43,13 +43,23 @@ impl File {
     }
 
     /// Delete a byte at the given position
-    pub fn delete(&mut self, line: usize, col: usize){
+    pub fn delete(&mut self, line: usize, col: usize) {
         if line >= self.content.len() {
             return;
-        } else if col == 0 {
-            self.content.remove(line);
         } else {
             self.content[line].remove(col);
+        }
+    }
+
+    /// Join the given line with the previous one
+    pub fn join_line(&mut self, line: usize) {
+        if line >= self.content.len() {
+            return;
+        } else {
+            let prev_line = self.content.remove(line);
+            if let Some(line) = self.content.get_mut(line - 1) {
+                line.extend(prev_line);
+            }
         }
     }
 
