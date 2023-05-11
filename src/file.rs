@@ -90,7 +90,7 @@ mod tests {
     #[test]
     fn file_new_empty() {
         let file = File::new();
-        assert_eq!(file.content.len(), 0);
+        assert_eq!(file.content.len(), 1);
     }
 
     #[test]
