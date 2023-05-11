@@ -48,17 +48,36 @@ impl View {
     /// if the cursor is out of bounds of the file, it will be moved to the
     /// closest valid position instead.
     pub fn navigate(&mut self, dx: isize, dy: isize) {
-        let (mut x, mut y) = self.cursor;
-
         // We move onto the new line
-        let len = self.file.len();
-        y = (y as isize + dy).max(0).min(len.saturating_sub(1) as isize) as usize;
+        self.navigate_y(dy);
 
         // We move onto the new column
+        let (mut x, y) = self.cursor;
         let line = self.file.get_line(y + self.start_line).unwrap_or_default();
         x = (x as isize + dx).max(0).min(line.len() as isize) as usize;
 
         self.cursor = (x, y);
+    }
+    /// Navigate along the y axis and eventually scroll the view
+    fn navigate_y(&mut self, dy: isize) {
+        let (_, y) = self.cursor;
+        let file_height = self.file.len() as isize;
+        let view_height = self.height as isize;
+        let start = self.start_line as isize;
+        let mut new_y = y as isize + dy;
+
+        if new_y < 0 {
+            self.start_line = (start + new_y).max(0) as usize;
+            new_y = 0;
+        } else if new_y >= view_height {
+            self.start_line = (start + new_y - view_height + 1)
+                .min(file_height - view_height)
+                .max(0) as usize;
+            new_y = (view_height - 1).min(file_height - 1);
+        } else {
+            new_y = new_y.max(0).min(view_height - 1);
+        }
+        self.cursor.1 = new_y as usize;
     }
 
     pub fn insert(&mut self, c: char) {
@@ -92,7 +111,7 @@ impl View {
                 let line = self.file.get_line(y - 1).unwrap_or_default();
                 let dx = line.len() as isize - 1;
                 let dy = -1;
-                self.file.delete(y-1, line.len() - 1);
+                self.file.delete(y - 1, line.len() - 1);
                 self.navigate(dx, dy)
             }
             (_, _) => {
@@ -182,5 +201,26 @@ mod tests {
         );
         view.navigate(0, 30);
         assert_eq!(view.cursor, (0, 1));
+    }
+
+    #[test]
+    fn view_navigate_scroll_y() {
+        let mut view = View::new(
+            File::from_bytes(b"Hello, World !\nWelcome to the moon!"),
+            1,
+            100,
+        );
+        view.navigate(0, 1);
+        assert_eq!(view.cursor, (0, 0));
+        assert_eq!(view.start_line, 1);
+        view.navigate(0, 1);
+        assert_eq!(view.cursor, (0, 0));
+        assert_eq!(view.start_line, 1);
+        view.navigate(0, -1);
+        assert_eq!(view.cursor, (0, 0));
+        assert_eq!(view.start_line, 0);
+        view.navigate(0, -1);
+        assert_eq!(view.cursor, (0, 0));
+        assert_eq!(view.start_line, 0);
     }
 }
