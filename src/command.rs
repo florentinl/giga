@@ -24,10 +24,10 @@ impl Command {
     pub fn parse(key: Key, mode: &Mode) -> Result<Self, &'static str> {
         match (mode, key) {
             (Mode::Normal, Key::Char('q')) => Ok(Command::Quit),
-            (Mode::Normal, Key::Char('j')) => Ok(Command::Move(0, 1)),
-            (Mode::Normal, Key::Char('k')) => Ok(Command::Move(0, -1)),
-            (Mode::Normal, Key::Char('h')) => Ok(Command::Move(-1, 0)),
-            (Mode::Normal, Key::Char('l')) => Ok(Command::Move(1, 0)),
+            (Mode::Normal, Key::Char('j')) | (Mode::Normal, Key::Down ) => Ok(Command::Move(0, 1)),
+            (Mode::Normal, Key::Char('k')) | (Mode::Normal, Key::Up )  => Ok(Command::Move(0, -1)),
+            (Mode::Normal, Key::Char('h')) | (Mode::Normal, Key::Left ) => Ok(Command::Move(-1, 0)),
+            (Mode::Normal, Key::Char('l')) | (Mode::Normal, Key::Right ) => Ok(Command::Move(1, 0)),
             (Mode::Normal, Key::Char('w')) => Ok(Command::Save),
             (Mode::Normal, Key::Char('i')) => Ok(Command::ToggleMode),
             (Mode::Insert, Key::Esc) => Ok(Command::ToggleMode),
