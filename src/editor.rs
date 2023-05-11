@@ -1,6 +1,5 @@
-use std::thread::sleep;
-
 use crate::{file::File, tui::Tui, view::View};
+use termion::input::TermRead;
 
 /// Editor structure
 /// represents the state of the program
@@ -40,24 +39,40 @@ impl Editor {
         // height - 1 to leave space for the status bar
         self.view.resize((height - 1) as usize, width as usize);
 
+        // // Spawn a thread to asynchronously read input from stdin
+        // let queue = self.command_queue.clone();
+        // let _input_thread = std::thread::spawn(|| {
+        //     Self::process_input(queue);
+        // });
+
         // draw initial view
         self.tui.clear();
         self.tui.draw_view(&self.view, &self.file_name);
-        sleep(core::time::Duration::from_secs(5));
-        loop {
-            // parse input events into commands
-            let command = self.tui.read_input();
-            // redraw the view if needed
-            if command.is_none() {
-                continue;
-            }
 
-            match command.unwrap() {
-                b'q' => break,
-                b'j' => self.view.navigate(0, 1),
-                b'k' => self.view.navigate(0, -1),
-                b'h' => self.view.navigate(-1, 0),
-                b'l' => self.view.navigate(1, 0),
+        let stdin = std::io::stdin().keys();
+
+        for c in stdin {
+            match c.unwrap_or(termion::event::Key::Char(char::from('j'))) {
+                termion::event::Key::Char('q') => {
+                    self.tui.clear();
+                    break;
+                }
+                termion::event::Key::Char('j') => {
+                    self.view.navigate(0, 1);
+                    self.tui.draw_view(&self.view, &self.file_name);
+                }
+                termion::event::Key::Char('k') => {
+                    self.view.navigate(0, -1);
+                    self.tui.draw_view(&self.view, &self.file_name);
+                }
+                termion::event::Key::Char('h') => {
+                    self.view.navigate(-1, 0);
+                    self.tui.draw_view(&self.view, &self.file_name);
+                }
+                termion::event::Key::Char('l') => {
+                    self.view.navigate(1, 0);
+                    self.tui.draw_view(&self.view, &self.file_name);
+                }
                 _ => {}
             }
         }

@@ -1,13 +1,9 @@
 extern crate termion;
-use std::io::Read;
-use std::io::Write;
-
 use crate::view::View;
-
+use std::io::Write;
 use termion::clear;
 use termion::color;
 use termion::cursor;
-use termion::AsyncReader;
 use termion::raw::IntoRawMode;
 use termion::raw::RawTerminal;
 
@@ -15,14 +11,12 @@ const LINE_NUMBER_WIDTH: u16 = 4;
 
 pub struct Tui {
     // Async input reader (stdin)
-    input: std::io::Stdin,
-    stdout: RawTerminal<std::io::Stdout>,
+    pub stdout: RawTerminal<std::io::Stdout>,
 }
 
 impl Tui {
     pub fn new() -> Self {
         Self {
-            input: std::io::stdin(),
             stdout: std::io::stdout().into_raw_mode().unwrap(),
         }
     }
@@ -35,6 +29,8 @@ impl Tui {
         // Clear the screen with the "\x1B[3J" escape code (clear screen and scrollback buffer)
         write!(self.stdout, "{}", clear::All).unwrap_or_default();
         write!(self.stdout, "{}", "\x1B[3J").unwrap_or_default();
+        // Move the cursor to the top left
+        write!(self.stdout, "{}", cursor::Goto(1, 1)).unwrap_or_default();
     }
 
     pub fn draw_status_bar(&mut self, file_name: String, height: u16, width: u16) {
@@ -49,7 +45,8 @@ impl Tui {
             cursor::Goto(width, height + 1),
             color::Fg(color::Reset),
             color::Bg(color::Reset),
-        ).unwrap_or_default();
+        )
+        .unwrap_or_default();
     }
 
     pub fn draw_line_numbers(&mut self, line: usize) {
@@ -63,7 +60,8 @@ impl Tui {
             number,
             cursor::Goto(LINE_NUMBER_WIDTH, (line + 1) as u16),
             color::Fg(color::Reset),
-        ).unwrap_or_default();
+        )
+        .unwrap_or_default();
     }
 
     pub fn draw_view(&mut self, view: &View, file_name: &Option<String>) {
@@ -77,7 +75,8 @@ impl Tui {
                 "{}{}",
                 cursor::Goto(LINE_NUMBER_WIDTH + 1, (line + 1) as u16),
                 view.get_line(line)
-            ).unwrap_or_default();
+            )
+            .unwrap_or_default();
         }
         // print the status bar
         let name = file_name.clone().unwrap_or("New File".to_string());
@@ -91,11 +90,5 @@ impl Tui {
             cursor::Goto(x as u16 + LINE_NUMBER_WIDTH as u16 + 1, y as u16 + 1)
         );
         std::io::stdout().flush().unwrap_or_default();
-    }
-
-    pub fn read_input(&mut self) -> Option<u8> {
-        let mut buf = [0; 1];
-        while self.input.lock().read(&mut buf).unwrap_or_default() == 0 {}
-        Some(buf[0])
     }
 }
