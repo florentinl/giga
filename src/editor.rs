@@ -30,7 +30,7 @@ impl Editor {
             file_name: file_name.map(|s| s.to_string()),
             view: View::new(File::new(), 10, 20),
             tui: Tui::new(),
-            mode: Mode::Normal
+            mode: Mode::Normal,
         }
     }
 
@@ -53,7 +53,14 @@ impl Editor {
                 self.tui.cleanup();
                 exit(0);
             }
-            _ => {}
+            Command::Move(x, y) => self.view.navigate(x, y),
+            Command::Save => {}
+            Command::ToggleMode => {
+                self.mode = match self.mode {
+                    Mode::Normal => Mode::Insert,
+                    Mode::Insert => Mode::Normal,
+                }
+            }
         }
     }
 
@@ -65,8 +72,7 @@ impl Editor {
 
         // draw initial view
         self.tui.clear();
-        self.tui
-            .draw_view(&self.view, &self.file_name, &self.mode);
+        self.tui.draw_view(&self.view, &self.file_name, &self.mode);
 
         let stdin = std::io::stdin().keys();
 
