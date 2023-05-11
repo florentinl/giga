@@ -141,6 +141,10 @@ impl View {
             }
         }
     }
+
+    pub fn dump_file(&self) -> String {
+        self.file.to_string()
+    }
 }
 
 impl ToString for View {

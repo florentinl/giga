@@ -54,7 +54,13 @@ impl Editor {
                 exit(0);
             }
             Command::Move(x, y) => self.view.navigate(x, y),
-            Command::Save => {}
+            Command::Save => {
+                if let Some(path) = &self.file_name {
+                    let content = self.view.dump_file();
+                    std::fs::write(path.clone() + ".tmp", content).unwrap_or_default();
+                    std::fs::rename(path.clone() + ".tmp", path).unwrap_or_default();
+                }
+            }
             Command::ToggleMode => {
                 self.mode = match self.mode {
                     Mode::Normal => Mode::Insert,
