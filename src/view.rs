@@ -266,5 +266,8 @@ mod tests {
         assert_eq!(view.get_line(0), ", World !");
         assert_eq!(view.cursor, (9, 0));
         assert_eq!(view.start_col, 5);
+        view.navigate(-20, 0);
+        assert_eq!(view.cursor, (0, 0));
+        assert_eq!(view.start_col, 0);
     }
 }
