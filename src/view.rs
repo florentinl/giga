@@ -44,10 +44,20 @@ impl View {
         String::from_utf8_lossy(&line[start..end]).to_string()
     }
 
+    /// Navigate the cursor by a given amount and eventually scroll the view
+    /// if the cursor is out of bounds of the file, it will be moved to the
+    /// closest valid position instead.
     pub fn navigate(&mut self, dx: isize, dy: isize) {
         let (mut x, mut y) = self.cursor;
-        x = (x as isize + dx).max(0) as usize;
-        y = (y as isize + dy).max(0) as usize;
+
+        // We move onto the new line
+        let len = self.file.len();
+        y = (y as isize + dy).max(0).min(len.saturating_sub(1) as isize) as usize;
+
+        // We move onto the new column
+        let line = self.file.get_line(y + self.start_line).unwrap_or_default();
+        x = (x as isize + dx).max(0).min(line.len() as isize) as usize;
+
         self.cursor = (x, y);
     }
 
@@ -137,5 +147,40 @@ mod tests {
     fn view_get_line() {
         let view = View::new(File::from_bytes(b"Hello, World !\n"), 1, 10);
         assert_eq!(view.get_line(0), "Hello, Wor");
+    }
+
+    #[test]
+    fn view_navigate() {
+        let mut view = View::new(
+            File::from_bytes(b"Hello, World !\nWelcome to the moon!"),
+            2,
+            10,
+        );
+        view.navigate(1, 1);
+        assert_eq!(view.cursor, (1, 1));
+        view.navigate(-1, -1);
+        assert_eq!(view.cursor, (0, 0));
+    }
+
+    #[test]
+    fn view_navigate_go_to_eol() {
+        let mut view = View::new(
+            File::from_bytes(b"Hello, World !\nWelcome to the moon!"),
+            2,
+            100,
+        );
+        view.navigate(30, 0);
+        assert_eq!(view.cursor, (14, 0));
+    }
+
+    #[test]
+    fn view_navigate_go_to_eof() {
+        let mut view = View::new(
+            File::from_bytes(b"Hello, World !\nWelcome to the moon!"),
+            3,
+            100,
+        );
+        view.navigate(0, 30);
+        assert_eq!(view.cursor, (0, 1));
     }
 }
