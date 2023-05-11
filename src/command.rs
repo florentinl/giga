@@ -13,6 +13,10 @@ pub enum Command {
     Save,
     /// Toggle mode
     ToggleMode,
+    /// Insert a character
+    Insert(char),
+    /// Delete a character
+    Delete(),
 }
 
 impl Command {
@@ -27,6 +31,12 @@ impl Command {
             (Mode::Normal, Key::Char('w')) => Ok(Command::Save),
             (Mode::Normal, Key::Char('i')) => Ok(Command::ToggleMode),
             (Mode::Insert, Key::Esc) => Ok(Command::ToggleMode),
+            (Mode::Insert, Key::Char(c)) => Ok(Command::Insert(c.clone())),
+            (Mode::Insert, Key::Backspace) => Ok(Command::Delete()),
+            (Mode::Insert, Key::Right) => Ok(Command::Move(1, 0)),
+            (Mode::Insert, Key::Left) => Ok(Command::Move(-1, 0)),
+            (Mode::Insert, Key::Up) => Ok(Command::Move(0, -1)),
+            (Mode::Insert, Key::Down) => Ok(Command::Move(0, 1)),
             _ => Err("Invalid command"),
         }
     }
@@ -69,6 +79,14 @@ mod tests {
         assert_eq!(
             Command::parse(Key::Esc, &Mode::Insert),
             Ok(Command::ToggleMode)
+        );
+        assert_eq!(
+            Command::parse(Key::Char('j'), &Mode::Insert),
+            Err("Invalid command")
+        );
+        assert_eq!(
+            Command::parse(Key::Char('k'), &Mode::Insert),
+            Err("Invalid command")
         );
         assert_eq!(
             Command::parse(Key::Char('q'), &Mode::Insert),

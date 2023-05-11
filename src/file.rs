@@ -30,6 +30,24 @@ impl File {
     pub fn len(&self) -> usize {
         self.content.len()
     }
+
+    /// Insert a byte at the given position
+    pub fn insert(&mut self, line: usize, col: usize, c: u8) {
+        if line >= self.content.len() {
+            self.content.push(vec![c]);
+        } else {
+            self.content[line].insert(col, c);
+        }
+    }
+
+    /// Delete a byte at the given position
+    pub fn delete(&mut self, line: usize, col: usize){
+        if line >= self.content.len() {
+            return;
+        } else {
+            self.content[line].remove(col);
+        }
+    }
 }
 
 impl ToString for File {
@@ -68,10 +86,7 @@ mod tests {
     #[test]
     fn file_get_line() {
         let file = File::from_bytes(b"Hello, World !\n");
-        assert_eq!(
-            file.get_line(0),
-            Some("Hello, World !".as_bytes().to_vec())
-        );
+        assert_eq!(file.get_line(0), Some("Hello, World !".as_bytes().to_vec()));
         assert_eq!(file.get_line(1), Some("".as_bytes().to_vec()));
         assert_eq!(file.get_line(2), None);
     }

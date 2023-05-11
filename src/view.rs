@@ -50,6 +50,47 @@ impl View {
         y = (y as isize + dy).max(0) as usize;
         self.cursor = (x, y);
     }
+
+    pub fn insert(&mut self, c: char) {
+        match c {
+            '\n' => {
+                let (x, y) = self.cursor;
+                self.file.insert(y, x, b'\n');
+                self.navigate(-(x as isize), 1);
+            }
+            '\t' => {
+                let (x, y) = self.cursor;
+                for _ in 0..4 {
+                    self.file.insert(y, x, b' '); // TODO: replace with tab
+                }
+                self.navigate(4, 0);
+            }
+            _ => {
+                let (x, y) = self.cursor;
+                self.file.insert(y, x, c as u8);
+                self.navigate(1, 0);
+            }
+        }
+    }
+
+    pub fn delete(&mut self) {
+        let (x, y) = self.cursor;
+        match (x, y) {
+            (0, 0) => return,
+            (0, _) => {
+                // get previous line length
+                let line = self.file.get_line(y - 1).unwrap_or_default();
+                let dx = line.len() as isize - 1;
+                let dy = -1;
+                self.file.delete(y-1, line.len() - 1);
+                self.navigate(dx, dy)
+            }
+            (_, _) => {
+                self.file.delete(y, x - 1);
+                self.navigate(-1, 0);
+            }
+        }
+    }
 }
 
 impl ToString for View {

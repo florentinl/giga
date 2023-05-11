@@ -61,6 +61,8 @@ impl Editor {
                     Mode::Insert => Mode::Normal,
                 }
             }
+            Command::Insert(c) => self.view.insert(c),
+            Command::Delete() => self.view.delete(),
         }
     }
 
