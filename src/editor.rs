@@ -10,6 +10,9 @@ pub struct Editor {
     view: View,
     /// The Tui responsible for drawing the editor
     tui: Tui,
+
+    /// The mode of the editor
+    mode_insert: bool,
 }
 
 impl Editor {
@@ -18,6 +21,7 @@ impl Editor {
             file_name: file_name.map(|s| s.to_string()),
             view: View::new(File::new(), 10, 20),
             tui: Tui::new(),
+            mode_insert: false,
         }
     }
 
@@ -30,6 +34,7 @@ impl Editor {
             file_name: Some(path.to_string()),
             view,
             tui: Tui::new(),
+            mode_insert: false,
         })
     }
 
@@ -47,7 +52,7 @@ impl Editor {
 
         // draw initial view
         self.tui.clear();
-        self.tui.draw_view(&self.view, &self.file_name);
+        self.tui.draw_view(&self.view, &self.file_name, &self.mode_insert);
 
         let stdin = std::io::stdin().keys();
 
@@ -59,19 +64,23 @@ impl Editor {
                 }
                 termion::event::Key::Char('j') => {
                     self.view.navigate(0, 1);
-                    self.tui.draw_view(&self.view, &self.file_name);
+                    self.tui.draw_view(&self.view, &self.file_name, &self.mode_insert);
                 }
                 termion::event::Key::Char('k') => {
                     self.view.navigate(0, -1);
-                    self.tui.draw_view(&self.view, &self.file_name);
+                    self.tui.draw_view(&self.view, &self.file_name, &self.mode_insert);
                 }
                 termion::event::Key::Char('h') => {
                     self.view.navigate(-1, 0);
-                    self.tui.draw_view(&self.view, &self.file_name);
+                    self.tui.draw_view(&self.view, &self.file_name, &self.mode_insert);
                 }
                 termion::event::Key::Char('l') => {
                     self.view.navigate(1, 0);
-                    self.tui.draw_view(&self.view, &self.file_name);
+                    self.tui.draw_view(&self.view, &self.file_name, &self.mode_insert);
+                }
+                termion::event::Key::Char('i') => {
+                    self.mode_insert = !self.mode_insert;
+                    self.tui.draw_view(&self.view, &self.file_name, &self.mode_insert);
                 }
                 _ => {}
             }

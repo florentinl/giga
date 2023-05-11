@@ -4,6 +4,7 @@ use std::io::Write;
 use termion::clear;
 use termion::color;
 use termion::cursor;
+use termion::style;
 use termion::raw::IntoRawMode;
 use termion::raw::RawTerminal;
 
@@ -33,15 +34,18 @@ impl Tui {
         write!(self.stdout, "{}", cursor::Goto(1, 1)).unwrap_or_default();
     }
 
-    pub fn draw_status_bar(&mut self, file_name: String, height: u16, width: u16) {
-        let padding = width - file_name.len() as u16;
+    pub fn draw_status_bar(&mut self, file_name: String, mode_insert: &bool , height: u16, width: u16) {
+        let mode: String = if *mode_insert { String::from("INSERT ") } else { String::from("NORMAL ") };
+        let padding = width - file_name.len() as u16 - mode.len() as u16;
         write!(
             self.stdout,
-            "{}{}{}{}{}{}{}",
+            "{}{}{}{}{}{}{}{}{}",
             cursor::Goto(1, height + 1),
             color::Bg(color::White),
             color::Fg(color::Black),
-            file_name + &" ".repeat(padding as usize),
+            mode,
+            file_name,
+            " ".repeat(padding as usize),
             cursor::Goto(width, height + 1),
             color::Fg(color::Reset),
             color::Bg(color::Reset),
@@ -64,7 +68,7 @@ impl Tui {
         .unwrap_or_default();
     }
 
-    pub fn draw_view(&mut self, view: &View, file_name: &Option<String>) {
+    pub fn draw_view(&mut self, view: &View, file_name: &Option<String>, mode_insert: &bool) {
         self.clear();
         let height = view.height;
         let width = view.width;
@@ -80,7 +84,7 @@ impl Tui {
         }
         // print the status bar
         let name = file_name.clone().unwrap_or("New File".to_string());
-        self.draw_status_bar(name, height as u16, width as u16);
+        self.draw_status_bar(name, mode_insert, height as u16, width as u16);
         print!("{}", cursor::Goto(1, 1));
 
         // move the cursor to the correct position
