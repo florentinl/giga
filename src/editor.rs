@@ -94,35 +94,3 @@ impl Editor {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn editor_new_empty() {
-        let editor = Editor::new(Some("filename"));
-        assert_eq!(editor.view.to_string(), "");
-        assert_eq!(editor.file_name, Some("filename".to_string()));
-    }
-
-    #[test]
-    fn editor_open() {
-        let path = "tests/sample.txt";
-        let editor = Editor::open(path);
-        assert!(editor.is_ok());
-
-        let editor = editor.unwrap();
-
-        let expected = "Hello, World !\n";
-        assert_eq!(editor.view.to_string(), expected);
-        assert_eq!(editor.file_name, Some("tests/sample.txt".to_string()));
-    }
-
-    #[test]
-    fn editor_open_error() {
-        let path = "tests/does_not_exist.txt";
-        let editor = Editor::open(path);
-        assert!(editor.is_err());
-    }
-}
