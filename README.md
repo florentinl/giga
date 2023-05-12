@@ -37,7 +37,7 @@ You can know the current mode by Looking to the status bar beneath the editor.
 
 As giga is under development, we need to fix these:
 
-- [ ] UTF-8 support
+- [x] UTF-8 support
 - [ ] Rename a file
 - [ ] Syntax Highlighting
 - [ ] Refresh only lines changed

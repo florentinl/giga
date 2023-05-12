@@ -3,7 +3,7 @@ use std::vec;
 /// The File structure is the in-memory representation of the full file being edited.
 /// It is a vector of lines, each line being a vector of bytes.
 pub struct File {
-    content: Vec<Vec<u8>>,
+    content: Vec<Vec<char>>,
 }
 
 impl File {
@@ -13,18 +13,15 @@ impl File {
         }
     }
 
-    /// Create a File abstraction from a byte array
-    pub fn from_bytes(bytes: &[u8]) -> Self {
-        let content = bytes
-            .split(|&c| c == b'\n')
-            .map(|line| line.to_vec())
-            .collect();
+    /// Create a File abstraction from a string
+    pub fn from_string(str: &str) -> Self {
+        let content = str.split('\n').map(|line| line.chars().collect()).collect();
 
         Self { content }
     }
 
     /// Get the nth line of the file
-    pub fn get_line(&self, index: usize) -> Option<Vec<u8>> {
+    pub fn get_line(&self, index: usize) -> Option<Vec<char>> {
         self.content.get(index).cloned()
     }
 
@@ -33,10 +30,10 @@ impl File {
         self.content.len()
     }
 
-    /// Insert a byte at the given position in the file
+    /// Insert a char at the given position in the file
     /// - line >= len || col > line_len: do nothing
     /// - else insert the byte at the given position
-    pub fn insert(&mut self, line: usize, col: usize, c: u8) {
+    pub fn insert(&mut self, line: usize, col: usize, c: char) {
         match self.content.get_mut(line) {
             None => {}
             Some(line) => {
@@ -48,7 +45,7 @@ impl File {
         }
     }
 
-    /// Delete a byte at the given position
+    /// Delete a char at the given position
     /// - col == 0: join the line with the previous one (except if it's the first line)
     /// - 0 < col <= line_len: delete the byte at the given position
     /// - col > line_len: do nothing
@@ -84,7 +81,7 @@ impl ToString for File {
     fn to_string(&self) -> String {
         self.content
             .iter()
-            .map(|line| String::from_utf8_lossy(line))
+            .map(|line| line.iter().collect::<String>())
             .collect::<Vec<_>>()
             .join("\n")
     }
@@ -102,53 +99,53 @@ mod tests {
 
     #[test]
     fn file_from_bytes() {
-        let file = File::from_bytes(b"Hello, World !");
+        let file = File::from_string("Hello, World !");
         assert_eq!(file.content.len(), 1);
-        assert_eq!(file.content[0], "Hello, World !".as_bytes());
+        assert_eq!(file.content[0], "Hello, World !".chars().collect::<Vec<_>>());
     }
 
     #[test]
     fn file_to_string() {
-        let file = File::from_bytes(b"Hello, World !");
+        let file = File::from_string("Hello, World !");
         assert_eq!(file.to_string(), "Hello, World !");
     }
 
     #[test]
     fn file_get_line() {
-        let file = File::from_bytes(b"Hello, World !\n");
-        assert_eq!(file.get_line(0), Some("Hello, World !".as_bytes().to_vec()));
-        assert_eq!(file.get_line(1), Some("".as_bytes().to_vec()));
+        let file = File::from_string("Hello, World !\n");
+        assert_eq!(file.get_line(0), Some("Hello, World !".chars().collect()));
+        assert_eq!(file.get_line(1), Some("".chars().collect()));
         assert_eq!(file.get_line(2), None);
     }
 
     #[test]
     fn file_get_len() {
-        let file = File::from_bytes(b"Hello, World !\n");
+        let file = File::from_string("Hello, World !\n");
         assert_eq!(file.len(), 2);
     }
 
     #[test]
     fn file_insert() {
-        let mut file = File::from_bytes(b"Hello, World !\n");
-        file.insert(0, 0, b'!');
+        let mut file = File::from_string("Hello, World !\n");
+        file.insert(0, 0, '!');
         assert_eq!(file.to_string(), "!Hello, World !\n");
-        file.insert(1, 0, b'!');
+        file.insert(1, 0, '!');
         assert_eq!(file.to_string(), "!Hello, World !\n!");
-        file.insert(1, 1, b'!');
+        file.insert(1, 1, '!');
         assert_eq!(file.to_string(), "!Hello, World !\n!!");
 
         // Out of bounds line
-        file.insert(2, 0, b'!');
+        file.insert(2, 0, '!');
         assert_eq!(file.to_string(), "!Hello, World !\n!!");
 
         // Out of bounds col
-        file.insert(1, 3, b'!');
+        file.insert(1, 3, '!');
         assert_eq!(file.to_string(), "!Hello, World !\n!!");
     }
 
     #[test]
     fn file_delete() {
-        let mut file = File::from_bytes(b"HW\n");
+        let mut file = File::from_string("HW\n");
         file.delete(0, 1);
         assert_eq!(file.to_string(), "W\n");
         file.delete(0, 1);
@@ -157,14 +154,14 @@ mod tests {
 
     #[test]
     fn file_delete_out_of_bounds() {
-        let mut file = File::from_bytes(b"HW\n");
+        let mut file = File::from_string("HW\n");
         file.delete(1, 1);
         assert_eq!(file.to_string(), "HW\n");
     }
 
     #[test]
     fn file_delete_beginning_of_line() {
-        let mut file = File::from_bytes(b"HW\nGuys !");
+        let mut file = File::from_string("HW\nGuys !");
         file.delete(1, 0);
         assert_eq!(file.to_string(), "HWGuys !");
     }

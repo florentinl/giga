@@ -41,7 +41,7 @@ impl View {
             .unwrap_or_default();
         let start = self.start_col.min(line.len());
         let end = (self.start_col + self.width).min(line.len());
-        String::from_utf8_lossy(&line[start..end]).to_string()
+        String::from(&line[start..end].iter().collect::<String>())
     }
 
     /// Navigate the cursor by a given amount and eventually scroll the view
@@ -109,7 +109,7 @@ impl View {
         // Calculate the absolute position of the cursor in the file
         let (x, y) = (rel_x + self.start_col, rel_y + self.start_line);
         // Insert the character at the cursor position
-        self.file.insert(y, x, c as u8);
+        self.file.insert(y, x, c);
         self.navigate(1, 0);
     }
 
@@ -190,7 +190,7 @@ mod tests {
 
     #[test]
     fn view_to_string() {
-        let view = View::new(File::from_bytes(b"Hello, World !\n"), 1, 10);
+        let view = View::new(File::from_string("Hello, World !\n"), 1, 10);
         assert_eq!(view.to_string(), "Hello, Wor");
     }
 
@@ -204,14 +204,14 @@ mod tests {
 
     #[test]
     fn view_get_line() {
-        let view = View::new(File::from_bytes(b"Hello, World !\n"), 1, 10);
+        let view = View::new(File::from_string("Hello, World !\n"), 1, 10);
         assert_eq!(view.get_line(0), "Hello, Wor");
     }
 
     #[test]
     fn view_navigate() {
         let mut view = View::new(
-            File::from_bytes(b"Hello, World !\nWelcome to the moon!"),
+            File::from_string("Hello, World !\nWelcome to the moon!"),
             2,
             10,
         );
@@ -224,7 +224,7 @@ mod tests {
     #[test]
     fn view_navigate_go_to_eol() {
         let mut view = View::new(
-            File::from_bytes(b"Hello, World !\nWelcome to the moon!"),
+            File::from_string("Hello, World !\nWelcome to the moon!"),
             2,
             100,
         );
@@ -235,7 +235,7 @@ mod tests {
     #[test]
     fn view_navigate_go_to_eof() {
         let mut view = View::new(
-            File::from_bytes(b"Hello, World !\nWelcome to the moon!"),
+            File::from_string("Hello, World !\nWelcome to the moon!"),
             3,
             100,
         );
@@ -246,7 +246,7 @@ mod tests {
     #[test]
     fn view_navigate_scroll_y() {
         let mut view = View::new(
-            File::from_bytes(b"Hello, World !\nWelcome to the moon!"),
+            File::from_string("Hello, World !\nWelcome to the moon!"),
             1,
             100,
         );
@@ -267,7 +267,7 @@ mod tests {
     #[test]
     fn view_navigate_scroll_x() {
         let mut view = View::new(
-            File::from_bytes(b"Hello, World !\nWelcome to the moon!"),
+            File::from_string("Hello, World !\nWelcome to the moon!"),
             1,
             10,
         );
@@ -288,16 +288,23 @@ mod tests {
 
     #[test]
     fn view_insert() {
-        let mut view = View::new(File::from_bytes(b"Hello, World !\n"), 1, 10);
-        view.navigate(0, 0);
+        let mut view = View::new(File::from_string("Hello, World !\n"), 1, 10);
         view.insert('a');
         assert_eq!(view.to_string(), "aHello, Wo");
         assert_eq!(view.cursor, (1, 0));
     }
 
     #[test]
+    fn view_insert_non_ascii() {
+        let mut view = View::new(File::from_string("Hello, World !\n"), 1, 10);
+        view.insert('é');
+        assert_eq!(view.to_string(), "éHello, Wo");
+        assert_eq!(view.cursor, (1, 0));
+    }
+
+    #[test]
     fn view_insert_new_line() {
-        let mut view = View::new(File::from_bytes(b"Hello, World !\n"), 10, 10);
+        let mut view = View::new(File::from_string("Hello, World !\n"), 10, 10);
         view.navigate(7, 0);
         view.insert_new_line();
         assert_eq!(view.dump_file(), "Hello, \nWorld !\n");
@@ -306,7 +313,7 @@ mod tests {
 
     #[test]
     fn view_delete() {
-        let mut view = View::new(File::from_bytes(b"Hello, World !\n"), 1, 10);
+        let mut view = View::new(File::from_string("Hello, World !\n"), 1, 10);
         view.navigate(1, 0);
         view.delete();
         assert_eq!(view.to_string(), "ello, Worl");
