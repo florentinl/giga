@@ -43,23 +43,24 @@ impl File {
     }
 
     /// Delete a byte at the given position
+    /// - col == 0: join the line with the previous one (except if it's the first line)
+    /// - 0 < col <= line_len: delete the byte at the given position
+    /// - col > line_len: do nothing
     pub fn delete(&mut self, line: usize, col: usize) {
         if line >= self.content.len() {
             return;
-        } else {
-            self.content[line].remove(col);
         }
-    }
 
-    /// Join the given line with the previous one
-    pub fn join_line(&mut self, line: usize) {
-        if line >= self.content.len() {
-            return;
-        } else {
-            let prev_line = self.content.remove(line);
-            if let Some(line) = self.content.get_mut(line - 1) {
-                line.extend(prev_line);
+        let line_len = self.content[line].len();
+        if col == 0 {
+            if line > 0 {
+                let prev_line = self.content.remove(line);
+                if let Some(line) = self.content.get_mut(line - 1) {
+                    line.extend(prev_line);
+                }
             }
+        } else if col <= line_len {
+            self.content[line].remove(col - 1);
         }
     }
 
@@ -136,8 +137,23 @@ mod tests {
     #[test]
     fn file_delete() {
         let mut file = File::from_bytes(b"HW\n");
-        file.delete(0, 0);
+        file.delete(0, 1);
         assert_eq!(file.to_string(), "W\n");
-        file.delete(0, 0);
+        file.delete(0, 1);
+        assert_eq!(file.to_string(), "\n");
+    }
+
+    #[test]
+    fn file_delete_out_of_bounds() {
+        let mut file = File::from_bytes(b"HW\n");
+        file.delete(1, 1);
+        assert_eq!(file.to_string(), "HW\n");
+    }
+
+    #[test]
+    fn file_delete_beginning_of_line() {
+        let mut file = File::from_bytes(b"HW\nGuys !");
+        file.delete(1, 0);
+        assert_eq!(file.to_string(), "HWGuys !");
     }
 }
