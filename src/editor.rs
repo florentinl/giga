@@ -68,7 +68,8 @@ impl Editor {
                 }
             }
             Command::Insert(c) => self.view.insert(c),
-            Command::Delete() => self.view.delete(),
+            Command::InsertNewLine => self.view.insert_new_line(),
+            Command::Delete => self.view.delete(),
         }
     }
 
