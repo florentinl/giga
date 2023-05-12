@@ -25,6 +25,7 @@ pub enum Mode {
 }
 
 impl Editor {
+    /// Create a new editor
     pub fn new(file_name: Option<&str>) -> Self {
         Self {
             file_name: file_name.map(|s| s.to_string()),
@@ -34,6 +35,7 @@ impl Editor {
         }
     }
 
+    /// Open a file in the editor
     pub fn open(path: &str) -> Result<Self, std::io::Error> {
         let content = std::fs::read(path)?;
         let content = File::from_bytes(&content);
@@ -47,6 +49,13 @@ impl Editor {
         })
     }
 
+    /// Execute a command :
+    /// - Quit: exit the program
+    /// - Move: move the cursor
+    /// - Save: save the file
+    /// - ToggleMode: toogle editor mode
+    /// - Insert: insert a character
+    /// - Delete: delete a character
     fn execute(&mut self, cmd: Command) {
         match cmd {
             Command::Quit => {
@@ -72,6 +81,7 @@ impl Editor {
         }
     }
 
+    /// Run the editor loop
     pub fn run(&mut self) {
         // set view size
         let (width, height) = self.tui.get_term_size();
