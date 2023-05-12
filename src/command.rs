@@ -19,6 +19,8 @@ pub enum Command {
     Delete,
     /// Insert a new line
     InsertNewLine,
+    /// CommandBlock
+    CommandBlock(Vec<Command>),
 }
 
 impl Command {
@@ -71,13 +73,17 @@ impl Command {
         match c {
             // Insert new line
             '\n' => Ok(Self::InsertNewLine),
-            // Insert a tab (1 space for now)
-            '\t' => Ok(Command::Insert(' ')),
+            // Insert a tab (4 spaces for now)
+            '\t' => Ok(Command::CommandBlock(vec![
+                Command::Insert(' '),
+                Command::Insert(' '),
+                Command::Insert(' '),
+                Command::Insert(' '),
+            ])),
             // Insert another character
             _ => Ok(Command::Insert(c)),
         }
     }
-
 }
 
 #[cfg(test)]
@@ -174,7 +180,10 @@ mod tests {
 
     #[test]
     fn parse_invalid_command() {
-        assert_eq!(Command::parse(Key::Char('a'), &Mode::Normal), Err("Invalid command"));
+        assert_eq!(
+            Command::parse(Key::Char('a'), &Mode::Normal),
+            Err("Invalid command")
+        );
     }
 
     #[test]
@@ -185,7 +194,12 @@ mod tests {
         );
         assert_eq!(
             Command::parse_insert_mode_char('\t'),
-            Ok(Command::Insert(' '))
+            Ok(Command::CommandBlock(vec![
+                Command::Insert(' '),
+                Command::Insert(' '),
+                Command::Insert(' '),
+                Command::Insert(' '),
+            ]))
         );
         assert_eq!(
             Command::parse_insert_mode_char('a'),

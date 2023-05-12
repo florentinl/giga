@@ -70,6 +70,11 @@ impl Editor {
             Command::Insert(c) => self.view.insert(c),
             Command::InsertNewLine => self.view.insert_new_line(),
             Command::Delete => self.view.delete(),
+            Command::CommandBlock(cmds) => {
+                for cmd in cmds {
+                    self.execute(cmd);
+                }
+            }
         }
     }
 
