@@ -184,6 +184,10 @@ mod tests {
             Command::parse(Key::Char('a'), &Mode::Normal),
             Err("Invalid command")
         );
+        assert_eq!(
+            Command::parse(Key::Null, &Mode::Insert),
+            Err("Invalid command")
+        );
     }
 
     #[test]
