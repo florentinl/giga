@@ -121,6 +121,27 @@
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
 <a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
 </pre><pre class="rust"><code><span class="kw">extern crate </span>termion;
 <span class="kw">use </span><span class="kw">crate</span>::editor::Mode;
 <span class="kw">use </span><span class="kw">crate</span>::view::View;
@@ -133,7 +154,9 @@
 
 <span class="kw">const </span>LINE_NUMBER_WIDTH: u16 = <span class="number">4</span>;
 
-<span class="kw">pub struct </span>Tui {
+<span class="doccomment">/// Terminal User Interface
+/// Responsible for drawing the editor and handling user input using termion in raw mode
+</span><span class="kw">pub struct </span>Tui {
     <span class="comment">// Async input reader (stdin)
     </span><span class="kw">pub </span>stdout: RawTerminal&lt;std::io::Stdout&gt;,
 }
@@ -145,11 +168,14 @@
         }
     }
 
-    <span class="kw">pub fn </span>get_term_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (u16, u16) {
+    <span class="doccomment">/// Get the terminal size
+    /// Returns a tuple of (width, height)
+    </span><span class="kw">pub fn </span>get_term_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (u16, u16) {
         termion::terminal_size().unwrap_or_default()
     }
 
-    <span class="kw">pub fn </span>clear(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+    <span class="doccomment">/// Clear the screen
+    </span><span class="kw">pub fn </span>clear(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="comment">// Clear the screen with the &quot;\x1B[3J&quot; escape code (clear screen and scrollback buffer)
         </span><span class="macro">write!</span>(<span class="self">self</span>.stdout, <span class="string">&quot;{}&quot;</span>, clear::All).unwrap_or_default();
         <span class="macro">write!</span>(<span class="self">self</span>.stdout, <span class="string">&quot;{}&quot;</span>, <span class="string">&quot;\x1B[3J&quot;</span>).unwrap_or_default();
@@ -157,7 +183,16 @@
         </span><span class="macro">write!</span>(<span class="self">self</span>.stdout, <span class="string">&quot;{}&quot;</span>, cursor::Goto(<span class="number">1</span>, <span class="number">1</span>)).unwrap_or_default();
     }
 
-    <span class="kw">pub fn </span>cleanup(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+    <span class="doccomment">/// Cleanup the terminal before exiting the program
+    /// This will :
+    /// - Flush the stdout buffer
+    /// - Clear the screen
+    /// - Move the cursor to the top left
+    /// - Reset the terminal colors
+    /// - Reset the terminal cursor
+    /// - Disable raw mode
+    /// - Show the cursor
+    </span><span class="kw">pub fn </span>cleanup(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="comment">// Flush the stdout buffer
         </span><span class="self">self</span>.stdout.flush().unwrap_or_default();
         <span class="comment">// Clear the screen with the &quot;\x1B[3J&quot; escape code (clear screen and scrollback buffer)
@@ -173,7 +208,10 @@
         <span class="self">self</span>.stdout.suspend_raw_mode().unwrap_or_default();
     }
 
-    <span class="kw">pub fn </span>draw_status_bar(
+    <span class="doccomment">/// Draw the status bar
+    /// The status bar is displayed at the bottom of the screen
+    /// It contains the current mode and the file name
+    </span><span class="kw">pub fn </span>draw_status_bar(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         file_name: String,
         mode: <span class="kw-2">&amp;</span>Mode,
@@ -201,7 +239,9 @@
         .unwrap_or_default();
     }
 
-    <span class="kw">pub fn </span>draw_line_numbers(<span class="kw-2">&amp;mut </span><span class="self">self</span>, line: usize) {
+    <span class="doccomment">/// Draw the line numbers
+    /// The line numbers are displayed at the left of the screen in blue
+    </span><span class="kw">pub fn </span>draw_line_numbers(<span class="kw-2">&amp;mut </span><span class="self">self</span>, line: usize) {
         <span class="kw">let </span>number = <span class="macro">format!</span>(<span class="string">&quot;{:3} &quot;</span>, line);
 
         <span class="macro">write!</span>(
@@ -216,7 +256,9 @@
         .unwrap_or_default();
     }
 
-    <span class="kw">pub fn </span>draw_view(<span class="kw-2">&amp;mut </span><span class="self">self</span>, view: <span class="kw-2">&amp;</span>View, file_name: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;String&gt;, mode: <span class="kw-2">&amp;</span>Mode) {
+    <span class="doccomment">/// Draw the view on the screen
+    /// The view is the portion of the file being displayed
+    </span><span class="kw">pub fn </span>draw_view(<span class="kw-2">&amp;mut </span><span class="self">self</span>, view: <span class="kw-2">&amp;</span>View, file_name: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;String&gt;, mode: <span class="kw-2">&amp;</span>Mode) {
         <span class="self">self</span>.clear();
         <span class="kw">let </span>height = view.height;
         <span class="kw">let </span>width = view.width;
