@@ -141,6 +141,22 @@
 <a href="#141" id="141">141</a>
 <a href="#142" id="142">142</a>
 <a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::vec;
 
 <span class="doccomment">/// The File structure is the in-memory representation of the full file being edited.
@@ -186,23 +202,24 @@
     }
 
     <span class="doccomment">/// Delete a byte at the given position
+    /// - col == 0: join the line with the previous one (except if it&#39;s the first line)
+    /// - 0 &lt; col &lt;= line_len: delete the byte at the given position
+    /// - col &gt; line_len: do nothing
     </span><span class="kw">pub fn </span>delete(<span class="kw-2">&amp;mut </span><span class="self">self</span>, line: usize, col: usize) {
         <span class="kw">if </span>line &gt;= <span class="self">self</span>.content.len() {
             <span class="kw">return</span>;
-        } <span class="kw">else </span>{
-            <span class="self">self</span>.content[line].remove(col);
         }
-    }
 
-    <span class="doccomment">/// Join the given line with the previous one
-    </span><span class="kw">pub fn </span>join_line(<span class="kw-2">&amp;mut </span><span class="self">self</span>, line: usize) {
-        <span class="kw">if </span>line &gt;= <span class="self">self</span>.content.len() {
-            <span class="kw">return</span>;
-        } <span class="kw">else </span>{
-            <span class="kw">let </span>prev_line = <span class="self">self</span>.content.remove(line);
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(line) = <span class="self">self</span>.content.get_mut(line - <span class="number">1</span>) {
-                line.extend(prev_line);
+        <span class="kw">let </span>line_len = <span class="self">self</span>.content[line].len();
+        <span class="kw">if </span>col == <span class="number">0 </span>{
+            <span class="kw">if </span>line &gt; <span class="number">0 </span>{
+                <span class="kw">let </span>prev_line = <span class="self">self</span>.content.remove(line);
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(line) = <span class="self">self</span>.content.get_mut(line - <span class="number">1</span>) {
+                    line.extend(prev_line);
+                }
             }
+        } <span class="kw">else if </span>col &lt;= line_len {
+            <span class="self">self</span>.content[line].remove(col - <span class="number">1</span>);
         }
     }
 
@@ -279,9 +296,24 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>file_delete() {
         <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_bytes(<span class="string">b&quot;HW\n&quot;</span>);
-        file.delete(<span class="number">0</span>, <span class="number">0</span>);
+        file.delete(<span class="number">0</span>, <span class="number">1</span>);
         <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;W\n&quot;</span>);
-        file.delete(<span class="number">0</span>, <span class="number">0</span>);
+        file.delete(<span class="number">0</span>, <span class="number">1</span>);
+        <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;\n&quot;</span>);
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>file_delete_out_of_bounds() {
+        <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_bytes(<span class="string">b&quot;HW\n&quot;</span>);
+        file.delete(<span class="number">1</span>, <span class="number">1</span>);
+        <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;HW\n&quot;</span>);
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>file_delete_beginning_of_line() {
+        <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_bytes(<span class="string">b&quot;HW\nGuys !&quot;</span>);
+        file.delete(<span class="number">1</span>, <span class="number">0</span>);
+        <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;HWGuys !&quot;</span>);
     }
 }
 </code></pre></div>

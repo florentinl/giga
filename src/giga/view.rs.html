@@ -271,6 +271,22 @@
 <a href="#271" id="271">271</a>
 <a href="#272" id="272">272</a>
 <a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::file::File;
 
 <span class="doccomment">/// The View struct represents the actual portion of the File being displayed.
@@ -397,21 +413,23 @@
     }
 
     <span class="kw">pub fn </span>delete(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span>(x, y) = <span class="self">self</span>.cursor;
-        <span class="kw">match </span>(x, y) {
-            (<span class="number">0</span>, <span class="number">0</span>) =&gt; <span class="kw">return</span>,
-            (<span class="number">0</span>, <span class="kw">_</span>) =&gt; {
-                <span class="comment">// get previous line length
-                </span><span class="kw">let </span>line = <span class="self">self</span>.file.get_line(y - <span class="number">1</span>).unwrap_or_default();
-                <span class="kw">let </span>dx = line.len() <span class="kw">as </span>isize;
-                <span class="kw">let </span>dy = -<span class="number">1</span>;
-                <span class="self">self</span>.file.join_line(y);
-                <span class="self">self</span>.navigate(dx, dy)
-            }
-            (<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
-                <span class="self">self</span>.file.delete(y, x - <span class="number">1</span>);
-                <span class="self">self</span>.navigate(-<span class="number">1</span>, <span class="number">0</span>);
-            }
+        <span class="kw">let </span>(rel_x, rel_y) = <span class="self">self</span>.cursor;
+        <span class="comment">// Calculate the absolute position of the cursor in the file
+        </span><span class="kw">let </span>(x, y) = (rel_x + <span class="self">self</span>.start_col, rel_y + <span class="self">self</span>.start_line);
+        <span class="comment">// Delete the character at the cursor
+        </span><span class="self">self</span>.file.delete(y, x);
+
+        <span class="comment">// Navigate the cursor
+        </span><span class="kw">if </span>x &gt; <span class="number">0 </span>{
+            <span class="self">self</span>.navigate(-<span class="number">1</span>, <span class="number">0</span>);
+        } <span class="kw">else </span>{
+            <span class="comment">// we go to the end of the previous line
+            </span><span class="kw">let </span>line_len = <span class="self">self
+                </span>.file
+                .get_line(y.saturating_sub(<span class="number">1</span>))
+                .unwrap_or_default()
+                .len();
+            <span class="self">self</span>.navigate(line_len <span class="kw">as </span>isize, -<span class="number">1</span>);
         }
     }
 
@@ -542,6 +560,20 @@
         view.navigate(-<span class="number">20</span>, <span class="number">0</span>);
         <span class="macro">assert_eq!</span>(view.cursor, (<span class="number">0</span>, <span class="number">0</span>));
         <span class="macro">assert_eq!</span>(view.start_col, <span class="number">0</span>);
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>view_delete() {
+        <span class="kw">let </span><span class="kw-2">mut </span>view = View::new(File::from_bytes(<span class="string">b&quot;Hello, World !\n&quot;</span>), <span class="number">1</span>, <span class="number">10</span>);
+        view.navigate(<span class="number">1</span>, <span class="number">0</span>);
+        view.delete();
+        <span class="macro">assert_eq!</span>(view.to_string(), <span class="string">&quot;ello, Worl&quot;</span>);
+        <span class="macro">assert_eq!</span>(view.cursor, (<span class="number">0</span>, <span class="number">0</span>));
+        <span class="comment">// delete beginning of line
+        </span>view.navigate(<span class="number">0</span>, <span class="number">1</span>);
+        view.delete();
+        <span class="macro">assert_eq!</span>(view.cursor, (<span class="number">9</span>, <span class="number">0</span>));
+        <span class="macro">assert_eq!</span>(view.to_string(), <span class="string">&quot;, World !&quot;</span>);
     }
 }
 </code></pre></div>
