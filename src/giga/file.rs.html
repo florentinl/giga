@@ -157,6 +157,18 @@
 <a href="#157" id="157">157</a>
 <a href="#158" id="158">158</a>
 <a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::vec;
 
 <span class="doccomment">/// The File structure is the in-memory representation of the full file being edited.
@@ -192,12 +204,18 @@
         <span class="self">self</span>.content.len()
     }
 
-    <span class="doccomment">/// Insert a byte at the given position
+    <span class="doccomment">/// Insert a byte at the given position in the file
+    /// - line &gt;= len || col &gt; line_len: do nothing
+    /// - else insert the byte at the given position
     </span><span class="kw">pub fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, line: usize, col: usize, c: u8) {
-        <span class="kw">if </span>line &gt;= <span class="self">self</span>.content.len() {
-            <span class="self">self</span>.content.push(<span class="macro">vec!</span>[c]);
-        } <span class="kw">else </span>{
-            <span class="self">self</span>.content[line].insert(col, c);
+        <span class="kw">match </span><span class="self">self</span>.content.get_mut(line) {
+            <span class="prelude-val">None </span>=&gt; {}
+            <span class="prelude-val">Some</span>(line) =&gt; {
+                <span class="kw">if </span>col &gt; line.len() {
+                    <span class="kw">return</span>;
+                }
+                line.insert(col, c);
+            }
         }
     }
 
@@ -289,8 +307,14 @@
         <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;!Hello, World !\n!&quot;</span>);
         file.insert(<span class="number">1</span>, <span class="number">1</span>, <span class="string">b&#39;!&#39;</span>);
         <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;!Hello, World !\n!!&quot;</span>);
-        file.insert(<span class="number">2</span>, <span class="number">0</span>, <span class="string">b&#39;!&#39;</span>);
-        <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;!Hello, World !\n!!\n!&quot;</span>);
+
+        <span class="comment">// Out of bounds line
+        </span>file.insert(<span class="number">2</span>, <span class="number">0</span>, <span class="string">b&#39;!&#39;</span>);
+        <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;!Hello, World !\n!!&quot;</span>);
+
+        <span class="comment">// Out of bounds col
+        </span>file.insert(<span class="number">1</span>, <span class="number">3</span>, <span class="string">b&#39;!&#39;</span>);
+        <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;!Hello, World !\n!!&quot;</span>);
     }
 
     <span class="attr">#[test]
