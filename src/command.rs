@@ -206,7 +206,7 @@ mod tests {
     #[test]
     fn parse_invalid_command() {
         assert_eq!(
-            Command::parse(Key::Char('a'), &Mode::Normal),
+            Command::parse(Key::Char('✨'), &Mode::Normal),
             Err("Invalid command")
         );
         assert_eq!(
