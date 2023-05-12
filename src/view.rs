@@ -124,21 +124,23 @@ impl View {
     }
 
     pub fn delete(&mut self) {
-        let (x, y) = self.cursor;
-        match (x, y) {
-            (0, 0) => return,
-            (0, _) => {
-                // get previous line length
-                let line = self.file.get_line(y - 1).unwrap_or_default();
-                let dx = line.len() as isize;
-                let dy = -1;
-                self.file.join_line(y);
-                self.navigate(dx, dy)
-            }
-            (_, _) => {
-                self.file.delete(y, x - 1);
-                self.navigate(-1, 0);
-            }
+        let (rel_x, rel_y) = self.cursor;
+        // Calculate the absolute position of the cursor in the file
+        let (x, y) = (rel_x + self.start_col, rel_y + self.start_line);
+        // Delete the character at the cursor
+        self.file.delete(y, x);
+
+        // Navigate the cursor
+        if x > 0 {
+            self.navigate(-1, 0);
+        } else {
+            // we go to the end of the previous line
+            let line_len = self
+                .file
+                .get_line(y.saturating_sub(1))
+                .unwrap_or_default()
+                .len();
+            self.navigate(line_len as isize, -1);
         }
     }
 
@@ -269,5 +271,19 @@ mod tests {
         view.navigate(-20, 0);
         assert_eq!(view.cursor, (0, 0));
         assert_eq!(view.start_col, 0);
+    }
+
+    #[test]
+    fn view_delete() {
+        let mut view = View::new(File::from_bytes(b"Hello, World !\n"), 1, 10);
+        view.navigate(1, 0);
+        view.delete();
+        assert_eq!(view.to_string(), "ello, Worl");
+        assert_eq!(view.cursor, (0, 0));
+        // delete beginning of line
+        view.navigate(0, 1);
+        view.delete();
+        assert_eq!(view.cursor, (9, 0));
+        assert_eq!(view.to_string(), ", World !");
     }
 }
