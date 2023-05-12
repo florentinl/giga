@@ -87,7 +87,11 @@ impl View {
         let width = self.width as isize;
 
         // calculate the absolute position of the cursor
-        let abs_x = (self.cursor.0 as isize + dx + left).max(0).min(line_len);
+        let abs_x = (self.cursor.0 as isize)
+            .saturating_add(dx)
+            .saturating_add(left)
+            .max(0)
+            .min(line_len);
         let rel_x = abs_x - left;
 
         if rel_x < 0 {

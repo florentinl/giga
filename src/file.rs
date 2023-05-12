@@ -67,16 +67,25 @@ impl File {
         }
     }
 
+    /// Split a line at the given position
+    /// - line >= len: do nothing
+    /// - col > line_len: do nothing
+    /// - else split the line at the given position
     pub fn split_line(&mut self, line: usize, col: usize) {
-        if line >= self.content.len() {
-            return;
-        } else {
-            let new_line = self.content[line].split_off(col);
-            self.content.insert(line + 1, new_line);
+        match self.content.get_mut(line) {
+            None => {}
+            Some(vec) => {
+                if col > vec.len() {
+                    return;
+                }
+                let new_line = vec.split_off(col);
+                self.content.insert(line + 1, new_line);
+            }
         }
     }
 }
 
+/// Implement the ToString trait for File (used for saving the file)
 impl ToString for File {
     fn to_string(&self) -> String {
         self.content
@@ -164,5 +173,26 @@ mod tests {
         let mut file = File::from_string("HW\nGuys !");
         file.delete(1, 0);
         assert_eq!(file.to_string(), "HWGuys !");
+    }
+
+    #[test]
+    fn file_split_line() {
+        let mut file = File::from_string("Hello, World !");
+        file.split_line(0, 5);
+        assert_eq!(file.to_string(), "Hello\n, World !");
+    }
+
+    #[test]
+    fn file_split_line_out_of_bounds_line() {
+        let mut file = File::from_string("Hello, World !");
+        file.split_line(1, 5);
+        assert_eq!(file.to_string(), "Hello, World !");
+    }
+
+    #[test]
+    fn file_split_line_out_of_bounds_lcol() {
+        let mut file = File::from_string("Hello, World !");
+        file.split_line(0, 20);
+        assert_eq!(file.to_string(), "Hello, World !");
     }
 }
