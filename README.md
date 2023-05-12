@@ -32,3 +32,15 @@ Giga is a modal based test editor. You have two modes:
 
 You can switch mode : press "i" in NORMAL to go to INSERT and "Esc" in INSERT to come back to NORMAL.
 You can know the current mode by Looking to the status bar beneath the editor.
+
+## TODO
+
+As giga is under development, we need to fix these:
+
+- [ ] UTF-8 support
+- [ ] Rename a file
+- [ ] Syntax Highlighting
+- [ ] Refresh only lines changed
+- [ ] Use Tab instead of 4 spaces
+- [ ] Unit Testing 100%
+- [ ] Documentation
