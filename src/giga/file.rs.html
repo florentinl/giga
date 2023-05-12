@@ -166,15 +166,12 @@
 <a href="#166" id="166">166</a>
 <a href="#167" id="167">167</a>
 <a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::vec;
 
 <span class="doccomment">/// The File structure is the in-memory representation of the full file being edited.
 /// It is a vector of lines, each line being a vector of bytes.
 </span><span class="kw">pub struct </span>File {
-    content: Vec&lt;Vec&lt;u8&gt;&gt;,
+    content: Vec&lt;Vec&lt;char&gt;&gt;,
 }
 
 <span class="kw">impl </span>File {
@@ -184,18 +181,15 @@
         }
     }
 
-    <span class="doccomment">/// Create a File abstraction from a byte array
-    </span><span class="kw">pub fn </span>from_bytes(bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>content = bytes
-            .split(|<span class="kw-2">&amp;</span>c| c == <span class="string">b&#39;\n&#39;</span>)
-            .map(|line| line.to_vec())
-            .collect();
+    <span class="doccomment">/// Create a File abstraction from a string
+    </span><span class="kw">pub fn </span>from_string(str: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>content = str.split(<span class="string">&#39;\n&#39;</span>).map(|line| line.chars().collect()).collect();
 
         <span class="self">Self </span>{ content }
     }
 
     <span class="doccomment">/// Get the nth line of the file
-    </span><span class="kw">pub fn </span>get_line(<span class="kw-2">&amp;</span><span class="self">self</span>, index: usize) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt; {
+    </span><span class="kw">pub fn </span>get_line(<span class="kw-2">&amp;</span><span class="self">self</span>, index: usize) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;char&gt;&gt; {
         <span class="self">self</span>.content.get(index).cloned()
     }
 
@@ -204,10 +198,10 @@
         <span class="self">self</span>.content.len()
     }
 
-    <span class="doccomment">/// Insert a byte at the given position in the file
+    <span class="doccomment">/// Insert a char at the given position in the file
     /// - line &gt;= len || col &gt; line_len: do nothing
     /// - else insert the byte at the given position
-    </span><span class="kw">pub fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, line: usize, col: usize, c: u8) {
+    </span><span class="kw">pub fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, line: usize, col: usize, c: char) {
         <span class="kw">match </span><span class="self">self</span>.content.get_mut(line) {
             <span class="prelude-val">None </span>=&gt; {}
             <span class="prelude-val">Some</span>(line) =&gt; {
@@ -219,7 +213,7 @@
         }
     }
 
-    <span class="doccomment">/// Delete a byte at the given position
+    <span class="doccomment">/// Delete a char at the given position
     /// - col == 0: join the line with the previous one (except if it&#39;s the first line)
     /// - 0 &lt; col &lt;= line_len: delete the byte at the given position
     /// - col &gt; line_len: do nothing
@@ -255,7 +249,7 @@
     <span class="kw">fn </span>to_string(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
         <span class="self">self</span>.content
             .iter()
-            .map(|line| String::from_utf8_lossy(line))
+            .map(|line| line.iter().collect::&lt;String&gt;())
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
             .join(<span class="string">&quot;\n&quot;</span>)
     }
@@ -273,53 +267,53 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>file_from_bytes() {
-        <span class="kw">let </span>file = File::from_bytes(<span class="string">b&quot;Hello, World !&quot;</span>);
+        <span class="kw">let </span>file = File::from_string(<span class="string">&quot;Hello, World !&quot;</span>);
         <span class="macro">assert_eq!</span>(file.content.len(), <span class="number">1</span>);
-        <span class="macro">assert_eq!</span>(file.content[<span class="number">0</span>], <span class="string">&quot;Hello, World !&quot;</span>.as_bytes());
+        <span class="macro">assert_eq!</span>(file.content[<span class="number">0</span>], <span class="string">&quot;Hello, World !&quot;</span>.chars().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;());
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>file_to_string() {
-        <span class="kw">let </span>file = File::from_bytes(<span class="string">b&quot;Hello, World !&quot;</span>);
+        <span class="kw">let </span>file = File::from_string(<span class="string">&quot;Hello, World !&quot;</span>);
         <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;Hello, World !&quot;</span>);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>file_get_line() {
-        <span class="kw">let </span>file = File::from_bytes(<span class="string">b&quot;Hello, World !\n&quot;</span>);
-        <span class="macro">assert_eq!</span>(file.get_line(<span class="number">0</span>), <span class="prelude-val">Some</span>(<span class="string">&quot;Hello, World !&quot;</span>.as_bytes().to_vec()));
-        <span class="macro">assert_eq!</span>(file.get_line(<span class="number">1</span>), <span class="prelude-val">Some</span>(<span class="string">&quot;&quot;</span>.as_bytes().to_vec()));
+        <span class="kw">let </span>file = File::from_string(<span class="string">&quot;Hello, World !\n&quot;</span>);
+        <span class="macro">assert_eq!</span>(file.get_line(<span class="number">0</span>), <span class="prelude-val">Some</span>(<span class="string">&quot;Hello, World !&quot;</span>.chars().collect()));
+        <span class="macro">assert_eq!</span>(file.get_line(<span class="number">1</span>), <span class="prelude-val">Some</span>(<span class="string">&quot;&quot;</span>.chars().collect()));
         <span class="macro">assert_eq!</span>(file.get_line(<span class="number">2</span>), <span class="prelude-val">None</span>);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>file_get_len() {
-        <span class="kw">let </span>file = File::from_bytes(<span class="string">b&quot;Hello, World !\n&quot;</span>);
+        <span class="kw">let </span>file = File::from_string(<span class="string">&quot;Hello, World !\n&quot;</span>);
         <span class="macro">assert_eq!</span>(file.len(), <span class="number">2</span>);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>file_insert() {
-        <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_bytes(<span class="string">b&quot;Hello, World !\n&quot;</span>);
-        file.insert(<span class="number">0</span>, <span class="number">0</span>, <span class="string">b&#39;!&#39;</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_string(<span class="string">&quot;Hello, World !\n&quot;</span>);
+        file.insert(<span class="number">0</span>, <span class="number">0</span>, <span class="string">&#39;!&#39;</span>);
         <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;!Hello, World !\n&quot;</span>);
-        file.insert(<span class="number">1</span>, <span class="number">0</span>, <span class="string">b&#39;!&#39;</span>);
+        file.insert(<span class="number">1</span>, <span class="number">0</span>, <span class="string">&#39;!&#39;</span>);
         <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;!Hello, World !\n!&quot;</span>);
-        file.insert(<span class="number">1</span>, <span class="number">1</span>, <span class="string">b&#39;!&#39;</span>);
+        file.insert(<span class="number">1</span>, <span class="number">1</span>, <span class="string">&#39;!&#39;</span>);
         <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;!Hello, World !\n!!&quot;</span>);
 
         <span class="comment">// Out of bounds line
-        </span>file.insert(<span class="number">2</span>, <span class="number">0</span>, <span class="string">b&#39;!&#39;</span>);
+        </span>file.insert(<span class="number">2</span>, <span class="number">0</span>, <span class="string">&#39;!&#39;</span>);
         <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;!Hello, World !\n!!&quot;</span>);
 
         <span class="comment">// Out of bounds col
-        </span>file.insert(<span class="number">1</span>, <span class="number">3</span>, <span class="string">b&#39;!&#39;</span>);
+        </span>file.insert(<span class="number">1</span>, <span class="number">3</span>, <span class="string">&#39;!&#39;</span>);
         <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;!Hello, World !\n!!&quot;</span>);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>file_delete() {
-        <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_bytes(<span class="string">b&quot;HW\n&quot;</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_string(<span class="string">&quot;HW\n&quot;</span>);
         file.delete(<span class="number">0</span>, <span class="number">1</span>);
         <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;W\n&quot;</span>);
         file.delete(<span class="number">0</span>, <span class="number">1</span>);
@@ -328,14 +322,14 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>file_delete_out_of_bounds() {
-        <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_bytes(<span class="string">b&quot;HW\n&quot;</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_string(<span class="string">&quot;HW\n&quot;</span>);
         file.delete(<span class="number">1</span>, <span class="number">1</span>);
         <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;HW\n&quot;</span>);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>file_delete_beginning_of_line() {
-        <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_bytes(<span class="string">b&quot;HW\nGuys !&quot;</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_string(<span class="string">&quot;HW\nGuys !&quot;</span>);
         file.delete(<span class="number">1</span>, <span class="number">0</span>);
         <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;HWGuys !&quot;</span>);
     }

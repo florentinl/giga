@@ -151,8 +151,8 @@
 
     <span class="doccomment">/// Open a file in the editor
     </span><span class="kw">pub fn </span>open(path: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, std::io::Error&gt; {
-        <span class="kw">let </span>content = std::fs::read(path)<span class="question-mark">?</span>;
-        <span class="kw">let </span>content = File::from_bytes(<span class="kw-2">&amp;</span>content);
+        <span class="kw">let </span>content = std::fs::read_to_string(path)<span class="question-mark">?</span>;
+        <span class="kw">let </span>content = File::from_string(<span class="kw-2">&amp;</span>content);
         <span class="kw">let </span>view = View::new(content, <span class="number">10</span>, <span class="number">20</span>);
 
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
