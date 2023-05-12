@@ -10,6 +10,8 @@ use termion::raw::RawTerminal;
 
 const LINE_NUMBER_WIDTH: u16 = 4;
 
+/// Terminal User Interface
+/// Responsible for drawing the editor and handling user input using termion in raw mode
 pub struct Tui {
     // Async input reader (stdin)
     pub stdout: RawTerminal<std::io::Stdout>,
@@ -22,10 +24,13 @@ impl Tui {
         }
     }
 
+    /// Get the terminal size
+    /// Returns a tuple of (width, height)
     pub fn get_term_size(&self) -> (u16, u16) {
         termion::terminal_size().unwrap_or_default()
     }
 
+    /// Clear the screen
     pub fn clear(&mut self) {
         // Clear the screen with the "\x1B[3J" escape code (clear screen and scrollback buffer)
         write!(self.stdout, "{}", clear::All).unwrap_or_default();
@@ -34,6 +39,15 @@ impl Tui {
         write!(self.stdout, "{}", cursor::Goto(1, 1)).unwrap_or_default();
     }
 
+    /// Cleanup the terminal before exiting the program
+    /// This will :
+    /// - Flush the stdout buffer
+    /// - Clear the screen
+    /// - Move the cursor to the top left
+    /// - Reset the terminal colors
+    /// - Reset the terminal cursor
+    /// - Disable raw mode
+    /// - Show the cursor
     pub fn cleanup(&mut self) {
         // Flush the stdout buffer
         self.stdout.flush().unwrap_or_default();
@@ -50,6 +64,9 @@ impl Tui {
         self.stdout.suspend_raw_mode().unwrap_or_default();
     }
 
+    /// Draw the status bar
+    /// The status bar is displayed at the bottom of the screen
+    /// It contains the current mode and the file name
     pub fn draw_status_bar(
         &mut self,
         file_name: String,
@@ -78,6 +95,8 @@ impl Tui {
         .unwrap_or_default();
     }
 
+    /// Draw the line numbers
+    /// The line numbers are displayed at the left of the screen in blue
     pub fn draw_line_numbers(&mut self, line: usize) {
         let number = format!("{:3} ", line);
 
@@ -93,6 +112,8 @@ impl Tui {
         .unwrap_or_default();
     }
 
+    /// Draw the view on the screen
+    /// The view is the portion of the file being displayed
     pub fn draw_view(&mut self, view: &View, file_name: &Option<String>, mode: &Mode) {
         self.clear();
         let height = view.height;
