@@ -47,7 +47,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parse_command() {
+    fn parse_normal_mode() {
         assert_eq!(
             Command::parse(Key::Char('q'), &Mode::Normal),
             Ok(Command::Quit)
@@ -57,7 +57,15 @@ mod tests {
             Ok(Command::Move(0, 1))
         );
         assert_eq!(
+            Command::parse(Key::Down, &Mode::Normal),
+            Ok(Command::Move(0, 1))
+        );
+        assert_eq!(
             Command::parse(Key::Char('k'), &Mode::Normal),
+            Ok(Command::Move(0, -1))
+        );
+        assert_eq!(
+            Command::parse(Key::Up, &Mode::Normal),
             Ok(Command::Move(0, -1))
         );
         assert_eq!(
@@ -65,7 +73,15 @@ mod tests {
             Ok(Command::Move(-1, 0))
         );
         assert_eq!(
+            Command::parse(Key::Left, &Mode::Normal),
+            Ok(Command::Move(-1, 0))
+        );
+        assert_eq!(
             Command::parse(Key::Char('l'), &Mode::Normal),
+            Ok(Command::Move(1, 0))
+        );
+        assert_eq!(
+            Command::parse(Key::Right, &Mode::Normal),
             Ok(Command::Move(1, 0))
         );
         assert_eq!(
@@ -76,6 +92,10 @@ mod tests {
             Command::parse(Key::Char('i'), &Mode::Normal),
             Ok(Command::ToggleMode)
         );
+    }
+
+    #[test]
+    fn parse_insert_mode() {
         assert_eq!(
             Command::parse(Key::Esc, &Mode::Insert),
             Ok(Command::ToggleMode)
@@ -91,6 +111,31 @@ mod tests {
         assert_eq!(
             Command::parse(Key::Char('q'), &Mode::Insert),
             Ok(Command::Insert('q'))
-        )
+        );
+        assert_eq!(
+            Command::parse(Key::Backspace, &Mode::Insert),
+            Ok(Command::Delete())
+        );
+        assert_eq!(
+            Command::parse(Key::Right, &Mode::Insert),
+            Ok(Command::Move(1, 0))
+        );
+        assert_eq!(
+            Command::parse(Key::Left, &Mode::Insert),
+            Ok(Command::Move(-1, 0))
+        );
+        assert_eq!(
+            Command::parse(Key::Up, &Mode::Insert),
+            Ok(Command::Move(0, -1))
+        );
+        assert_eq!(
+            Command::parse(Key::Down, &Mode::Insert),
+            Ok(Command::Move(0, 1))
+        );
+    }
+
+    #[test]
+    fn parse_invalid_command() {
+        assert_eq!(Command::parse(Key::Char('a'), &Mode::Normal), Err("Invalid command"));
     }
 }
