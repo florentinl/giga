@@ -325,6 +325,10 @@
 <a href="#325" id="325">325</a>
 <a href="#326" id="326">326</a>
 <a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::file::File;
 
 <span class="doccomment">/// The View struct represents the actual portion of the File being displayed.
@@ -414,7 +418,11 @@
         <span class="kw">let </span>width = <span class="self">self</span>.width <span class="kw">as </span>isize;
 
         <span class="comment">// calculate the absolute position of the cursor
-        </span><span class="kw">let </span>abs_x = (<span class="self">self</span>.cursor.<span class="number">0 </span><span class="kw">as </span>isize + dx + left).max(<span class="number">0</span>).min(line_len);
+        </span><span class="kw">let </span>abs_x = (<span class="self">self</span>.cursor.<span class="number">0 </span><span class="kw">as </span>isize)
+            .saturating_add(dx)
+            .saturating_add(left)
+            .max(<span class="number">0</span>)
+            .min(line_len);
         <span class="kw">let </span>rel_x = abs_x - left;
 
         <span class="kw">if </span>rel_x &lt; <span class="number">0 </span>{

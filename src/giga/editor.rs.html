@@ -112,6 +112,7 @@
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
 <a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::process::exit;
 
 <span class="kw">use crate</span>::{command::Command, file::File, tui::Tui, view::View};
@@ -143,7 +144,7 @@
     </span><span class="kw">pub fn </span>new(file_name: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             file_name: file_name.map(|s| s.to_string()),
-            view: View::new(File::new(), <span class="number">10</span>, <span class="number">20</span>),
+            view: View::new(File::new(), <span class="number">0</span>, <span class="number">0</span>),
             tui: Tui::new(),
             mode: Mode::Normal,
         }
@@ -153,7 +154,7 @@
     </span><span class="kw">pub fn </span>open(path: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, std::io::Error&gt; {
         <span class="kw">let </span>content = std::fs::read_to_string(path)<span class="question-mark">?</span>;
         <span class="kw">let </span>content = File::from_string(<span class="kw-2">&amp;</span>content);
-        <span class="kw">let </span>view = View::new(content, <span class="number">10</span>, <span class="number">20</span>);
+        <span class="kw">let </span>view = View::new(content, <span class="number">0</span>, <span class="number">0</span>);
 
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
             file_name: <span class="prelude-val">Some</span>(path.to_string()),
@@ -208,7 +209,8 @@
         <span class="comment">// set view size
         </span><span class="kw">let </span>(width, height) = <span class="self">self</span>.tui.get_term_size();
         <span class="comment">// height - 1 to leave space for the status bar
-        </span><span class="self">self</span>.view.resize((height - <span class="number">1</span>) <span class="kw">as </span>usize, width <span class="kw">as </span>usize);
+        // width - 3 to leave space for the line numbers
+        </span><span class="self">self</span>.view.resize((height - <span class="number">1</span>) <span class="kw">as </span>usize, (width - <span class="number">4</span>) <span class="kw">as </span>usize);
 
         <span class="comment">// draw initial view
         </span><span class="self">self</span>.tui.clear();
