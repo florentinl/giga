@@ -35,8 +35,8 @@ impl Editor {
     }
 
     pub fn open(path: &str) -> Result<Self, std::io::Error> {
-        let content = std::fs::read(path)?;
-        let content = File::from_bytes(&content);
+        let content = std::fs::read_to_string(path)?;
+        let content = File::from_string(&content);
         let view = View::new(content, 10, 20);
 
         Ok(Self {
