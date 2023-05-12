@@ -37,6 +37,29 @@ impl Command {
         match key {
             // Go to insert mode
             Key::Char('i') => Ok(Command::ToggleMode),
+            Key::Char('I') => Ok(Command::CommandBlock(vec![
+                Command::Move(-isize::MAX, 0),
+                Command::ToggleMode,
+            ])),
+            Key::Char('a') => Ok(Command::CommandBlock(vec![
+                Command::Move(1, 0),
+                Command::ToggleMode,
+            ])),
+            Key::Char('A') => Ok(Command::CommandBlock(vec![
+                Command::Move(isize::MAX, 0),
+                Command::ToggleMode,
+            ])),
+            Key::Char('o') => Ok(Command::CommandBlock(vec![
+                Command::Move(isize::MAX, 0),
+                Command::InsertNewLine,
+                Command::ToggleMode,
+            ])),
+            Key::Char('O') => Ok(Command::CommandBlock(vec![
+                Command::Move(-isize::MAX, 0),
+                Command::InsertNewLine,
+                Command::Move(0, -1),
+                Command::ToggleMode,
+            ])),
             // Quit
             Key::Char('q') => Ok(Command::Quit),
             // Move
@@ -44,6 +67,8 @@ impl Command {
             Key::Char('k') | Key::Up => Ok(Command::Move(0, -1)),
             Key::Char('h') | Key::Left => Ok(Command::Move(-1, 0)),
             Key::Char('l') | Key::Right => Ok(Command::Move(1, 0)),
+            Key::Char('$') => Ok(Command::Move(isize::MAX, 0)),
+            Key::Char('0') => Ok(Command::Move(-isize::MAX, 0)),
             // Save
             Key::Char('w') => Ok(Command::Save),
             _ => Err("Invalid command"),
