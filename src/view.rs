@@ -101,26 +101,39 @@ impl View {
         }
     }
 
+    /// # Insert a character at the cursor position
+    /// This function will insert a character at the cursor position and move
+    /// the cursor to the right.
     pub fn insert(&mut self, c: char) {
-        match c {
-            '\n' => {
-                let (x, y) = self.cursor;
-                self.file.split_line(y, x);
-                self.navigate(-(x as isize), 1);
-            }
-            '\t' => {
-                let (x, y) = self.cursor;
-                for _ in 0..4 {
-                    self.file.insert(y, x, b' '); // TODO: replace with tab
-                }
-                self.navigate(4, 0);
-            }
-            _ => {
-                let (x, y) = self.cursor;
-                self.file.insert(y, x, c as u8);
-                self.navigate(1, 0);
-            }
-        }
+        let (rel_x, rel_y) = self.cursor;
+        // Calculate the absolute position of the cursor in the file
+        let (x, y) = (rel_x + self.start_col, rel_y + self.start_line);
+        // Insert the character at the cursor position
+        self.file.insert(y, x, c as u8);
+        self.navigate(1, 0);
+    }
+
+    /// # Insert a new line at the cursor position
+    /// This function will split the line at the cursor position and move the
+    /// cursor to the beginning of the new line.
+    /// Example:
+    /// ```text
+    /// Hello, world!
+    ///        ^ cursor is here
+    /// ```
+    /// ```text
+    /// Hello,
+    /// world!
+    /// ^ cursor is here
+    /// ```
+    pub fn insert_new_line(&mut self) {
+        let (rel_x, rel_y) = self.cursor;
+        // Calculate the absolute position of the cursor in the file
+        let (x, y) = (rel_x + self.start_col, rel_y + self.start_line);
+        // Split the line at the cursor position
+        self.file.split_line(y, x);
+        // Navigate the cursor
+        self.navigate(-(x as isize), 1);
     }
 
     pub fn delete(&mut self) {
@@ -271,6 +284,24 @@ mod tests {
         view.navigate(-20, 0);
         assert_eq!(view.cursor, (0, 0));
         assert_eq!(view.start_col, 0);
+    }
+
+    #[test]
+    fn view_insert() {
+        let mut view = View::new(File::from_bytes(b"Hello, World !\n"), 1, 10);
+        view.navigate(0, 0);
+        view.insert('a');
+        assert_eq!(view.to_string(), "aHello, Wo");
+        assert_eq!(view.cursor, (1, 0));
+    }
+
+    #[test]
+    fn view_insert_new_line() {
+        let mut view = View::new(File::from_bytes(b"Hello, World !\n"), 10, 10);
+        view.navigate(7, 0);
+        view.insert_new_line();
+        assert_eq!(view.dump_file(), "Hello, \nWorld !\n");
+        assert_eq!(view.cursor, (0, 1));
     }
 
     #[test]
