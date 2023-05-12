@@ -120,6 +120,27 @@
 <a href="#120" id="120">120</a>
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::vec;
 
 <span class="doccomment">/// The File structure is the in-memory representation of the full file being edited.
@@ -240,6 +261,27 @@
     </span><span class="kw">fn </span>file_get_len() {
         <span class="kw">let </span>file = File::from_bytes(<span class="string">b&quot;Hello, World !\n&quot;</span>);
         <span class="macro">assert_eq!</span>(file.len(), <span class="number">2</span>);
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>file_insert() {
+        <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_bytes(<span class="string">b&quot;Hello, World !\n&quot;</span>);
+        file.insert(<span class="number">0</span>, <span class="number">0</span>, <span class="string">b&#39;!&#39;</span>);
+        <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;!Hello, World !\n&quot;</span>);
+        file.insert(<span class="number">1</span>, <span class="number">0</span>, <span class="string">b&#39;!&#39;</span>);
+        <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;!Hello, World !\n!&quot;</span>);
+        file.insert(<span class="number">1</span>, <span class="number">1</span>, <span class="string">b&#39;!&#39;</span>);
+        <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;!Hello, World !\n!!&quot;</span>);
+        file.insert(<span class="number">2</span>, <span class="number">0</span>, <span class="string">b&#39;!&#39;</span>);
+        <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;!Hello, World !\n!!\n!&quot;</span>);
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>file_delete() {
+        <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_bytes(<span class="string">b&quot;HW\n&quot;</span>);
+        file.delete(<span class="number">0</span>, <span class="number">0</span>);
+        <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;W\n&quot;</span>);
+        file.delete(<span class="number">0</span>, <span class="number">0</span>);
     }
 }
 </code></pre></div>
