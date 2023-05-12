@@ -2,6 +2,8 @@
 
 A HeavyWeight text editor written in Rust
 
+> All this README.md file is written using giga !
+
 ## Editor
 
 To start editing a file just write in your terminal:
