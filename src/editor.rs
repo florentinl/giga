@@ -48,8 +48,20 @@ impl Editor {
             mode: Mode::Normal,
         })
     }
+    fn save(&self) {
+        if let Some(path) = &self.file_name {
+            let content = self.view.dump_file();
+            std::fs::write(path.clone() + ".tmp", content).unwrap_or_default();
+            std::fs::rename(path.clone() + ".tmp", path).unwrap_or_default();
+        }
+    }
 
-    /// Execute a command :
+    fn terminate(&mut self) {
+        self.tui.cleanup();
+        exit(0);
+    }
+
+    /// Execute an editor command
     /// - Quit: exit the program
     /// - Move: move the cursor
     /// - Save: save the file
@@ -58,26 +70,22 @@ impl Editor {
     /// - Delete: delete a character
     fn execute(&mut self, cmd: Command) {
         match cmd {
-            Command::Quit => {
-                self.tui.cleanup();
-                exit(0);
-            }
+            Command::Quit => self.terminate(),
             Command::Move(x, y) => self.view.navigate(x, y),
-            Command::Save => {
-                if let Some(path) = &self.file_name {
-                    let content = self.view.dump_file();
-                    std::fs::write(path.clone() + ".tmp", content).unwrap_or_default();
-                    std::fs::rename(path.clone() + ".tmp", path).unwrap_or_default();
-                }
-            }
-            Command::ToggleMode => {
-                self.mode = match self.mode {
-                    Mode::Normal => Mode::Insert,
-                    Mode::Insert => Mode::Normal,
-                }
-            }
+            Command::Save => self.save(),
+            Command::ToggleMode => self.toggle_mode(),
             Command::Insert(c) => self.view.insert(c),
-            Command::Delete() => self.view.delete(),
+            Command::InsertNewLine => self.view.insert_new_line(),
+            Command::Delete => self.view.delete(),
+            Command::CommandBlock(cmds) => cmds.into_iter().for_each(|cmd| self.execute(cmd)),
+        }
+    }
+
+    /// Toggle the mode of the editor between normal and insert
+    fn toggle_mode(&mut self) {
+        self.mode = match self.mode {
+            Mode::Normal => Mode::Insert,
+            Mode::Insert => Mode::Normal,
         }
     }
 

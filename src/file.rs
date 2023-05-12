@@ -33,12 +33,18 @@ impl File {
         self.content.len()
     }
 
-    /// Insert a byte at the given position
+    /// Insert a byte at the given position in the file
+    /// - line >= len || col > line_len: do nothing
+    /// - else insert the byte at the given position
     pub fn insert(&mut self, line: usize, col: usize, c: u8) {
-        if line >= self.content.len() {
-            self.content.push(vec![c]);
-        } else {
-            self.content[line].insert(col, c);
+        match self.content.get_mut(line) {
+            None => {}
+            Some(line) => {
+                if col > line.len() {
+                    return;
+                }
+                line.insert(col, c);
+            }
         }
     }
 
@@ -130,8 +136,14 @@ mod tests {
         assert_eq!(file.to_string(), "!Hello, World !\n!");
         file.insert(1, 1, b'!');
         assert_eq!(file.to_string(), "!Hello, World !\n!!");
+
+        // Out of bounds line
         file.insert(2, 0, b'!');
-        assert_eq!(file.to_string(), "!Hello, World !\n!!\n!");
+        assert_eq!(file.to_string(), "!Hello, World !\n!!");
+
+        // Out of bounds col
+        file.insert(1, 3, b'!');
+        assert_eq!(file.to_string(), "!Hello, World !\n!!");
     }
 
     #[test]

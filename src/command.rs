@@ -16,28 +16,72 @@ pub enum Command {
     /// Insert a character
     Insert(char),
     /// Delete a character
-    Delete(),
+    Delete,
+    /// Insert a new line
+    InsertNewLine,
+    /// CommandBlock
+    CommandBlock(Vec<Command>),
 }
 
 impl Command {
-    /// Parse a command from a byte
+    /// Parse a command from a termion::event::Key object
     pub fn parse(key: Key, mode: &Mode) -> Result<Self, &'static str> {
-        match (mode, key) {
-            (Mode::Normal, Key::Char('q')) => Ok(Command::Quit),
-            (Mode::Normal, Key::Char('j')) | (Mode::Normal, Key::Down) => Ok(Command::Move(0, 1)),
-            (Mode::Normal, Key::Char('k')) | (Mode::Normal, Key::Up) => Ok(Command::Move(0, -1)),
-            (Mode::Normal, Key::Char('h')) | (Mode::Normal, Key::Left) => Ok(Command::Move(-1, 0)),
-            (Mode::Normal, Key::Char('l')) | (Mode::Normal, Key::Right) => Ok(Command::Move(1, 0)),
-            (Mode::Normal, Key::Char('w')) => Ok(Command::Save),
-            (Mode::Normal, Key::Char('i')) => Ok(Command::ToggleMode),
-            (Mode::Insert, Key::Esc) => Ok(Command::ToggleMode),
-            (Mode::Insert, Key::Char(c)) => Ok(Command::Insert(c.clone())),
-            (Mode::Insert, Key::Backspace) => Ok(Command::Delete()),
-            (Mode::Insert, Key::Right) => Ok(Command::Move(1, 0)),
-            (Mode::Insert, Key::Left) => Ok(Command::Move(-1, 0)),
-            (Mode::Insert, Key::Up) => Ok(Command::Move(0, -1)),
-            (Mode::Insert, Key::Down) => Ok(Command::Move(0, 1)),
+        match mode {
+            Mode::Normal => Self::parse_normal_mode(key),
+            Mode::Insert => Self::parse_insert_mode(key),
+        }
+    }
+
+    /// Parse a command in normal mode from a termion::event::Key object
+    fn parse_normal_mode(key: Key) -> Result<Self, &'static str> {
+        match key {
+            // Go to insert mode
+            Key::Char('i') => Ok(Command::ToggleMode),
+            // Quit
+            Key::Char('q') => Ok(Command::Quit),
+            // Move
+            Key::Char('j') | Key::Down => Ok(Command::Move(0, 1)),
+            Key::Char('k') | Key::Up => Ok(Command::Move(0, -1)),
+            Key::Char('h') | Key::Left => Ok(Command::Move(-1, 0)),
+            Key::Char('l') | Key::Right => Ok(Command::Move(1, 0)),
+            // Save
+            Key::Char('w') => Ok(Command::Save),
             _ => Err("Invalid command"),
+        }
+    }
+
+    /// Parse a command in insert mode from a termion::event::Key object
+    fn parse_insert_mode(key: Key) -> Result<Self, &'static str> {
+        match key {
+            // Go to normal mode
+            Key::Esc => Ok(Command::ToggleMode),
+            // Insert a character
+            Key::Char(c) => Self::parse_insert_mode_char(c),
+            // Delete a character
+            Key::Backspace => Ok(Command::Delete),
+            // Move
+            Key::Right => Ok(Command::Move(1, 0)),
+            Key::Left => Ok(Command::Move(-1, 0)),
+            Key::Up => Ok(Command::Move(0, -1)),
+            Key::Down => Ok(Command::Move(0, 1)),
+            _ => Err("Invalid command"),
+        }
+    }
+
+    /// Parse a character in insert mode
+    fn parse_insert_mode_char(c: char) -> Result<Self, &'static str> {
+        match c {
+            // Insert new line
+            '\n' => Ok(Self::InsertNewLine),
+            // Insert a tab (4 spaces for now)
+            '\t' => Ok(Command::CommandBlock(vec![
+                Command::Insert(' '),
+                Command::Insert(' '),
+                Command::Insert(' '),
+                Command::Insert(' '),
+            ])),
+            // Insert another character
+            _ => Ok(Command::Insert(c)),
         }
     }
 }
@@ -114,7 +158,7 @@ mod tests {
         );
         assert_eq!(
             Command::parse(Key::Backspace, &Mode::Insert),
-            Ok(Command::Delete())
+            Ok(Command::Delete)
         );
         assert_eq!(
             Command::parse(Key::Right, &Mode::Insert),
@@ -136,6 +180,38 @@ mod tests {
 
     #[test]
     fn parse_invalid_command() {
-        assert_eq!(Command::parse(Key::Char('a'), &Mode::Normal), Err("Invalid command"));
+        assert_eq!(
+            Command::parse(Key::Char('a'), &Mode::Normal),
+            Err("Invalid command")
+        );
+        assert_eq!(
+            Command::parse(Key::Null, &Mode::Insert),
+            Err("Invalid command")
+        );
+    }
+
+    #[test]
+    fn parse_insert_mode_char() {
+        assert_eq!(
+            Command::parse_insert_mode_char('\n'),
+            Ok(Command::InsertNewLine)
+        );
+        assert_eq!(
+            Command::parse_insert_mode_char('\t'),
+            Ok(Command::CommandBlock(vec![
+                Command::Insert(' '),
+                Command::Insert(' '),
+                Command::Insert(' '),
+                Command::Insert(' '),
+            ]))
+        );
+        assert_eq!(
+            Command::parse_insert_mode_char('a'),
+            Ok(Command::Insert('a'))
+        );
+        assert_eq!(
+            Command::parse_insert_mode_char('à'),
+            Ok(Command::Insert('à'))
+        );
     }
 }
