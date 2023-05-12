@@ -119,4 +119,25 @@ mod tests {
         let file = File::from_bytes(b"Hello, World !\n");
         assert_eq!(file.len(), 2);
     }
+
+    #[test]
+    fn file_insert() {
+        let mut file = File::from_bytes(b"Hello, World !\n");
+        file.insert(0, 0, b'!');
+        assert_eq!(file.to_string(), "!Hello, World !\n");
+        file.insert(1, 0, b'!');
+        assert_eq!(file.to_string(), "!Hello, World !\n!");
+        file.insert(1, 1, b'!');
+        assert_eq!(file.to_string(), "!Hello, World !\n!!");
+        file.insert(2, 0, b'!');
+        assert_eq!(file.to_string(), "!Hello, World !\n!!\n!");
+    }
+
+    #[test]
+    fn file_delete() {
+        let mut file = File::from_bytes(b"HW\n");
+        file.delete(0, 0);
+        assert_eq!(file.to_string(), "W\n");
+        file.delete(0, 0);
+    }
 }
