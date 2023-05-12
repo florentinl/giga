@@ -289,9 +289,16 @@ mod tests {
     #[test]
     fn view_insert() {
         let mut view = View::new(File::from_bytes(b"Hello, World !\n"), 1, 10);
-        view.navigate(0, 0);
         view.insert('a');
         assert_eq!(view.to_string(), "aHello, Wo");
+        assert_eq!(view.cursor, (1, 0));
+    }
+
+    #[test]
+    fn view_insert_non_ascii() {
+        let mut view = View::new(File::from_bytes(b"Hello, World !\n"), 1, 10);
+        view.insert('é');
+        assert_eq!(view.to_string(), "éHello, Wo");
         assert_eq!(view.cursor, (1, 0));
     }
 
