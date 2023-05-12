@@ -29,7 +29,7 @@ impl Editor {
     pub fn new(file_name: Option<&str>) -> Self {
         Self {
             file_name: file_name.map(|s| s.to_string()),
-            view: View::new(File::new(), 10, 20),
+            view: View::new(File::new(), 0, 0),
             tui: Tui::new(),
             mode: Mode::Normal,
         }
@@ -39,7 +39,7 @@ impl Editor {
     pub fn open(path: &str) -> Result<Self, std::io::Error> {
         let content = std::fs::read_to_string(path)?;
         let content = File::from_string(&content);
-        let view = View::new(content, 10, 20);
+        let view = View::new(content, 0, 0);
 
         Ok(Self {
             file_name: Some(path.to_string()),
@@ -94,7 +94,8 @@ impl Editor {
         // set view size
         let (width, height) = self.tui.get_term_size();
         // height - 1 to leave space for the status bar
-        self.view.resize((height - 1) as usize, width as usize);
+        // width - 3 to leave space for the line numbers
+        self.view.resize((height - 1) as usize, (width - 4) as usize);
 
         // draw initial view
         self.tui.clear();
