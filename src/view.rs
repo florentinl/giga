@@ -47,12 +47,24 @@ impl View {
     /// Navigate the cursor by a given amount and eventually scroll the view
     /// if the cursor is out of bounds of the file, it will be moved to the
     /// closest valid position instead.
-    pub fn navigate(&mut self, dx: isize, dy: isize) {
+    pub fn navigate(&mut self, dx: isize, dy: isize) -> (isize, isize) {
+        // Old cursor position
+        let (old_x, old_y) = self.cursor;
+
         // We move onto the new line
         self.navigate_y(dy);
 
         // We move onto the new column
-        self.navigate_x(dx)
+        self.navigate_x(dx);
+
+        // New cursor position
+        let (new_x, new_y) = self.cursor;
+
+        // Actual offset
+        (
+            new_x as isize - old_x as isize,
+            new_y as isize - old_y as isize,
+        )
     }
     /// Navigate along the y axis and eventually scroll the view
     fn navigate_y(&mut self, dy: isize) {
@@ -140,12 +152,19 @@ impl View {
         self.navigate(-(x as isize), 1);
     }
 
-    pub fn delete(&mut self) {
+    /// Deletes a single character at the cursor position and moves the cursor
+    /// to the left.
+    ///
+    /// Returns :
+    /// - the deleted character if there was one
+    /// - \n if the cursor was at the beginning of a line
+    /// - \0 if the cursor was at the beginning of the file
+    pub fn delete(&mut self) -> char {
         let (rel_x, rel_y) = self.cursor;
         // Calculate the absolute position of the cursor in the file
         let (x, y) = (rel_x + self.start_col, rel_y + self.start_line);
         // Delete the character at the cursor
-        self.file.delete(y, x);
+        let c = self.file.delete(y, x);
 
         // Navigate the cursor
         if x > 0 {
@@ -159,6 +178,9 @@ impl View {
                 .len();
             self.navigate(line_len as isize, -1);
         }
+
+        // Return the deleted character
+        return c;
     }
 
     pub fn dump_file(&self) -> String {

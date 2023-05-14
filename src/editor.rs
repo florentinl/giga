@@ -12,8 +12,16 @@ pub struct Editor {
     view: View,
     /// The Tui responsible for drawing the editor
     tui: Tui,
+
     /// The mode of the editor
     mode: Mode,
+
+    /// Command history
+    forward_history: Vec<Command>,
+    backward_history: Vec<Command>,
+
+    /// History index (used to navigate the history)
+    history_index: usize,
 }
 
 /// Mode of the editor
@@ -32,6 +40,9 @@ impl Editor {
             view: View::new(File::new(), 0, 0),
             tui: Tui::new(),
             mode: Mode::Normal,
+            forward_history: vec![Command::CommandBlock(vec![])],
+            backward_history: vec![Command::CommandBlock(vec![])],
+            history_index: 0,
         }
     }
 
@@ -46,6 +57,9 @@ impl Editor {
             view,
             tui: Tui::new(),
             mode: Mode::Normal,
+            forward_history: vec![Command::CommandBlock(vec![])],
+            backward_history: vec![Command::CommandBlock(vec![])],
+            history_index: 0,
         })
     }
     fn save(&self) {
@@ -69,24 +83,145 @@ impl Editor {
     /// - Insert: insert a character
     /// - Delete: delete a character
     fn execute(&mut self, cmd: Command) {
-        match cmd {
-            Command::Quit => self.terminate(),
-            Command::Move(x, y) => self.view.navigate(x, y),
-            Command::Save => self.save(),
-            Command::ToggleMode => self.toggle_mode(),
-            Command::Insert(c) => self.view.insert(c),
-            Command::InsertNewLine => self.view.insert_new_line(),
-            Command::Delete => self.view.delete(),
-            Command::CommandBlock(cmds) => cmds.into_iter().for_each(|cmd| self.execute(cmd)),
+        // Execute the command and get the inverse command if it exists
+        let inverse_cmd: Option<Command> = self.execute_and_invert(&cmd);
+
+        // If we are in insert mode, we need to save the command in the forward_history
+        // except if it is a toggle mode command.
+        if matches!(self.mode, Mode::Insert) {
+            let last_commands = self.forward_history.last_mut();
+            if let Some(Command::CommandBlock(ref mut cmds)) = last_commands {
+                cmds.push(cmd.clone());
+            }
+        }
+
+        // If we are in insert mode and the command is not a toggle mode command,
+        // we need to save the inverse command in the backward_history
+        if matches!(self.mode, Mode::Insert) {
+            let last_commands = self.backward_history.last_mut();
+            if let Some(Command::CommandBlock(ref mut cmds)) = last_commands {
+                assert!(inverse_cmd.is_some(), "No inverse command for {:?}", cmd);
+                cmds.push(inverse_cmd.unwrap());
+            }
+        }
+    }
+
+    /// Execute and returns the inverse of the command
+    /// All Insert mode commands must be invertible
+    fn execute_and_invert(&mut self, cmd: &Command) -> Option<Command> {
+        let inverse_cmd = match cmd {
+            Command::Quit => {
+                self.terminate();
+                None
+            }
+            Command::Save => {
+                self.save();
+                None
+            }
+            Command::ToggleMode => {
+                self.toggle_mode();
+                Some(Command::ToggleMode)
+            }
+            Command::Move(x, y) => {
+                let (dx, dy) = self.view.navigate(*x, *y);
+                Some(Command::Move(-dx, -dy))
+            }
+            Command::Insert(c) => {
+                self.view.insert(*c);
+                Some(Command::Delete)
+            }
+            Command::InsertNewLine => {
+                self.view.insert_new_line();
+                Some(Command::Delete)
+            }
+            Command::Delete => match self.view.delete() {
+                '\n' => Some(Command::InsertNewLine),
+                '\0' => Some(Command::CommandBlock(vec![])),
+                c => Some(Command::Insert(c)),
+            },
+            Command::Undo => {
+                self.undo();
+                None
+            }
+            Command::Redo => {
+                self.redo();
+                None
+            }
+            Command::CommandBlock(cmds) => cmds
+                .into_iter()
+                .map(|cmd| self.execute_and_invert(cmd))
+                .collect::<Option<Vec<_>>>()
+                .map(|cmds| Command::CommandBlock(cmds)),
+        };
+        inverse_cmd
+    }
+
+    /// Undo the last command
+    fn undo(&mut self) {
+        if self.history_index > 0 {
+            self.history_index -= 1;
+            let cmd = self.backward_history[self.history_index].clone();
+            self.execute_and_invert(&cmd);
+        }
+    }
+
+    /// Redo the last command
+    fn redo(&mut self) {
+        if self.history_index < self.forward_history.len() {
+            let cmd = self.forward_history[self.history_index].clone();
+            self.execute_and_invert(&cmd);
+            self.history_index += 1;
         }
     }
 
     /// Toggle the mode of the editor between normal and insert
     fn toggle_mode(&mut self) {
-        self.mode = match self.mode {
-            Mode::Normal => Mode::Insert,
-            Mode::Insert => Mode::Normal,
+        match self.mode {
+            Mode::Normal => self.insert_mode(),
+            Mode::Insert => self.normal_mode(),
         }
+    }
+
+    /// Go to insert mode
+    fn insert_mode(&mut self) {
+        // If we aren't at the end of the history, we need to truncate the history
+        assert!(self.forward_history.len() == self.backward_history.len());
+        if self.history_index < self.forward_history.len() {
+            self.forward_history.truncate(self.history_index);
+            self.backward_history.truncate(self.history_index);
+        }
+
+        // We push an empty Command::CommandBlock to the history
+        // That will get filled with the commands executed in insert mode
+        self.forward_history.push(Command::CommandBlock(vec![]));
+        self.backward_history.push(Command::CommandBlock(vec![]));
+
+        // Actually go to insert mode
+        self.mode = Mode::Insert;
+    }
+
+    /// Go to normal mode
+    fn normal_mode(&mut self) {
+        // Flatten last Command::CommandBlock in the history
+        let last_commands_forward = self.forward_history.last_mut();
+        let last_commands_backward = self.backward_history.last_mut();
+
+        if let Some(cmd_forward) = last_commands_forward {
+            if let Some(cmd_backward) = last_commands_backward {
+                // We flatten the last commands and remove all the toggle mode commands
+                *cmd_forward = cmd_forward
+                    .flatten()
+                    .filter(|cmd| !matches!(cmd, Command::ToggleMode));
+                // The backward history is reversed because we want to undo the commands
+                *cmd_backward = cmd_backward
+                    .flatten()
+                    .filter(|cmd| !matches!(cmd, Command::ToggleMode))
+                    .rev();
+            }
+        }
+
+        self.history_index += 1;
+        self.mode = Mode::Normal;
     }
 
     /// Run the editor loop
@@ -95,7 +230,8 @@ impl Editor {
         let (width, height) = self.tui.get_term_size();
         // height - 1 to leave space for the status bar
         // width - 3 to leave space for the line numbers
-        self.view.resize((height - 1) as usize, (width - 4) as usize);
+        self.view
+            .resize((height - 1) as usize, (width - 4) as usize);
 
         // draw initial view
         self.tui.clear();

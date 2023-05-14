@@ -3,7 +3,7 @@ use termion::event::Key;
 use crate::editor::Mode;
 
 /// Commands that can be executed by the editor
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Command {
     /// Quit the editor
     Quit,
@@ -19,6 +19,10 @@ pub enum Command {
     Delete,
     /// Insert a new line
     InsertNewLine,
+    /// Undo the last insert mode sequence
+    Undo,
+    /// Redo the last undo
+    Redo,
     /// CommandBlock
     CommandBlock(Vec<Command>),
 }
@@ -60,6 +64,9 @@ impl Command {
                 Command::Move(0, -1),
                 Command::ToggleMode,
             ])),
+            // Undo and redo
+            Key::Char('u') => Ok(Command::Undo),
+            Key::Char('r') => Ok(Command::Redo),
             // Quit
             Key::Char('q') => Ok(Command::Quit),
             // Move
@@ -107,6 +114,53 @@ impl Command {
             ])),
             // Insert another character
             _ => Ok(Command::Insert(c)),
+        }
+    }
+
+    /// Flatten nested Command::CommandBlock by one level
+    pub fn flatten(&self) -> Self {
+        // Auxiliary function to flatten into a vector of commands
+        fn flatten_vec(cmd: Command) -> Vec<Command> {
+            match cmd {
+                Command::CommandBlock(cmds) => cmds
+                    .into_iter()
+                    .flat_map(|cmd| flatten_vec(cmd))
+                    .collect::<Vec<Command>>(),
+                cmd => vec![cmd],
+            }
+        }
+
+        let flat_cmd = flatten_vec(self.clone());
+
+        Command::CommandBlock(flat_cmd)
+    }
+
+    /// Filter commands in a Command::CommandBlock
+    pub fn filter(&self, f: fn(&Command) -> bool) -> Self {
+        match self {
+            Command::CommandBlock(cmds) => {
+                let filtered_cmds = cmds
+                    .into_iter()
+                    .filter(|cmd| f(cmd))
+                    .cloned()
+                    .collect::<Vec<Command>>();
+
+                Command::CommandBlock(filtered_cmds)
+            }
+            cmd => cmd.clone(),
+        }
+    }
+
+    /// Reverse commands in a Command::CommandBlock
+    pub fn rev(&self) -> Self {
+        match self {
+            Command::CommandBlock(cmds) => {
+                let mut rev_cmds = cmds.clone();
+                rev_cmds.reverse();
+
+                Command::CommandBlock(rev_cmds)
+            }
+            cmd => cmd.clone(),
         }
     }
 }
@@ -237,6 +291,94 @@ mod tests {
         assert_eq!(
             Command::parse_insert_mode_char('à'),
             Ok(Command::Insert('à'))
+        );
+    }
+
+    #[test]
+    fn command_flatten_command_blocks() {
+        assert_eq!(
+            Command::CommandBlock(vec![
+                Command::CommandBlock(vec![Command::Insert('a')]),
+                Command::CommandBlock(vec![Command::Insert('b')]),
+                Command::CommandBlock(vec![Command::Insert('c')]),
+            ])
+            .flatten(),
+            Command::CommandBlock(vec![
+                Command::Insert('a'),
+                Command::Insert('b'),
+                Command::Insert('c'),
+            ])
+        );
+
+        assert_eq!(
+            Command::CommandBlock(vec![
+                Command::CommandBlock(vec![Command::Insert('a')]),
+                Command::CommandBlock(vec![Command::Insert('b')]),
+                Command::CommandBlock(vec![Command::Insert('c')]),
+                Command::Insert('d'),
+            ])
+            .flatten(),
+            Command::CommandBlock(vec![
+                Command::Insert('a'),
+                Command::Insert('b'),
+                Command::Insert('c'),
+                Command::Insert('d'),
+            ])
+        );
+
+        assert_eq!(
+            Command::ToggleMode.flatten(),
+            Command::CommandBlock(vec![Command::ToggleMode])
+        )
+    }
+
+    #[test]
+    fn command_filter_command_blocks() {
+        assert_eq!(
+            Command::CommandBlock(vec![
+                Command::Insert('a'),
+                Command::ToggleMode,
+                Command::Move(10, -1),
+            ])
+            .filter(|cmd| match cmd {
+                Command::Insert(_) => true,
+                _ => false,
+            }),
+            Command::CommandBlock(vec![Command::Insert('a'),])
+        );
+
+        assert_eq!(
+            Command::CommandBlock(vec![
+                Command::CommandBlock(vec![Command::Insert('a')]),
+                Command::CommandBlock(vec![Command::Insert('b')]),
+                Command::CommandBlock(vec![Command::Insert('c')]),
+            ])
+            .filter(|cmd| match cmd {
+                Command::CommandBlock(_) => true,
+                _ => false,
+            }),
+            Command::CommandBlock(vec![
+                Command::CommandBlock(vec![Command::Insert('a')]),
+                Command::CommandBlock(vec![Command::Insert('b')]),
+                Command::CommandBlock(vec![Command::Insert('c')]),
+            ])
+        );
+    }
+
+    #[test]
+    fn command_reverse() {
+        assert_eq!(
+            Command::CommandBlock(vec![
+                Command::Insert('a'),
+                Command::Insert('b'),
+                Command::Insert('c'),
+            ])
+            .rev(),
+            Command::CommandBlock(vec![
+                Command::Insert('c'),
+                Command::Insert('b'),
+                Command::Insert('a'),
+            ])
         );
     }
 }

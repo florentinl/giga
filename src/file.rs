@@ -49,9 +49,14 @@ impl File {
     /// - col == 0: join the line with the previous one (except if it's the first line)
     /// - 0 < col <= line_len: delete the byte at the given position
     /// - col > line_len: do nothing
-    pub fn delete(&mut self, line: usize, col: usize) {
+    ///
+    /// Returns :
+    /// - the deleted char if it exists
+    /// - \n if the line was joined with the previous one
+    /// - \0 if nothing was deleted (beginning of the file)
+    pub fn delete(&mut self, line: usize, col: usize) -> char {
         if line >= self.content.len() {
-            return;
+            return '\0';
         }
 
         let line_len = self.content[line].len();
@@ -61,9 +66,13 @@ impl File {
                 if let Some(line) = self.content.get_mut(line - 1) {
                     line.extend(prev_line);
                 }
+                return '\n';
             }
+            return '\0';
         } else if col <= line_len {
-            self.content[line].remove(col - 1);
+            return self.content[line].remove(col - 1);
+        } else {
+            return '\0';
         }
     }
 
