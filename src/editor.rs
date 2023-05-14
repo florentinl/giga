@@ -94,16 +94,13 @@ impl Editor {
         // Execute the command and get the inverse command if it exists
         let inverse_cmd: Option<Command> = self.execute_and_invert(&cmd);
 
+        // Insert mode commands are added to the history as they are executed
         if matches!(self.mode, Mode::Insert) {
-            // If we are in insert mode, we need to save the command in the forward_history
-            // except if it is a toggle mode command.
             if let Command::CommandBlock(ref mut cmds) = self.last_forward_commands {
                 cmds.push(cmd.clone());
             }
-
-            // If we are in insert mode and the command is not a toggle mode command,
-            // we need to save the inverse command in the backward_history
             if let Command::CommandBlock(ref mut cmds) = self.last_backward_commands {
+                // All commands that end in Insert mode must be invertible
                 assert!(inverse_cmd.is_some(), "No inverse command for {:?}", cmd);
                 cmds.push(inverse_cmd.unwrap());
             }
