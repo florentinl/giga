@@ -163,6 +163,14 @@ impl Command {
             cmd => cmd.clone(),
         }
     }
+
+    /// Check if a command is an empty Command::CommandBlock
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Command::CommandBlock(cmds) => cmds.is_empty(),
+            _ => false,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -380,5 +388,18 @@ mod tests {
                 Command::Insert('a'),
             ])
         );
+    }
+
+    #[test]
+    fn command_is_empty() {
+        assert_eq!(Command::CommandBlock(vec![]).is_empty(), true);
+        assert_eq!(
+            Command::CommandBlock(vec![Command::Insert('a')]).is_empty(),
+            false
+        );
+        assert_eq!(
+            Command::ToggleMode.is_empty(),
+            false
+        )
     }
 }

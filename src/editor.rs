@@ -16,6 +16,10 @@ pub struct Editor {
     /// The mode of the editor
     mode: Mode,
 
+    /// Staging area for history (a single CommandBlock)
+    last_forward_commands: Command,
+    last_backward_commands: Command,
+
     /// Command history
     forward_history: Vec<Command>,
     backward_history: Vec<Command>,
@@ -40,8 +44,10 @@ impl Editor {
             view: View::new(File::new(), 0, 0),
             tui: Tui::new(),
             mode: Mode::Normal,
-            forward_history: vec![Command::CommandBlock(vec![])],
-            backward_history: vec![Command::CommandBlock(vec![])],
+            last_forward_commands: Command::CommandBlock(vec![]),
+            last_backward_commands: Command::CommandBlock(vec![]),
+            forward_history: vec![],
+            backward_history: vec![],
             history_index: 0,
         }
     }
@@ -57,6 +63,8 @@ impl Editor {
             view,
             tui: Tui::new(),
             mode: Mode::Normal,
+            last_forward_commands: Command::CommandBlock(vec![]),
+            last_backward_commands: Command::CommandBlock(vec![]),
             forward_history: vec![Command::CommandBlock(vec![])],
             backward_history: vec![Command::CommandBlock(vec![])],
             history_index: 0,
@@ -86,20 +94,16 @@ impl Editor {
         // Execute the command and get the inverse command if it exists
         let inverse_cmd: Option<Command> = self.execute_and_invert(&cmd);
 
-        // If we are in insert mode, we need to save the command in the forward_history
-        // except if it is a toggle mode command.
         if matches!(self.mode, Mode::Insert) {
-            let last_commands = self.forward_history.last_mut();
-            if let Some(Command::CommandBlock(ref mut cmds)) = last_commands {
+            // If we are in insert mode, we need to save the command in the forward_history
+            // except if it is a toggle mode command.
+            if let Command::CommandBlock(ref mut cmds) = self.last_forward_commands {
                 cmds.push(cmd.clone());
             }
-        }
 
-        // If we are in insert mode and the command is not a toggle mode command,
-        // we need to save the inverse command in the backward_history
-        if matches!(self.mode, Mode::Insert) {
-            let last_commands = self.backward_history.last_mut();
-            if let Some(Command::CommandBlock(ref mut cmds)) = last_commands {
+            // If we are in insert mode and the command is not a toggle mode command,
+            // we need to save the inverse command in the backward_history
+            if let Command::CommandBlock(ref mut cmds) = self.last_backward_commands {
                 assert!(inverse_cmd.is_some(), "No inverse command for {:?}", cmd);
                 cmds.push(inverse_cmd.unwrap());
             }
@@ -184,44 +188,53 @@ impl Editor {
 
     /// Go to insert mode
     fn insert_mode(&mut self) {
-        // If we aren't at the end of the history, we need to truncate the history
-        assert!(self.forward_history.len() == self.backward_history.len());
-        if self.history_index < self.forward_history.len() {
-            self.forward_history.truncate(self.history_index);
-            self.backward_history.truncate(self.history_index);
-        }
-
-        // We push an empty Command::CommandBlock to the history
-        // That will get filled with the commands executed in insert mode
-        self.forward_history.push(Command::CommandBlock(vec![]));
-        self.backward_history.push(Command::CommandBlock(vec![]));
+        // We truncate the history to the current history index
+        self.truncate_history();
 
         // Actually go to insert mode
         self.mode = Mode::Insert;
     }
 
+    /// Truncate the history to the current history index
+    fn truncate_history(&mut self) {
+        self.forward_history.truncate(self.history_index);
+        self.backward_history.truncate(self.history_index);
+    }
+
     /// Go to normal mode
     fn normal_mode(&mut self) {
-        // Flatten last Command::CommandBlock in the history
-        let last_commands_forward = self.forward_history.last_mut();
-        let last_commands_backward = self.backward_history.last_mut();
+        // Commit the staging area to the history
+        self.commit_history();
 
-        if let Some(cmd_forward) = last_commands_forward {
-            if let Some(cmd_backward) = last_commands_backward {
-                // We flatten the last commands and remove all the toggle mode commands
-                *cmd_forward = cmd_forward
-                    .flatten()
-                    .filter(|cmd| !matches!(cmd, Command::ToggleMode));
-                // The backward history is reversed because we want to undo the commands
-                *cmd_backward = cmd_backward
-                    .flatten()
-                    .filter(|cmd| !matches!(cmd, Command::ToggleMode))
-                    .rev();
-            }
-        }
+        // Clear the staging area
+        self.last_forward_commands = Command::CommandBlock(vec![]);
+        self.last_backward_commands = Command::CommandBlock(vec![]);
 
-        self.history_index += 1;
         self.mode = Mode::Normal;
+    }
+
+    /// Commit the current commands to the history
+    fn commit_history(&mut self) {
+        // Flatten the last commands and remove all the toggle mode commands
+        let forward_commit = self
+            .last_forward_commands
+            .flatten()
+            .filter(|cmd| !matches!(cmd, Command::ToggleMode));
+        // Reverse the backward commands to undo them in the right order
+        let backward_commit = self
+            .last_backward_commands
+            .flatten()
+            .filter(|cmd| !matches!(cmd, Command::ToggleMode))
+            .rev();
+
+        // No need to add an empty commit to the history
+        if !forward_commit.is_empty() {
+            // Add the commits to the history
+            self.forward_history.push(forward_commit);
+            self.backward_history.push(backward_commit);
+
+            self.history_index += 1;
+        }
     }
 
     /// Run the editor loop
