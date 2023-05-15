@@ -1,6 +1,6 @@
 use std::{collections::HashSet, process::exit};
 
-use crate::{command::Command, file::File, tui::Tui, view::View};
+use crate::{command::Command, file::File, tui::{Tui, StatusBar}, view::View};
 use termion::input::TermRead;
 
 /// Editor structure
@@ -150,6 +150,10 @@ impl Editor {
 
     /// Run the editor loop
     pub fn run(&mut self) {
+        let mut sb = StatusBar {
+            file_name: self.file_name.clone().unwrap_or_default(),
+            mode: self.mode.clone(),
+        };
         // set view size
         let (width, height) = self.tui.get_term_size();
         // height - 1 to leave space for the status bar
@@ -166,8 +170,21 @@ impl Editor {
         for c in stdin {
             if let Ok(c) = c {
                 if let Ok(cmd) = Command::parse(c, &self.mode) {
-                    self.execute(cmd);
-                    self.tui.draw_view(&self.view, &self.file_name, &self.mode)
+                    let refresh_order = self.execute(cmd);
+                    match refresh_order {
+                        RefreshOrder::ALLLines => {
+                            self.tui.draw_view(&self.view, &self.file_name, &self.mode)
+                        }
+                        RefreshOrder::StatusBar => {
+                            sb.file_name = self.file_name.clone().unwrap_or_default();
+                            sb.mode = self.mode.clone();
+                            self.tui.draw_status_bar(&sb, height, width)
+                        }
+                        RefreshOrder::CursorPos => self.tui.draw_view(&self.view, &self.file_name, &self.mode),
+                        RefreshOrder::Lines(lines) => {
+                            self.tui.refresh_lines(&self.view, lines)
+                        }
+                    }
                 }
             }
         }
