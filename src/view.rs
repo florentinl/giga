@@ -47,15 +47,18 @@ impl View {
     /// Navigate the cursor by a given amount and eventually scroll the view
     /// if the cursor is out of bounds of the file, it will be moved to the
     /// closest valid position instead.
-    pub fn navigate(&mut self, dx: isize, dy: isize) {
+    pub fn navigate(&mut self, dx: isize, dy: isize) -> bool{
         // We move onto the new line
-        self.navigate_y(dy);
+        let a = self.navigate_y(dy);
 
         // We move onto the new column
-        self.navigate_x(dx)
+        let b = self.navigate_x(dx);
+
+        a || b
     }
     /// Navigate along the y axis and eventually scroll the view
-    fn navigate_y(&mut self, dy: isize) {
+    fn navigate_y(&mut self, dy: isize) -> bool{
+        let mut is_on_scroll:bool = false;
         let (_, y) = self.cursor;
         let file_height = self.file.len() as isize;
         let view_height = self.height as isize;
@@ -65,19 +68,23 @@ impl View {
         if new_y < 0 {
             self.start_line = (start + new_y).max(0) as usize;
             new_y = 0;
+            is_on_scroll = true;
         } else if new_y >= view_height {
             self.start_line = (start + new_y - view_height + 1)
                 .min(file_height - view_height)
                 .max(0) as usize;
             new_y = (view_height - 1).min(file_height - 1);
+            is_on_scroll = true;
         } else {
             new_y = new_y.max(0).min(file_height - 1);
         }
         self.cursor.1 = new_y as usize;
+        is_on_scroll
     }
 
     /// Navigate along the x axis and eventually scroll the view
-    fn navigate_x(&mut self, dx: isize) {
+    fn navigate_x(&mut self, dx: isize) -> bool{
+        let mut is_on_scroll:bool = false;
         let line_len = self
             .file
             .get_line(self.cursor.1 + self.start_line)
@@ -97,12 +104,15 @@ impl View {
         if rel_x < 0 {
             self.start_col = (left + rel_x).max(0) as usize;
             self.cursor.0 = 0;
+            is_on_scroll = true;
         } else if rel_x >= width {
             self.start_col = ((left + rel_x).min(line_len) - width + 1).max(0) as usize;
             self.cursor.0 = (width - 1) as usize;
+            is_on_scroll = true;
         } else {
             self.cursor.0 = rel_x as usize;
         }
+        is_on_scroll
     }
 
     /// # Insert a character at the cursor position

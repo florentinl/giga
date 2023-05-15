@@ -1,6 +1,11 @@
 use std::{collections::HashSet, process::exit};
 
-use crate::{command::Command, file::File, tui::{Tui, StatusBar}, view::View};
+use crate::{
+    command::Command,
+    file::File,
+    tui::{StatusBar, Tui},
+    view::View,
+};
 use termion::input::TermRead;
 
 /// Editor structure
@@ -83,8 +88,12 @@ impl Editor {
                 RefreshOrder::AllLines
             }
             Command::Move(x, y) => {
-                self.view.navigate(x, y);
-                RefreshOrder::CursorPos
+                let scroll = self.view.navigate(x, y);
+                if scroll {
+                    RefreshOrder::AllLines
+                } else {
+                    RefreshOrder::CursorPos
+                }
             }
             Command::Save => {
                 self.save();
@@ -175,10 +184,10 @@ impl Editor {
                             sb.mode = self.mode.clone();
                             self.tui.draw_status_bar(&sb, height, width)
                         }
-                        RefreshOrder::CursorPos => self.tui.draw_view(&self.view, &self.file_name, &self.mode),
-                        RefreshOrder::Lines(lines) => {
-                            self.tui.refresh_lines(&self.view, lines)
+                        RefreshOrder::CursorPos => {
+                            self.tui.draw_view(&self.view, &self.file_name, &self.mode)
                         }
+                        RefreshOrder::Lines(lines) => self.tui.refresh_lines(&self.view, lines),
                     }
                 }
             }
