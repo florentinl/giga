@@ -208,6 +208,7 @@
 <a href="#208" id="208">208</a>
 <a href="#209" id="209">209</a>
 <a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{collections::HashSet, process::exit};
 
 <span class="kw">use crate</span>::{
@@ -345,7 +346,7 @@
                 <span class="kw">let </span><span class="kw-2">mut </span>lines_to_refresh = HashSet::new();
                 <span class="kw">for </span>i <span class="kw">in </span>y..<span class="self">self</span>.view.height {
                     lines_to_refresh.insert(i <span class="kw">as </span>u16);
-                } 
+                }
                 RefreshOrder::Lines(lines_to_refresh)
             }
             Command::CommandBlock(cmds) =&gt; {
@@ -409,7 +410,8 @@
                             <span class="self">self</span>.tui.draw_status_bar(<span class="kw-2">&amp;</span>sb, height, width)
                         }
                         RefreshOrder::CursorPos =&gt; {
-                            <span class="self">self</span>.tui.draw_view(<span class="kw-2">&amp;</span><span class="self">self</span>.view, <span class="kw-2">&amp;</span><span class="self">self</span>.file_name, <span class="kw-2">&amp;</span><span class="self">self</span>.mode)
+                            <span class="kw">let </span>(x, y) = <span class="self">self</span>.view.cursor;
+                            <span class="self">self</span>.tui.move_cursor(x, y)
                         }
                         RefreshOrder::Lines(lines) =&gt; <span class="self">self</span>.tui.refresh_lines(<span class="kw-2">&amp;</span><span class="self">self</span>.view, lines),
                     }
