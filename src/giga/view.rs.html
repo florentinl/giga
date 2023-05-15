@@ -329,6 +329,18 @@
 <a href="#329" id="329">329</a>
 <a href="#330" id="330">330</a>
 <a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::file::File;
 
 <span class="doccomment">/// The View struct represents the actual portion of the File being displayed.
@@ -378,15 +390,18 @@
     <span class="doccomment">/// Navigate the cursor by a given amount and eventually scroll the view
     /// if the cursor is out of bounds of the file, it will be moved to the
     /// closest valid position instead.
-    </span><span class="kw">pub fn </span>navigate(<span class="kw-2">&amp;mut </span><span class="self">self</span>, dx: isize, dy: isize) {
+    </span><span class="kw">pub fn </span>navigate(<span class="kw-2">&amp;mut </span><span class="self">self</span>, dx: isize, dy: isize) -&gt; bool{
         <span class="comment">// We move onto the new line
-        </span><span class="self">self</span>.navigate_y(dy);
+        </span><span class="kw">let </span>a = <span class="self">self</span>.navigate_y(dy);
 
         <span class="comment">// We move onto the new column
-        </span><span class="self">self</span>.navigate_x(dx)
+        </span><span class="kw">let </span>b = <span class="self">self</span>.navigate_x(dx);
+
+        a || b
     }
     <span class="doccomment">/// Navigate along the y axis and eventually scroll the view
-    </span><span class="kw">fn </span>navigate_y(<span class="kw-2">&amp;mut </span><span class="self">self</span>, dy: isize) {
+    </span><span class="kw">fn </span>navigate_y(<span class="kw-2">&amp;mut </span><span class="self">self</span>, dy: isize) -&gt; bool{
+        <span class="kw">let </span><span class="kw-2">mut </span>is_on_scroll:bool = <span class="bool-val">false</span>;
         <span class="kw">let </span>(<span class="kw">_</span>, y) = <span class="self">self</span>.cursor;
         <span class="kw">let </span>file_height = <span class="self">self</span>.file.len() <span class="kw">as </span>isize;
         <span class="kw">let </span>view_height = <span class="self">self</span>.height <span class="kw">as </span>isize;
@@ -396,19 +411,23 @@
         <span class="kw">if </span>new_y &lt; <span class="number">0 </span>{
             <span class="self">self</span>.start_line = (start + new_y).max(<span class="number">0</span>) <span class="kw">as </span>usize;
             new_y = <span class="number">0</span>;
+            is_on_scroll = <span class="bool-val">true</span>;
         } <span class="kw">else if </span>new_y &gt;= view_height {
             <span class="self">self</span>.start_line = (start + new_y - view_height + <span class="number">1</span>)
                 .min(file_height - view_height)
                 .max(<span class="number">0</span>) <span class="kw">as </span>usize;
             new_y = (view_height - <span class="number">1</span>).min(file_height - <span class="number">1</span>);
+            is_on_scroll = <span class="bool-val">true</span>;
         } <span class="kw">else </span>{
             new_y = new_y.max(<span class="number">0</span>).min(file_height - <span class="number">1</span>);
         }
         <span class="self">self</span>.cursor.<span class="number">1 </span>= new_y <span class="kw">as </span>usize;
+        is_on_scroll
     }
 
     <span class="doccomment">/// Navigate along the x axis and eventually scroll the view
-    </span><span class="kw">fn </span>navigate_x(<span class="kw-2">&amp;mut </span><span class="self">self</span>, dx: isize) {
+    </span><span class="kw">fn </span>navigate_x(<span class="kw-2">&amp;mut </span><span class="self">self</span>, dx: isize) -&gt; bool{
+        <span class="kw">let </span><span class="kw-2">mut </span>is_on_scroll:bool = <span class="bool-val">false</span>;
         <span class="kw">let </span>line_len = <span class="self">self
             </span>.file
             .get_line(<span class="self">self</span>.cursor.<span class="number">1 </span>+ <span class="self">self</span>.start_line)
@@ -428,24 +447,27 @@
         <span class="kw">if </span>rel_x &lt; <span class="number">0 </span>{
             <span class="self">self</span>.start_col = (left + rel_x).max(<span class="number">0</span>) <span class="kw">as </span>usize;
             <span class="self">self</span>.cursor.<span class="number">0 </span>= <span class="number">0</span>;
+            is_on_scroll = <span class="bool-val">true</span>;
         } <span class="kw">else if </span>rel_x &gt;= width {
             <span class="self">self</span>.start_col = ((left + rel_x).min(line_len) - width + <span class="number">1</span>).max(<span class="number">0</span>) <span class="kw">as </span>usize;
             <span class="self">self</span>.cursor.<span class="number">0 </span>= (width - <span class="number">1</span>) <span class="kw">as </span>usize;
+            is_on_scroll = <span class="bool-val">true</span>;
         } <span class="kw">else </span>{
             <span class="self">self</span>.cursor.<span class="number">0 </span>= rel_x <span class="kw">as </span>usize;
         }
+        is_on_scroll
     }
 
     <span class="doccomment">/// # Insert a character at the cursor position
     /// This function will insert a character at the cursor position and move
     /// the cursor to the right.
-    </span><span class="kw">pub fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, c: char) {
+    </span><span class="kw">pub fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, c: char) -&gt; bool{
         <span class="kw">let </span>(rel_x, rel_y) = <span class="self">self</span>.cursor;
         <span class="comment">// Calculate the absolute position of the cursor in the file
         </span><span class="kw">let </span>(x, y) = (rel_x + <span class="self">self</span>.start_col, rel_y + <span class="self">self</span>.start_line);
         <span class="comment">// Insert the character at the cursor position
         </span><span class="self">self</span>.file.insert(y, x, c);
-        <span class="self">self</span>.navigate(<span class="number">1</span>, <span class="number">0</span>);
+        <span class="self">self</span>.navigate(<span class="number">1</span>, <span class="number">0</span>)
     }
 
     <span class="doccomment">/// # Insert a new line at the cursor position
@@ -461,17 +483,18 @@
     /// world!
     /// ^ cursor is here
     /// ```
-    </span><span class="kw">pub fn </span>insert_new_line(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+    </span><span class="kw">pub fn </span>insert_new_line(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool{
         <span class="kw">let </span>(rel_x, rel_y) = <span class="self">self</span>.cursor;
         <span class="comment">// Calculate the absolute position of the cursor in the file
         </span><span class="kw">let </span>(x, y) = (rel_x + <span class="self">self</span>.start_col, rel_y + <span class="self">self</span>.start_line);
         <span class="comment">// Split the line at the cursor position
         </span><span class="self">self</span>.file.split_line(y, x);
         <span class="comment">// Navigate the cursor
-        </span><span class="self">self</span>.navigate(-(x <span class="kw">as </span>isize), <span class="number">1</span>);
+        </span><span class="self">self</span>.navigate(-(x <span class="kw">as </span>isize), <span class="number">1</span>)
     }
 
-    <span class="kw">pub fn </span>delete(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+    <span class="kw">pub fn </span>delete(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool{
+        <span class="kw">let </span>scroll:bool;
         <span class="kw">let </span>(rel_x, rel_y) = <span class="self">self</span>.cursor;
         <span class="comment">// Calculate the absolute position of the cursor in the file
         </span><span class="kw">let </span>(x, y) = (rel_x + <span class="self">self</span>.start_col, rel_y + <span class="self">self</span>.start_line);
@@ -480,7 +503,7 @@
 
         <span class="comment">// Navigate the cursor
         </span><span class="kw">if </span>x &gt; <span class="number">0 </span>{
-            <span class="self">self</span>.navigate(-<span class="number">1</span>, <span class="number">0</span>);
+            scroll = <span class="self">self</span>.navigate(-<span class="number">1</span>, <span class="number">0</span>);
         } <span class="kw">else </span>{
             <span class="comment">// we go to the end of the previous line
             </span><span class="kw">let </span>line_len = <span class="self">self
@@ -488,8 +511,9 @@
                 .get_line(y.saturating_sub(<span class="number">1</span>))
                 .unwrap_or_default()
                 .len();
-            <span class="self">self</span>.navigate(line_len <span class="kw">as </span>isize, -<span class="number">1</span>);
+            scroll = <span class="self">self</span>.navigate(line_len <span class="kw">as </span>isize, -<span class="number">1</span>);
         }
+        scroll
     }
 
     <span class="kw">pub fn </span>dump_file(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Mode"],"struct":["Editor"]};
+window.SIDEBAR_ITEMS = {"enum":["Mode","RefreshOrder"],"struct":["Editor"]};
