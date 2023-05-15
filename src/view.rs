@@ -140,14 +140,14 @@ impl View {
     /// world!
     /// ^ cursor is here
     /// ```
-    pub fn insert_new_line(&mut self) {
+    pub fn insert_new_line(&mut self) -> bool{
         let (rel_x, rel_y) = self.cursor;
         // Calculate the absolute position of the cursor in the file
         let (x, y) = (rel_x + self.start_col, rel_y + self.start_line);
         // Split the line at the cursor position
         self.file.split_line(y, x);
         // Navigate the cursor
-        self.navigate(-(x as isize), 1);
+        self.navigate(-(x as isize), 1)
     }
 
     pub fn delete(&mut self) {

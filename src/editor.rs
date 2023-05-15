@@ -113,9 +113,13 @@ impl Editor {
             Command::InsertNewLine => {
                 let y = self.view.cursor.1;
                 let mut lines_to_refresh = HashSet::new();
-                self.view.insert_new_line();
-                for i in y..self.view.height {
-                    lines_to_refresh.insert(i as u16);
+                let scroll = self.view.insert_new_line();
+                if scroll {
+                    return RefreshOrder::AllLines;
+                } else {
+                    for i in y..self.view.height {
+                        lines_to_refresh.insert(i as u16);
+                    }
                 }
                 RefreshOrder::Lines(lines_to_refresh)
             }
