@@ -4,6 +4,26 @@ A HeavyWeight text editor written in Rust
 
 > All this README.md file is written using giga !
 
+## User Interface
+
+![Giga](./img/video.gif)
+
+## Installation
+
+make sure you have cargo installed on your machine.
+
+clone the repository:
+
+```Bash
+git clone https://github.com/florentinl/giga.git && cd giga
+````
+
+install the binary:
+
+```Bash
+cargo install --path .
+```
+
 ## Editor
 
 To start editing a file just write in your terminal:
@@ -19,14 +39,17 @@ giga my_new_file.rs
 ```
 
 If you enter
+
 ```Bash
 giga
 ```
+
 It will create a new file called NewFile.
 
 ## Mode
 
 Giga is a modal based test editor. You have two modes:
+
 - NORMAL
 - INSERT
 
