@@ -29,7 +29,7 @@ pub enum RefreshOrder {
     CursorPos,
     Lines(HashSet<u16>),
     StatusBar,
-    ALLLines,
+    AllLines,
 }
 
 impl Editor {
