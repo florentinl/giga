@@ -119,20 +119,14 @@ impl Editor {
             }
             Command::CommandBlock(cmds) => {
                 let mut refr: RefreshOrder = RefreshOrder::StatusBar;
-                let mut lines_to_refresh = HashSet::new();
+                let mut lines_to_refresh: HashSet<u16> = HashSet::new();
                 cmds.into_iter().for_each(|cmd| {
                     refr = self.execute(cmd);
                     match &refr {
-                        RefreshOrder::CursorPos => {}
                         RefreshOrder::Lines(lines) => {
                             lines_to_refresh.extend(lines);
                         }
-                        RefreshOrder::StatusBar => {}
-                        RefreshOrder::AllLines => {
-                            for i in 0..self.view.height {
-                                lines_to_refresh.insert(i as u16);
-                            }
-                        }
+                        _ => {}
                     }
                 });
                 refr
