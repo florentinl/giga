@@ -1,4 +1,4 @@
-use std::process::exit;
+use std::{collections::HashSet, process::exit};
 
 use crate::{command::Command, file::File, tui::Tui, view::View};
 use termion::input::TermRead;
@@ -22,6 +22,13 @@ pub enum Mode {
     Normal,
     /// Insert mode
     Insert,
+}
+
+pub enum RefreshOrder {
+    CursorPos,
+    Lines(HashSet<u16>),
+    StatusBar,
+    ALLLines,
 }
 
 impl Editor {
@@ -68,16 +75,64 @@ impl Editor {
     /// - ToggleMode: toogle editor mode
     /// - Insert: insert a character
     /// - Delete: delete a character
-    fn execute(&mut self, cmd: Command) {
+    fn execute(&mut self, cmd: Command) -> RefreshOrder {
         match cmd {
-            Command::Quit => self.terminate(),
-            Command::Move(x, y) => self.view.navigate(x, y),
-            Command::Save => self.save(),
-            Command::ToggleMode => self.toggle_mode(),
-            Command::Insert(c) => self.view.insert(c),
-            Command::InsertNewLine => self.view.insert_new_line(),
-            Command::Delete => self.view.delete(),
-            Command::CommandBlock(cmds) => cmds.into_iter().for_each(|cmd| self.execute(cmd)),
+            Command::Quit => {
+                self.terminate();
+                RefreshOrder::ALLLines
+            }
+            Command::Move(x, y) => {
+                self.view.navigate(x, y);
+                RefreshOrder::CursorPos
+            }
+            Command::Save => RefreshOrder::StatusBar,
+            Command::ToggleMode => {
+                self.toggle_mode();
+                RefreshOrder::StatusBar
+            }
+            Command::Insert(c) => {
+                self.view.insert(c);
+                let y = self.view.cursor.1;
+                let mut lines_to_refresh = HashSet::new();
+                lines_to_refresh.insert(y as u16);
+                RefreshOrder::Lines(lines_to_refresh)
+            }
+            Command::InsertNewLine => {
+                let y = self.view.cursor.1;
+                let mut lines_to_refresh = HashSet::new();
+                self.view.insert_new_line();
+                lines_to_refresh.insert(y as u16);
+                lines_to_refresh.insert((y - 1) as u16);
+                RefreshOrder::Lines(lines_to_refresh)
+            }
+            Command::Delete => {
+                self.view.delete();
+                let y = self.view.cursor.1;
+                let mut lines_to_refresh = HashSet::new();
+                lines_to_refresh.insert(y as u16);
+                lines_to_refresh.insert((y + 1) as u16);
+                RefreshOrder::Lines(lines_to_refresh)
+            }
+            Command::CommandBlock(cmds) => {
+                let mut refr: RefreshOrder;
+                let mut lines_to_refresh = HashSet::new();
+                cmds.into_iter().for_each(|cmd| {
+                    refr = self.execute(cmd);
+                    match refr {
+                        RefreshOrder::CursorPos => {}
+                        RefreshOrder::Lines(lines) => {
+                            lines_to_refresh.extend(lines);
+                        }
+                        RefreshOrder::StatusBar => {}
+                        RefreshOrder::ALLLines => {
+                            for i in 0..self.view.height {
+                                lines_to_refresh.insert(i as u16);
+                            }
+                        }
+                    }
+                });
+                refr
+            }
         }
     }
 
@@ -95,7 +150,8 @@ impl Editor {
         let (width, height) = self.tui.get_term_size();
         // height - 1 to leave space for the status bar
         // width - 3 to leave space for the line numbers
-        self.view.resize((height - 1) as usize, (width - 4) as usize);
+        self.view
+            .resize((height - 1) as usize, (width - 4) as usize);
 
         // draw initial view
         self.tui.clear();
