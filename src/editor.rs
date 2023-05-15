@@ -31,7 +31,7 @@ pub enum Mode {
 }
 
 pub enum RefreshOrder {
-    CursorPos(isize, isize),
+    CursorPos,
     Lines(HashSet<u16>),
     StatusBar,
     AllLines,
@@ -92,7 +92,7 @@ impl Editor {
                 if scroll {
                     RefreshOrder::AllLines
                 } else {
-                    RefreshOrder::CursorPos(x, y)
+                    RefreshOrder::CursorPos
                 }
             }
             Command::Save => {
@@ -147,7 +147,7 @@ impl Editor {
                         RefreshOrder::Lines(lines) => {
                             lines_to_refresh.extend(lines);
                         }
-                        RefreshOrder::CursorPos(_, _) | RefreshOrder::StatusBar => {
+                        RefreshOrder::CursorPos | RefreshOrder::StatusBar => {
                             refr = RefreshOrder::AllLines
                         } // on command, we can refresh all lines as it may be undo / redo
                         _ => {}
@@ -198,13 +198,9 @@ impl Editor {
                             sb.mode = self.mode.clone();
                             self.tui.draw_status_bar(&sb, height, width)
                         }
-                        RefreshOrder::CursorPos(dx, dy) => {
+                        RefreshOrder::CursorPos => {
                             let (x, y) = self.view.cursor;
-                            if x == 0 && dx < 0 || y == 0 && dy < 0{
-                                // do nothing
-                            } else {
-                                self.tui.move_cursor(x as isize + dx, y as isize + dy)
-                            }
+                            self.tui.move_cursor(x, y)
                         }
                         RefreshOrder::Lines(lines) => self.tui.refresh_lines(&self.view, lines),
                     }
