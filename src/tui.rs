@@ -11,6 +11,12 @@ use termion::raw::RawTerminal;
 
 const LINE_NUMBER_WIDTH: u16 = 4;
 
+pub struct StatusBar {
+    pub file_name: String,
+    pub mode: Mode,
+}
+
+
 /// Terminal User Interface
 /// Responsible for drawing the editor and handling user input using termion in raw mode
 pub struct Tui {
