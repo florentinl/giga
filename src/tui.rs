@@ -1,6 +1,7 @@
 extern crate termion;
 use crate::editor::Mode;
 use crate::view::View;
+use std::collections::HashSet;
 use std::io::Write;
 use termion::clear;
 use termion::color;
@@ -133,6 +134,20 @@ impl Tui {
         self.draw_status_bar(name, mode, height as u16, width as u16);
         print!("{}", cursor::Goto(1, 1));
 
+        // move the cursor to the correct position
+        let (x, y) = view.cursor;
+        print!(
+            "{}",
+            cursor::Goto(x as u16 + LINE_NUMBER_WIDTH as u16 + 1, y as u16 + 1)
+        );
+        std::io::stdout().flush().unwrap_or_default();
+    }
+
+    pub fn refresh_lines(&mut self, view: &View, lines: HashSet<u16>) {
+        for line in lines {
+            self.draw_line_numbers((line + 1) as usize);
+            print!("{}", view.get_line(line as usize))
+        }
         // move the cursor to the correct position
         let (x, y) = view.cursor;
         print!(
