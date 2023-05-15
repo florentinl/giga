@@ -1,6 +1,11 @@
-use std::process::exit;
+use std::{collections::HashSet, process::exit};
 
-use crate::{command::Command, file::File, tui::Tui, view::View};
+use crate::{
+    command::Command,
+    file::File,
+    tui::{StatusBar, Tui},
+    view::View,
+};
 use termion::input::TermRead;
 
 /// Editor structure
@@ -16,12 +21,20 @@ pub struct Editor {
     mode: Mode,
 }
 
+#[derive(Clone)]
 /// Mode of the editor
 pub enum Mode {
     /// Normal mode
     Normal,
     /// Insert mode
     Insert,
+}
+
+pub enum RefreshOrder {
+    CursorPos,
+    Lines(HashSet<u16>),
+    StatusBar,
+    AllLines,
 }
 
 impl Editor {
@@ -68,16 +81,80 @@ impl Editor {
     /// - ToggleMode: toogle editor mode
     /// - Insert: insert a character
     /// - Delete: delete a character
-    fn execute(&mut self, cmd: Command) {
+    fn execute(&mut self, cmd: Command) -> RefreshOrder {
         match cmd {
-            Command::Quit => self.terminate(),
-            Command::Move(x, y) => self.view.navigate(x, y),
-            Command::Save => self.save(),
-            Command::ToggleMode => self.toggle_mode(),
-            Command::Insert(c) => self.view.insert(c),
-            Command::InsertNewLine => self.view.insert_new_line(),
-            Command::Delete => self.view.delete(),
-            Command::CommandBlock(cmds) => cmds.into_iter().for_each(|cmd| self.execute(cmd)),
+            Command::Quit => {
+                self.terminate();
+                RefreshOrder::AllLines
+            }
+            Command::Move(x, y) => {
+                let scroll = self.view.navigate(x, y);
+                if scroll {
+                    RefreshOrder::AllLines
+                } else {
+                    RefreshOrder::CursorPos
+                }
+            }
+            Command::Save => {
+                self.save();
+                RefreshOrder::StatusBar
+            }
+            Command::ToggleMode => {
+                self.toggle_mode();
+                RefreshOrder::StatusBar
+            }
+            Command::Insert(c) => {
+                let scroll = self.view.insert(c);
+                if scroll {
+                    return RefreshOrder::AllLines;
+                }
+                let y = self.view.cursor.1;
+                let mut lines_to_refresh = HashSet::new();
+                lines_to_refresh.insert(y as u16);
+                RefreshOrder::Lines(lines_to_refresh)
+            }
+            Command::InsertNewLine => {
+                let y = self.view.cursor.1;
+                let mut lines_to_refresh = HashSet::new();
+                let scroll = self.view.insert_new_line();
+                if scroll {
+                    return RefreshOrder::AllLines;
+                } else {
+                    for i in y..self.view.height {
+                        lines_to_refresh.insert(i as u16);
+                    }
+                }
+                RefreshOrder::Lines(lines_to_refresh)
+            }
+            Command::Delete => {
+                let scroll = self.view.delete();
+                if scroll {
+                    return RefreshOrder::AllLines;
+                }
+                let y = self.view.cursor.1;
+                let mut lines_to_refresh = HashSet::new();
+                for i in y..self.view.height {
+                    lines_to_refresh.insert(i as u16);
+                } 
+                RefreshOrder::Lines(lines_to_refresh)
+            }
+            Command::CommandBlock(cmds) => {
+                let mut refr: RefreshOrder = RefreshOrder::StatusBar;
+                let mut lines_to_refresh: HashSet<u16> = HashSet::new();
+                cmds.into_iter().for_each(|cmd| {
+                    refr = self.execute(cmd);
+                    match &refr {
+                        RefreshOrder::Lines(lines) => {
+                            lines_to_refresh.extend(lines);
+                        }
+                        RefreshOrder::CursorPos | RefreshOrder::StatusBar => {
+                            refr = RefreshOrder::AllLines
+                        } // on command, we can refresh all lines as it may be undo / redo
+                        _ => {}
+                    }
+                });
+                refr
+            }
         }
     }
 
@@ -91,11 +168,16 @@ impl Editor {
 
     /// Run the editor loop
     pub fn run(&mut self) {
+        let mut sb = StatusBar {
+            file_name: self.file_name.clone().unwrap_or_default(),
+            mode: self.mode.clone(),
+        };
         // set view size
         let (width, height) = self.tui.get_term_size();
         // height - 1 to leave space for the status bar
         // width - 3 to leave space for the line numbers
-        self.view.resize((height - 1) as usize, (width - 4) as usize);
+        self.view
+            .resize((height - 1) as usize, (width - 4) as usize);
 
         // draw initial view
         self.tui.clear();
@@ -106,8 +188,21 @@ impl Editor {
         for c in stdin {
             if let Ok(c) = c {
                 if let Ok(cmd) = Command::parse(c, &self.mode) {
-                    self.execute(cmd);
-                    self.tui.draw_view(&self.view, &self.file_name, &self.mode)
+                    let refresh_order = self.execute(cmd);
+                    match refresh_order {
+                        RefreshOrder::AllLines => {
+                            self.tui.draw_view(&self.view, &self.file_name, &self.mode)
+                        }
+                        RefreshOrder::StatusBar => {
+                            sb.file_name = self.file_name.clone().unwrap_or_default();
+                            sb.mode = self.mode.clone();
+                            self.tui.draw_status_bar(&sb, height, width)
+                        }
+                        RefreshOrder::CursorPos => {
+                            self.tui.draw_view(&self.view, &self.file_name, &self.mode)
+                        }
+                        RefreshOrder::Lines(lines) => self.tui.refresh_lines(&self.view, lines),
+                    }
                 }
             }
         }

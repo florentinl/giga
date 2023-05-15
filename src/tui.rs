@@ -1,6 +1,7 @@
 extern crate termion;
 use crate::editor::Mode;
 use crate::view::View;
+use std::collections::HashSet;
 use std::io::Write;
 use termion::clear;
 use termion::color;
@@ -9,6 +10,12 @@ use termion::raw::IntoRawMode;
 use termion::raw::RawTerminal;
 
 const LINE_NUMBER_WIDTH: u16 = 4;
+
+pub struct StatusBar {
+    pub file_name: String,
+    pub mode: Mode,
+}
+
 
 /// Terminal User Interface
 /// Responsible for drawing the editor and handling user input using termion in raw mode
@@ -67,18 +74,12 @@ impl Tui {
     /// Draw the status bar
     /// The status bar is displayed at the bottom of the screen
     /// It contains the current mode and the file name
-    pub fn draw_status_bar(
-        &mut self,
-        file_name: String,
-        mode: &Mode,
-        height: u16,
-        width: u16,
-    ) {
-        let mode: String = match mode {
+    pub fn draw_status_bar(&mut self, status_bar: &StatusBar, height: u16, width: u16) {
+        let mode: String = match status_bar.mode {
             Mode::Normal => "NORMAL ".to_string(),
             Mode::Insert => "INSERT ".to_string(),
         };
-        let padding = width - file_name.len() as u16 - mode.len() as u16;
+        let padding = width - status_bar.file_name.len() as u16 - mode.len() as u16;
         write!(
             self.stdout,
             "{}{}{}{}{}{}{}{}{}",
@@ -86,30 +87,33 @@ impl Tui {
             color::Bg(color::White),
             color::Fg(color::Black),
             mode,
-            file_name,
+            status_bar.file_name,
             " ".repeat(padding as usize),
             cursor::Goto(width, height + 1),
             color::Fg(color::Reset),
             color::Bg(color::Reset),
         )
         .unwrap_or_default();
+        self.stdout.flush().unwrap_or_default();
     }
 
     /// Draw the line numbers
     /// The line numbers are displayed at the left of the screen in blue
     pub fn draw_line_numbers(&mut self, line: usize) {
         let number = format!("{:3} ", line);
-
         write!(
             self.stdout,
-            "{}{}{}{}{}",
-            cursor::Goto(1, (line + 1) as u16),
+            "{}{}{}{}{}{}{}",
+            cursor::Goto(1, (line) as u16),
+            clear::CurrentLine,
             color::Fg(color::Blue),
             number,
-            cursor::Goto(LINE_NUMBER_WIDTH, (line + 1) as u16),
+            cursor::Goto(LINE_NUMBER_WIDTH, (line) as u16),
             color::Fg(color::Reset),
+            cursor::Goto(LINE_NUMBER_WIDTH + 1, (line) as u16), // release the cursor where to write the line
         )
         .unwrap_or_default();
+        self.stdout.flush().unwrap_or_default();
     }
 
     /// Draw the view on the screen
@@ -118,21 +122,32 @@ impl Tui {
         self.clear();
         let height = view.height;
         let width = view.width;
-        for line in 0..height {
+        for line in 1..height + 1 {
             self.draw_line_numbers(line);
-            write!(
-                self.stdout,
-                "{}{}",
-                cursor::Goto(LINE_NUMBER_WIDTH + 1, (line + 1) as u16),
-                view.get_line(line)
-            )
-            .unwrap_or_default();
+            write!(self.stdout, "{}", view.get_line(line - 1)).unwrap_or_default();
         }
         // print the status bar
-        let name = file_name.clone().unwrap_or("New File".to_string());
-        self.draw_status_bar(name, mode, height as u16, width as u16);
+        let sb = StatusBar {
+            file_name: file_name.clone().unwrap_or("NewFile".to_string()),
+            mode: mode.clone(),
+        };
+        self.draw_status_bar(&sb, height as u16, width as u16);
         print!("{}", cursor::Goto(1, 1));
 
+        // move the cursor to the correct position
+        let (x, y) = view.cursor;
+        print!(
+            "{}",
+            cursor::Goto(x as u16 + LINE_NUMBER_WIDTH as u16 + 1, y as u16 + 1)
+        );
+        std::io::stdout().flush().unwrap_or_default();
+    }
+
+    pub fn refresh_lines(&mut self, view: &View, lines: HashSet<u16>) {
+        for line in lines {
+            self.draw_line_numbers((line + 1) as usize);
+            print!("{}", view.get_line(line as usize))
+        }
         // move the cursor to the correct position
         let (x, y) = view.cursor;
         print!(
