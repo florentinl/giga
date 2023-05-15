@@ -80,7 +80,7 @@ impl Editor {
         match cmd {
             Command::Quit => {
                 self.terminate();
-                RefreshOrder::ALLLines
+                RefreshOrder::AllLines
             }
             Command::Move(x, y) => {
                 self.view.navigate(x, y);
@@ -128,7 +128,7 @@ impl Editor {
                             lines_to_refresh.extend(lines);
                         }
                         RefreshOrder::StatusBar => {}
-                        RefreshOrder::ALLLines => {
+                        RefreshOrder::AllLines => {
                             for i in 0..self.view.height {
                                 lines_to_refresh.insert(i as u16);
                             }
@@ -172,7 +172,7 @@ impl Editor {
                 if let Ok(cmd) = Command::parse(c, &self.mode) {
                     let refresh_order = self.execute(cmd);
                     match refresh_order {
-                        RefreshOrder::ALLLines => {
+                        RefreshOrder::AllLines => {
                             self.tui.draw_view(&self.view, &self.file_name, &self.mode)
                         }
                         RefreshOrder::StatusBar => {
