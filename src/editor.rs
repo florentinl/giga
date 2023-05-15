@@ -86,7 +86,10 @@ impl Editor {
                 self.view.navigate(x, y);
                 RefreshOrder::CursorPos
             }
-            Command::Save => RefreshOrder::StatusBar,
+            Command::Save => {
+                self.save();
+                RefreshOrder::StatusBar
+            }
             Command::ToggleMode => {
                 self.toggle_mode();
                 RefreshOrder::StatusBar
