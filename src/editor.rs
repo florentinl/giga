@@ -31,7 +31,7 @@ pub enum Mode {
 }
 
 pub enum RefreshOrder {
-    CursorPos,
+    CursorPos(isize, isize),
     Lines(HashSet<u16>),
     StatusBar,
     AllLines,
@@ -92,7 +92,7 @@ impl Editor {
                 if scroll {
                     RefreshOrder::AllLines
                 } else {
-                    RefreshOrder::CursorPos
+                    RefreshOrder::CursorPos(x, y)
                 }
             }
             Command::Save => {
@@ -135,7 +135,7 @@ impl Editor {
                 let mut lines_to_refresh = HashSet::new();
                 for i in y..self.view.height {
                     lines_to_refresh.insert(i as u16);
-                } 
+                }
                 RefreshOrder::Lines(lines_to_refresh)
             }
             Command::CommandBlock(cmds) => {
@@ -147,7 +147,7 @@ impl Editor {
                         RefreshOrder::Lines(lines) => {
                             lines_to_refresh.extend(lines);
                         }
-                        RefreshOrder::CursorPos | RefreshOrder::StatusBar => {
+                        RefreshOrder::CursorPos(_, _) | RefreshOrder::StatusBar => {
                             refr = RefreshOrder::AllLines
                         } // on command, we can refresh all lines as it may be undo / redo
                         _ => {}
@@ -198,8 +198,13 @@ impl Editor {
                             sb.mode = self.mode.clone();
                             self.tui.draw_status_bar(&sb, height, width)
                         }
-                        RefreshOrder::CursorPos => {
-                            self.tui.draw_view(&self.view, &self.file_name, &self.mode)
+                        RefreshOrder::CursorPos(dx, dy) => {
+                            let (x, y) = self.view.cursor;
+                            if x == 0 && dx < 0 || y == 0 && dy < 0{
+                                // do nothing
+                            } else {
+                                self.tui.move_cursor(x as isize + dx, y as isize + dy)
+                            }
                         }
                         RefreshOrder::Lines(lines) => self.tui.refresh_lines(&self.view, lines),
                     }

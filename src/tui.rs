@@ -16,7 +16,6 @@ pub struct StatusBar {
     pub mode: Mode,
 }
 
-
 /// Terminal User Interface
 /// Responsible for drawing the editor and handling user input using termion in raw mode
 pub struct Tui {
@@ -154,6 +153,11 @@ impl Tui {
             "{}",
             cursor::Goto(x as u16 + LINE_NUMBER_WIDTH as u16 + 1, y as u16 + 1)
         );
+        std::io::stdout().flush().unwrap_or_default();
+    }
+
+    pub fn move_cursor(&mut self, x: isize, y: isize) {
+        print!("{}", cursor::Goto(x as u16 + LINE_NUMBER_WIDTH as u16 + 1, y as u16 + 1));
         std::io::stdout().flush().unwrap_or_default();
     }
 }
