@@ -119,19 +119,16 @@ impl Tui {
         self.clear();
         let height = view.height;
         let width = view.width;
-        for line in 0..height {
+        for line in 1..height + 1 {
             self.draw_line_numbers(line);
-            write!(
-                self.stdout,
-                "{}{}",
-                cursor::Goto(LINE_NUMBER_WIDTH + 1, (line + 1) as u16),
-                view.get_line(line)
-            )
-            .unwrap_or_default();
+            write!(self.stdout, "{}", view.get_line(line - 1)).unwrap_or_default();
         }
         // print the status bar
-        let name = file_name.clone().unwrap_or("New File".to_string());
-        self.draw_status_bar(name, mode, height as u16, width as u16);
+        let sb = StatusBar {
+            file_name: file_name.clone().unwrap_or("NewFile".to_string()),
+            mode: mode.clone(),
+        };
+        self.draw_status_bar(&sb, height as u16, width as u16);
         print!("{}", cursor::Goto(1, 1));
 
         // move the cursor to the correct position
