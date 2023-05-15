@@ -16,6 +16,7 @@ pub struct Editor {
     mode: Mode,
 }
 
+#[derive(Clone)]
 /// Mode of the editor
 pub enum Mode {
     /// Normal mode
@@ -102,7 +103,7 @@ impl Editor {
                 let mut lines_to_refresh = HashSet::new();
                 self.view.insert_new_line();
                 lines_to_refresh.insert(y as u16);
-                lines_to_refresh.insert((y - 1) as u16);
+                lines_to_refresh.insert((y + 1) as u16);
                 RefreshOrder::Lines(lines_to_refresh)
             }
             Command::Delete => {
@@ -114,11 +115,11 @@ impl Editor {
                 RefreshOrder::Lines(lines_to_refresh)
             }
             Command::CommandBlock(cmds) => {
-                let mut refr: RefreshOrder;
+                let mut refr: RefreshOrder = RefreshOrder::StatusBar;
                 let mut lines_to_refresh = HashSet::new();
                 cmds.into_iter().for_each(|cmd| {
                     refr = self.execute(cmd);
-                    match refr {
+                    match &refr {
                         RefreshOrder::CursorPos => {}
                         RefreshOrder::Lines(lines) => {
                             lines_to_refresh.extend(lines);
