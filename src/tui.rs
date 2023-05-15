@@ -100,17 +100,19 @@ impl Tui {
     /// The line numbers are displayed at the left of the screen in blue
     pub fn draw_line_numbers(&mut self, line: usize) {
         let number = format!("{:3} ", line);
-
         write!(
             self.stdout,
-            "{}{}{}{}{}",
-            cursor::Goto(1, (line + 1) as u16),
+            "{}{}{}{}{}{}{}",
+            cursor::Goto(1, (line) as u16),
+            clear::CurrentLine,
             color::Fg(color::Blue),
             number,
-            cursor::Goto(LINE_NUMBER_WIDTH, (line + 1) as u16),
+            cursor::Goto(LINE_NUMBER_WIDTH, (line) as u16),
             color::Fg(color::Reset),
+            cursor::Goto(LINE_NUMBER_WIDTH + 1, (line) as u16), // release the cursor where to write the line
         )
         .unwrap_or_default();
+        self.stdout.flush().unwrap_or_default();
     }
 
     /// Draw the view on the screen
