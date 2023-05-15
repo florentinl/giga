@@ -136,6 +136,9 @@ impl Editor {
                         RefreshOrder::Lines(lines) => {
                             lines_to_refresh.extend(lines);
                         }
+                        RefreshOrder::CursorPos | RefreshOrder::StatusBar => {
+                            refr = RefreshOrder::AllLines
+                        } // on command, we can refresh all lines as it may be undo / redo
                         _ => {}
                     }
                 });
