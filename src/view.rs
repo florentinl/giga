@@ -118,13 +118,13 @@ impl View {
     /// # Insert a character at the cursor position
     /// This function will insert a character at the cursor position and move
     /// the cursor to the right.
-    pub fn insert(&mut self, c: char) {
+    pub fn insert(&mut self, c: char) -> bool{
         let (rel_x, rel_y) = self.cursor;
         // Calculate the absolute position of the cursor in the file
         let (x, y) = (rel_x + self.start_col, rel_y + self.start_line);
         // Insert the character at the cursor position
         self.file.insert(y, x, c);
-        self.navigate(1, 0);
+        self.navigate(1, 0)
     }
 
     /// # Insert a new line at the cursor position

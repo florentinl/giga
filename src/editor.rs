@@ -104,7 +104,10 @@ impl Editor {
                 RefreshOrder::StatusBar
             }
             Command::Insert(c) => {
-                self.view.insert(c);
+                let scroll = self.view.insert(c);
+                if scroll {
+                    return RefreshOrder::AllLines;
+                }
                 let y = self.view.cursor.1;
                 let mut lines_to_refresh = HashSet::new();
                 lines_to_refresh.insert(y as u16);
