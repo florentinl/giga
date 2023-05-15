@@ -124,11 +124,15 @@ impl Editor {
                 RefreshOrder::Lines(lines_to_refresh)
             }
             Command::Delete => {
-                self.view.delete();
+                let scroll = self.view.delete();
+                if scroll {
+                    return RefreshOrder::AllLines;
+                }
                 let y = self.view.cursor.1;
                 let mut lines_to_refresh = HashSet::new();
-                lines_to_refresh.insert(y as u16);
-                lines_to_refresh.insert((y + 1) as u16);
+                for i in y..self.view.height {
+                    lines_to_refresh.insert(i as u16);
+                } 
                 RefreshOrder::Lines(lines_to_refresh)
             }
             Command::CommandBlock(cmds) => {
