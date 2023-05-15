@@ -68,18 +68,12 @@ impl Tui {
     /// Draw the status bar
     /// The status bar is displayed at the bottom of the screen
     /// It contains the current mode and the file name
-    pub fn draw_status_bar(
-        &mut self,
-        file_name: String,
-        mode: &Mode,
-        height: u16,
-        width: u16,
-    ) {
-        let mode: String = match mode {
+    pub fn draw_status_bar(&mut self, status_bar: &StatusBar, height: u16, width: u16) {
+        let mode: String = match status_bar.mode {
             Mode::Normal => "NORMAL ".to_string(),
             Mode::Insert => "INSERT ".to_string(),
         };
-        let padding = width - file_name.len() as u16 - mode.len() as u16;
+        let padding = width - status_bar.file_name.len() as u16 - mode.len() as u16;
         write!(
             self.stdout,
             "{}{}{}{}{}{}{}{}{}",
@@ -87,13 +81,14 @@ impl Tui {
             color::Bg(color::White),
             color::Fg(color::Black),
             mode,
-            file_name,
+            status_bar.file_name,
             " ".repeat(padding as usize),
             cursor::Goto(width, height + 1),
             color::Fg(color::Reset),
             color::Bg(color::Reset),
         )
         .unwrap_or_default();
+        self.stdout.flush().unwrap_or_default();
     }
 
     /// Draw the line numbers
