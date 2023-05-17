@@ -2,7 +2,7 @@ use std::{collections::HashSet, process::exit};
 
 use crate::{
     command::Command,
-    file::{File},
+    file::File,
     tui::{StatusBar, Tui},
     view::View,
 };
@@ -74,7 +74,7 @@ impl Editor {
         })
     }
 
-    fn split_path_name(path: &str) -> (String, String){
+    fn split_path_name(path: &str) -> (String, String) {
         let mut path = path.to_string();
         let mut file_name = path.clone();
         let mut i = path.len() - 1;
@@ -97,11 +97,9 @@ impl Editor {
     /// Save the current file
     fn save(&self) {
         let path = String::from(&self.path) + &self.file_name;
-        {
-            let content = self.view.dump_file();
-            std::fs::write(path.clone() + ".tmp", content).unwrap_or_default();
-            std::fs::rename(path.clone() + ".tmp", path).unwrap_or_default();
-        }
+        let content = self.view.dump_file();
+        std::fs::write(path.clone() + ".tmp", content).unwrap_or_default();
+        std::fs::rename(path.clone() + ".tmp", path).unwrap_or_default();
     }
 
     /// Execute an editor command
