@@ -1,5 +1,3 @@
-use std::{collections::btree_map::Range, ops::RangeBounds, vec};
-
 /// The File structure is the in-memory representation of the full file being edited.
 /// It is a vector of lines, each line being a vector of bytes.
 pub struct File {
