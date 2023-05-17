@@ -159,7 +159,6 @@
 <a href="#159" id="159">159</a>
 <a href="#160" id="160">160</a>
 <a href="#161" id="161">161</a>
-<a href="#162" id="162">162</a>
 </pre><pre class="rust"><code><span class="kw">extern crate </span>termion;
 <span class="kw">use </span><span class="kw">crate</span>::editor::Mode;
 <span class="kw">use </span><span class="kw">crate</span>::view::View;
@@ -244,13 +243,12 @@
         <span class="kw">let </span>padding = width - status_bar.file_name.len() <span class="kw">as </span>u16 - mode.len() <span class="kw">as </span>u16 - status_bar.path.len() <span class="kw">as </span>u16 - <span class="number">1</span>;
         <span class="macro">write!</span>(
             <span class="self">self</span>.stdout,
-            <span class="string">&quot;{}{}{}{}{}{}{}{}{}{}{}&quot;</span>,
+            <span class="string">&quot;{}{}{}{}{}{}{}{}{}{}&quot;</span>,
             cursor::Goto(<span class="number">1</span>, height + <span class="number">1</span>),
             color::Bg(color::White),
             color::Fg(color::Black),
             mode,
             status_bar.path,
-            <span class="string">&quot;/&quot;</span>,
             status_bar.file_name,
             <span class="string">&quot; &quot;</span>.repeat(padding <span class="kw">as </span>usize),
             cursor::Goto(width, height + <span class="number">1</span>),

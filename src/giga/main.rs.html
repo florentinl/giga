@@ -37,8 +37,8 @@
     </span><span class="kw">let </span>file: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; = args.get(<span class="number">1</span>).map(|s| s.as_str());
 
     <span class="kw">let </span><span class="kw-2">mut </span>editor = <span class="kw">match </span>file {
-        <span class="prelude-val">Some</span>(path) =&gt; editor::Editor::open(path).unwrap_or(editor::Editor::new(file)),
-        <span class="prelude-val">None </span>=&gt; editor::Editor::new(<span class="prelude-val">Some</span>(<span class="string">&quot;Newfile&quot;</span>)),
+        <span class="prelude-val">Some</span>(path) =&gt; editor::Editor::open(path).unwrap_or(editor::Editor::new(path)),
+        <span class="prelude-val">None </span>=&gt; editor::Editor::new(<span class="string">&quot;Newfile&quot;</span>),
     };
     editor.run();
 }

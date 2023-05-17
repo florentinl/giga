@@ -213,6 +213,22 @@
 <a href="#213" id="213">213</a>
 <a href="#214" id="214">214</a>
 <a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{collections::HashSet, process::exit};
 
 <span class="kw">use crate</span>::{
@@ -256,10 +272,10 @@
 
 <span class="kw">impl </span>Editor {
     <span class="doccomment">/// Create a new editor
-    </span><span class="kw">pub fn </span>new(file_name: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(file_name: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            path: file_name.unwrap_or_default().to_string(),
-            file_name: file_name.unwrap_or_default().to_string(),
+            path: <span class="string">&quot;./&quot;</span>.to_string(),
+            file_name: file_name.to_string(),
             view: View::new(File::new(), <span class="number">0</span>, <span class="number">0</span>),
             tui: Tui::new(),
             mode: Mode::Normal,
@@ -272,16 +288,34 @@
         <span class="kw">let </span>content = File::from_string(<span class="kw-2">&amp;</span>content);
         <span class="kw">let </span>view = View::new(content, <span class="number">0</span>, <span class="number">0</span>);
 
+        <span class="kw">let </span>(path, file_name) = <span class="self">Self</span>::split_path_name(path);
+
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
             path: path.to_string(),
-            file_name: path.to_string(),
+            file_name: file_name.to_string(),
             view,
             tui: Tui::new(),
             mode: Mode::Normal,
         })
     }
+
+    <span class="kw">fn </span>split_path_name(path: <span class="kw-2">&amp;</span>str) -&gt; (String, String){
+        <span class="kw">let </span><span class="kw-2">mut </span>path = path.to_string();
+        <span class="kw">let </span><span class="kw-2">mut </span>file_name = path.clone();
+        <span class="kw">let </span><span class="kw-2">mut </span>i = path.len() - <span class="number">1</span>;
+        <span class="kw">while </span>i &gt; <span class="number">0 </span>{
+            <span class="kw">if </span>path.chars().nth(i).unwrap() == <span class="string">&#39;/&#39; </span>{
+                file_name = path.split_off(i + <span class="number">1</span>);
+                <span class="kw">break</span>;
+            }
+            i -= <span class="number">1</span>;
+        }
+        (path, file_name)
+    }
+
     <span class="kw">fn </span>save(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="kw">let </span>path = <span class="kw-2">&amp;</span><span class="self">self</span>.file_name; {
+        <span class="kw">let </span>path = String::from(<span class="kw-2">&amp;</span><span class="self">self</span>.path) + <span class="kw-2">&amp;</span><span class="self">self</span>.file_name;
+        {
             <span class="kw">let </span>content = <span class="self">self</span>.view.dump_file();
             std::fs::write(path.clone() + <span class="string">&quot;.tmp&quot;</span>, content).unwrap_or_default();
             std::fs::rename(path.clone() + <span class="string">&quot;.tmp&quot;</span>, path).unwrap_or_default();
@@ -388,7 +422,7 @@
     <span class="doccomment">/// Run the editor loop
     </span><span class="kw">pub fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">let </span><span class="kw-2">mut </span>sb = StatusBar {
-            path: <span class="string">&quot;.&quot;</span>.to_string(),
+            path: <span class="self">self</span>.path.clone(),
             file_name: <span class="self">self</span>.file_name.clone(),
             mode: <span class="self">self</span>.mode.clone(),
         };
@@ -409,9 +443,7 @@
                 <span class="kw">if let </span><span class="prelude-val">Ok</span>(cmd) = Command::parse(c, <span class="kw-2">&amp;</span><span class="self">self</span>.mode) {
                     <span class="kw">let </span>refresh_order = <span class="self">self</span>.execute(cmd);
                     <span class="kw">match </span>refresh_order {
-                        RefreshOrder::AllLines =&gt; {
-                            <span class="self">self</span>.tui.draw_view(<span class="kw-2">&amp;</span><span class="self">self</span>.view, <span class="kw-2">&amp;</span>sb)
-                        }
+                        RefreshOrder::AllLines =&gt; <span class="self">self</span>.tui.draw_view(<span class="kw-2">&amp;</span><span class="self">self</span>.view, <span class="kw-2">&amp;</span>sb),
                         RefreshOrder::StatusBar =&gt; {
                             sb.file_name = <span class="self">self</span>.file_name.clone();
                             sb.mode = <span class="self">self</span>.mode.clone();
