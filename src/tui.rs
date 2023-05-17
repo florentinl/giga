@@ -82,13 +82,12 @@ impl Tui {
         let padding = width - status_bar.file_name.len() as u16 - mode.len() as u16 - status_bar.path.len() as u16 - 1;
         write!(
             self.stdout,
-            "{}{}{}{}{}{}{}{}{}{}{}",
+            "{}{}{}{}{}{}{}{}{}{}",
             cursor::Goto(1, height + 1),
             color::Bg(color::White),
             color::Fg(color::Black),
             mode,
             status_bar.path,
-            "/",
             status_bar.file_name,
             " ".repeat(padding as usize),
             cursor::Goto(width, height + 1),
