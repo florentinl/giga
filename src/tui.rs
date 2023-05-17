@@ -76,7 +76,6 @@ impl Tui {
     /// The status bar is displayed at the bottom of the screen,
     /// it contains the current mode and the file name
     pub fn draw_status_bar(&mut self, status_bar: &StatusBar, height: u16, width: u16) {
-        let width = width + 4;
         let mode: String = match status_bar.mode {
             Mode::Normal => "NORMAL ".to_string(),
             Mode::Insert => "INSERT ".to_string(),
@@ -97,7 +96,7 @@ impl Tui {
             status_bar.path,
             status_bar.file_name,
             " ".repeat(padding as usize),
-            cursor::Goto(width, height + 1), // width + 4 because of the line numbers in editor run
+            cursor::Goto(width, height + 1), 
             color::Fg(color::Reset),
             color::Bg(color::Reset),
         )
@@ -135,7 +134,7 @@ impl Tui {
             write!(self.stdout, "{}", view.get_line(line - 1)).unwrap_or_default();
         }
         // print the status bar
-        self.draw_status_bar(&sb, height as u16, width as u16);
+        self.draw_status_bar(&sb, height as u16, width as u16 + LINE_NUMBER_WIDTH ); // to account for the line numbers
         print!("{}", cursor::Goto(1, 1));
 
         // move the cursor to the correct position
