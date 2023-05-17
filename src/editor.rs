@@ -11,6 +11,8 @@ use termion::input::TermRead;
 /// Editor structure
 /// represents the state of the program
 pub struct Editor {
+    /// The path of the file being edited
+    path: String,
     /// The name of the file being edited
     file_name: String,
     /// The current view of the file
@@ -41,6 +43,7 @@ impl Editor {
     /// Create a new editor
     pub fn new(file_name: Option<&str>) -> Self {
         Self {
+            path: file_name.unwrap_or_default().to_string(),
             file_name: file_name.unwrap_or_default().to_string(),
             view: View::new(File::new(), 0, 0),
             tui: Tui::new(),
@@ -55,6 +58,7 @@ impl Editor {
         let view = View::new(content, 0, 0);
 
         Ok(Self {
+            path: path.to_string(),
             file_name: path.to_string(),
             view,
             tui: Tui::new(),
@@ -169,6 +173,7 @@ impl Editor {
     /// Run the editor loop
     pub fn run(&mut self) {
         let mut sb = StatusBar {
+            path: ".".to_string(),
             file_name: self.file_name.clone(),
             mode: self.mode.clone(),
         };
@@ -178,10 +183,9 @@ impl Editor {
         // width - 3 to leave space for the line numbers
         self.view
             .resize((height - 1) as usize, (width - 4) as usize);
-
         // draw initial view
         self.tui.clear();
-        self.tui.draw_view(&self.view, &self.file_name, &self.mode);
+        self.tui.draw_view(&self.view, &sb);
 
         let stdin = std::io::stdin().keys();
 
@@ -191,7 +195,7 @@ impl Editor {
                     let refresh_order = self.execute(cmd);
                     match refresh_order {
                         RefreshOrder::AllLines => {
-                            self.tui.draw_view(&self.view, &self.file_name, &self.mode)
+                            self.tui.draw_view(&self.view, &sb)
                         }
                         RefreshOrder::StatusBar => {
                             sb.file_name = self.file_name.clone();
@@ -199,7 +203,7 @@ impl Editor {
                             self.tui.draw_status_bar(&sb, height, width)
                         }
                         RefreshOrder::CursorPos => {
-                            self.tui.draw_view(&self.view, &self.file_name, &self.mode)
+                            self.tui.draw_view(&self.view, &sb)
                         }
                         RefreshOrder::Lines(lines) => self.tui.refresh_lines(&self.view, lines),
                     }
