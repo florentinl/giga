@@ -2,7 +2,7 @@ use std::{collections::HashSet, process::exit};
 
 use crate::{
     command::Command,
-    file::File,
+    file::{File},
     tui::{StatusBar, Tui},
     view::View,
 };
@@ -11,8 +11,10 @@ use termion::input::TermRead;
 /// Editor structure
 /// represents the state of the program
 pub struct Editor {
+    /// The path of the file being edited
+    path: String,
     /// The name of the file being edited
-    file_name: Option<String>,
+    file_name: String,
     /// The current view of the file
     view: View,
     /// The Tui responsible for drawing the editor
@@ -41,7 +43,8 @@ impl Editor {
     /// Create a new editor
     pub fn new(file_name: Option<&str>) -> Self {
         Self {
-            file_name: file_name.map(|s| s.to_string()),
+            path: file_name.unwrap_or_default().to_string(),
+            file_name: file_name.unwrap_or_default().to_string(),
             view: View::new(File::new(), 0, 0),
             tui: Tui::new(),
             mode: Mode::Normal,
@@ -55,14 +58,15 @@ impl Editor {
         let view = View::new(content, 0, 0);
 
         Ok(Self {
-            file_name: Some(path.to_string()),
+            path: path.to_string(),
+            file_name: path.to_string(),
             view,
             tui: Tui::new(),
             mode: Mode::Normal,
         })
     }
     fn save(&self) {
-        if let Some(path) = &self.file_name {
+        let path = &self.file_name; {
             let content = self.view.dump_file();
             std::fs::write(path.clone() + ".tmp", content).unwrap_or_default();
             std::fs::rename(path.clone() + ".tmp", path).unwrap_or_default();
@@ -135,7 +139,7 @@ impl Editor {
                 let mut lines_to_refresh = HashSet::new();
                 for i in y..self.view.height {
                     lines_to_refresh.insert(i as u16);
-                } 
+                }
                 RefreshOrder::Lines(lines_to_refresh)
             }
             Command::CommandBlock(cmds) => {
@@ -169,7 +173,8 @@ impl Editor {
     /// Run the editor loop
     pub fn run(&mut self) {
         let mut sb = StatusBar {
-            file_name: self.file_name.clone().unwrap_or_default(),
+            path: ".".to_string(),
+            file_name: self.file_name.clone(),
             mode: self.mode.clone(),
         };
         // set view size
@@ -178,10 +183,9 @@ impl Editor {
         // width - 3 to leave space for the line numbers
         self.view
             .resize((height - 1) as usize, (width - 4) as usize);
-
         // draw initial view
         self.tui.clear();
-        self.tui.draw_view(&self.view, &self.file_name, &self.mode);
+        self.tui.draw_view(&self.view, &sb);
 
         let stdin = std::io::stdin().keys();
 
@@ -191,15 +195,16 @@ impl Editor {
                     let refresh_order = self.execute(cmd);
                     match refresh_order {
                         RefreshOrder::AllLines => {
-                            self.tui.draw_view(&self.view, &self.file_name, &self.mode)
+                            self.tui.draw_view(&self.view, &sb)
                         }
                         RefreshOrder::StatusBar => {
-                            sb.file_name = self.file_name.clone().unwrap_or_default();
+                            sb.file_name = self.file_name.clone();
                             sb.mode = self.mode.clone();
                             self.tui.draw_status_bar(&sb, height, width)
                         }
                         RefreshOrder::CursorPos => {
-                            self.tui.draw_view(&self.view, &self.file_name, &self.mode)
+                            let (x, y) = self.view.cursor;
+                            self.tui.move_cursor(x, y)
                         }
                         RefreshOrder::Lines(lines) => self.tui.refresh_lines(&self.view, lines),
                     }

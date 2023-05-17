@@ -12,10 +12,10 @@ use termion::raw::RawTerminal;
 const LINE_NUMBER_WIDTH: u16 = 4;
 
 pub struct StatusBar {
+    pub path: String,
     pub file_name: String,
     pub mode: Mode,
 }
-
 
 /// Terminal User Interface
 /// Responsible for drawing the editor and handling user input using termion in raw mode
@@ -79,14 +79,16 @@ impl Tui {
             Mode::Normal => "NORMAL ".to_string(),
             Mode::Insert => "INSERT ".to_string(),
         };
-        let padding = width - status_bar.file_name.len() as u16 - mode.len() as u16;
+        let padding = width - status_bar.file_name.len() as u16 - mode.len() as u16 - status_bar.path.len() as u16 - 1;
         write!(
             self.stdout,
-            "{}{}{}{}{}{}{}{}{}",
+            "{}{}{}{}{}{}{}{}{}{}{}",
             cursor::Goto(1, height + 1),
             color::Bg(color::White),
             color::Fg(color::Black),
             mode,
+            status_bar.path,
+            "/",
             status_bar.file_name,
             " ".repeat(padding as usize),
             cursor::Goto(width, height + 1),
@@ -118,7 +120,7 @@ impl Tui {
 
     /// Draw the view on the screen
     /// The view is the portion of the file being displayed
-    pub fn draw_view(&mut self, view: &View, file_name: &Option<String>, mode: &Mode) {
+    pub fn draw_view(&mut self, view: &View, sb: &StatusBar) {
         self.clear();
         let height = view.height;
         let width = view.width;
@@ -127,10 +129,6 @@ impl Tui {
             write!(self.stdout, "{}", view.get_line(line - 1)).unwrap_or_default();
         }
         // print the status bar
-        let sb = StatusBar {
-            file_name: file_name.clone().unwrap_or("NewFile".to_string()),
-            mode: mode.clone(),
-        };
         self.draw_status_bar(&sb, height as u16, width as u16);
         print!("{}", cursor::Goto(1, 1));
 
@@ -154,6 +152,11 @@ impl Tui {
             "{}",
             cursor::Goto(x as u16 + LINE_NUMBER_WIDTH as u16 + 1, y as u16 + 1)
         );
+        std::io::stdout().flush().unwrap_or_default();
+    }
+
+    pub fn move_cursor(&mut self, x: usize, y: usize) {
+        print!("{}", cursor::Goto(x as u16 + LINE_NUMBER_WIDTH as u16 + 1, y as u16 + 1));
         std::io::stdout().flush().unwrap_or_default();
     }
 }
