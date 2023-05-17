@@ -1,0 +1,26 @@
+name: Release
+
+on:
+  push:
+    branches: ["main", "CI_test"]
+
+  env:
+    CARGO_TERM_COLOR: always
+  
+  jobs:
+    docs:
+
+      runs-on: ubuntu-latest
+
+      steps:
+        - uses: actions/checkout@v2
+        - uses: action-rs/toolchain@v1
+          with:
+            toolchain: stable
+            target: x86_64-unknown-linux-gnu
+            override: true
+        - uses: action-rs/cargo@v1
+          with:
+            use-cross: true
+            command: build
+            args: --target x86_64-unknown-linux-gnu
