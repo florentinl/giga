@@ -15,8 +15,16 @@ impl File {
 
     /// Create a File abstraction from a string
     pub fn from_string(str: &str) -> Self {
-        let content = str.split('\n').map(|line| line.chars().collect()).collect();
-
+        let content: Vec<Vec<char>> = str.split('\n').map(|line| line.chars().collect()).collect();
+        // replace '\t" by 4 spaces
+        let content = content
+            .iter()
+            .map(|line| {
+                line.iter()
+                    .map(|c| if *c == '\t' { ' ' } else { *c })
+                    .collect()
+            })
+            .collect();
         Self { content }
     }
 
@@ -110,7 +118,10 @@ mod tests {
     fn file_from_bytes() {
         let file = File::from_string("Hello, World !");
         assert_eq!(file.content.len(), 1);
-        assert_eq!(file.content[0], "Hello, World !".chars().collect::<Vec<_>>());
+        assert_eq!(
+            file.content[0],
+            "Hello, World !".chars().collect::<Vec<_>>()
+        );
     }
 
     #[test]
