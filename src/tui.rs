@@ -79,6 +79,7 @@ impl Tui {
         let mode: String = match status_bar.mode {
             Mode::Normal => "NORMAL ".to_string(),
             Mode::Insert => "INSERT ".to_string(),
+            Mode::Rename => "RENAME ".to_string(),
         };
         let padding = width
             - status_bar.file_name.len() as u16

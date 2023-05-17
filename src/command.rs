@@ -11,8 +11,12 @@ pub enum Command {
     Move(isize, isize),
     /// Save the file
     Save,
+    /// Rename the file
+    Rename(Option<char>),
     /// Toggle mode
     ToggleMode,
+    /// Toggle rename
+    ToggleRename,
     /// Insert a character
     Insert(char),
     /// Delete a character
@@ -29,6 +33,7 @@ impl Command {
         match mode {
             Mode::Normal => Self::parse_normal_mode(key),
             Mode::Insert => Self::parse_insert_mode(key),
+            Mode::Rename => Self::parse_rename_mode(key),
         }
     }
 
@@ -71,6 +76,8 @@ impl Command {
             Key::Char('0') => Ok(Command::Move(-isize::MAX, 0)),
             // Save
             Key::Char('w') => Ok(Command::Save),
+            // Rename
+            Key::Char('R') => Ok(Command::ToggleRename),
             _ => Err("Invalid command"),
         }
     }
@@ -89,6 +96,15 @@ impl Command {
             Key::Left => Ok(Command::Move(-1, 0)),
             Key::Up => Ok(Command::Move(0, -1)),
             Key::Down => Ok(Command::Move(0, 1)),
+            _ => Err("Invalid command"),
+        }
+    }
+
+    fn parse_rename_mode(key: Key) -> Result<Self, &'static str> {
+        match key {
+            Key::Backspace => Ok(Command::Rename(None)),
+            Key::Char('\n') => Ok(Command::ToggleMode),
+            Key::Char(c) => Ok(Command::Rename(Some(c))),
             _ => Err("Invalid command"),
         }
     }

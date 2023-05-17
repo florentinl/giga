@@ -30,6 +30,8 @@ pub enum Mode {
     Normal,
     /// Insert mode
     Insert,
+    /// Rename mode
+    Rename,
 }
 
 pub enum RefreshOrder {
@@ -96,16 +98,34 @@ impl Editor {
 
     /// Save the current file
     fn save(&self) {
+        if self.file_name == "" {
+            return;
+        }
         let path = String::from(&self.path) + &self.file_name;
         let content = self.view.dump_file();
         std::fs::write(path.clone() + ".tmp", content).unwrap_or_default();
         std::fs::rename(path.clone() + ".tmp", path).unwrap_or_default();
     }
 
+    /// Rename the current file
+    fn rename(&mut self, c: Option<char>) {
+        match c {
+            None => {
+                // delete a char
+                self.file_name.pop();
+            }
+            Some(c) => match c {
+                ' ' | '\'' => self.file_name = self.file_name.clone() + "_",
+                _ => self.file_name = self.file_name.clone() + &c.to_string(),
+            },
+        }
+    }
+
     /// Execute an editor command
     /// - Quit: exit the program
     /// - Move: move the cursor
     /// - Save: save the file
+    /// - Rename: rename the file
     /// - ToggleMode: toogle editor mode
     /// - Insert: insert a character
     /// - Delete: delete a character
@@ -128,8 +148,16 @@ impl Editor {
                 self.save();
                 RefreshOrder::StatusBar
             }
+            Command::Rename(c) => {
+                self.rename(c);
+                RefreshOrder::StatusBar
+            }
             Command::ToggleMode => {
                 self.toggle_mode();
+                RefreshOrder::StatusBar
+            }
+            Command::ToggleRename => {
+                self.togle_rename();
                 RefreshOrder::StatusBar
             }
             Command::Insert(c) => {
@@ -188,6 +216,15 @@ impl Editor {
         self.mode = match self.mode {
             Mode::Normal => Mode::Insert,
             Mode::Insert => Mode::Normal,
+            Mode::Rename => Mode::Normal,
+        }
+    }
+
+    fn togle_rename(&mut self) {
+        self.mode = match self.mode {
+            Mode::Normal => Mode::Rename,
+            Mode::Rename => Mode::Normal,
+            _ => Mode::Normal, // Could not be in insert mode
         }
     }
 
