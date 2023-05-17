@@ -48,13 +48,18 @@ It will create a new file called NewFile.
 
 ## Mode
 
-Giga is a modal based test editor. You have two modes:
+Giga is a modal based test editor. You have three modes:
 
 - NORMAL
 - INSERT
+- RENAME
 
-You can switch mode : press "i" in NORMAL to go to INSERT and "Esc" in INSERT to come back to NORMAL.
-You can know the current mode by Looking to the status bar beneath the editor.
+To toggle modes:
+
+- in **NORMAL** -> `i` -> **INSERT**
+- in **NORMAL** -> `R` -> **RENAME**
+- in **INSERT** -> `Esc`-> **NORMAL**
+- in **RENAME** -> `Enter` -> **NORMAL**
 
 ## TODO
 
