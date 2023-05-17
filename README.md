@@ -64,6 +64,6 @@ As giga is under development, we need to fix these:
 - [x] Rename a file
 - [ ] Syntax Highlighting
 - [x] Refresh only lines changed
-- [x] Trandfomr tabs in spaces
+- [x] Transform tabs in spaces
 - [ ] Unit Testing 100%
 - [ ] Documentation
