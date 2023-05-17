@@ -209,11 +209,15 @@
 <a href="#209" id="209">209</a>
 <a href="#210" id="210">210</a>
 <a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{collections::HashSet, process::exit};
 
 <span class="kw">use crate</span>::{
     command::Command,
-    file::File,
+    file::{File},
     tui::{StatusBar, Tui},
     view::View,
 };
@@ -222,8 +226,10 @@
 <span class="doccomment">/// Editor structure
 /// represents the state of the program
 </span><span class="kw">pub struct </span>Editor {
+    <span class="doccomment">/// The path of the file being edited
+    </span>path: String,
     <span class="doccomment">/// The name of the file being edited
-    </span>file_name: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    </span>file_name: String,
     <span class="doccomment">/// The current view of the file
     </span>view: View,
     <span class="doccomment">/// The Tui responsible for drawing the editor
@@ -252,7 +258,8 @@
     <span class="doccomment">/// Create a new editor
     </span><span class="kw">pub fn </span>new(file_name: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            file_name: file_name.map(|s| s.to_string()),
+            path: file_name.unwrap_or_default().to_string(),
+            file_name: file_name.unwrap_or_default().to_string(),
             view: View::new(File::new(), <span class="number">0</span>, <span class="number">0</span>),
             tui: Tui::new(),
             mode: Mode::Normal,
@@ -266,14 +273,15 @@
         <span class="kw">let </span>view = View::new(content, <span class="number">0</span>, <span class="number">0</span>);
 
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
-            file_name: <span class="prelude-val">Some</span>(path.to_string()),
+            path: path.to_string(),
+            file_name: path.to_string(),
             view,
             tui: Tui::new(),
             mode: Mode::Normal,
         })
     }
     <span class="kw">fn </span>save(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(path) = <span class="kw-2">&amp;</span><span class="self">self</span>.file_name {
+        <span class="kw">let </span>path = <span class="kw-2">&amp;</span><span class="self">self</span>.file_name; {
             <span class="kw">let </span>content = <span class="self">self</span>.view.dump_file();
             std::fs::write(path.clone() + <span class="string">&quot;.tmp&quot;</span>, content).unwrap_or_default();
             std::fs::rename(path.clone() + <span class="string">&quot;.tmp&quot;</span>, path).unwrap_or_default();
@@ -380,7 +388,8 @@
     <span class="doccomment">/// Run the editor loop
     </span><span class="kw">pub fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">let </span><span class="kw-2">mut </span>sb = StatusBar {
-            file_name: <span class="self">self</span>.file_name.clone().unwrap_or_default(),
+            path: <span class="string">&quot;.&quot;</span>.to_string(),
+            file_name: <span class="self">self</span>.file_name.clone(),
             mode: <span class="self">self</span>.mode.clone(),
         };
         <span class="comment">// set view size
@@ -389,10 +398,9 @@
         // width - 3 to leave space for the line numbers
         </span><span class="self">self</span>.view
             .resize((height - <span class="number">1</span>) <span class="kw">as </span>usize, (width - <span class="number">4</span>) <span class="kw">as </span>usize);
-
         <span class="comment">// draw initial view
         </span><span class="self">self</span>.tui.clear();
-        <span class="self">self</span>.tui.draw_view(<span class="kw-2">&amp;</span><span class="self">self</span>.view, <span class="kw-2">&amp;</span><span class="self">self</span>.file_name, <span class="kw-2">&amp;</span><span class="self">self</span>.mode);
+        <span class="self">self</span>.tui.draw_view(<span class="kw-2">&amp;</span><span class="self">self</span>.view, <span class="kw-2">&amp;</span>sb);
 
         <span class="kw">let </span>stdin = std::io::stdin().keys();
 
@@ -402,10 +410,10 @@
                     <span class="kw">let </span>refresh_order = <span class="self">self</span>.execute(cmd);
                     <span class="kw">match </span>refresh_order {
                         RefreshOrder::AllLines =&gt; {
-                            <span class="self">self</span>.tui.draw_view(<span class="kw-2">&amp;</span><span class="self">self</span>.view, <span class="kw-2">&amp;</span><span class="self">self</span>.file_name, <span class="kw-2">&amp;</span><span class="self">self</span>.mode)
+                            <span class="self">self</span>.tui.draw_view(<span class="kw-2">&amp;</span><span class="self">self</span>.view, <span class="kw-2">&amp;</span>sb)
                         }
                         RefreshOrder::StatusBar =&gt; {
-                            sb.file_name = <span class="self">self</span>.file_name.clone().unwrap_or_default();
+                            sb.file_name = <span class="self">self</span>.file_name.clone();
                             sb.mode = <span class="self">self</span>.mode.clone();
                             <span class="self">self</span>.tui.draw_status_bar(<span class="kw-2">&amp;</span>sb, height, width)
                         }
