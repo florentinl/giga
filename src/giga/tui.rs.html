@@ -170,6 +170,7 @@
 <a href="#170" id="170">170</a>
 <a href="#171" id="171">171</a>
 <a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
 </pre><pre class="rust"><code><span class="kw">extern crate </span>termion;
 <span class="kw">use </span><span class="kw">crate</span>::editor::Mode;
 <span class="kw">use </span><span class="kw">crate</span>::view::View;
@@ -248,6 +249,7 @@
     /// The status bar is displayed at the bottom of the screen,
     /// it contains the current mode and the file name
     </span><span class="kw">pub fn </span>draw_status_bar(<span class="kw-2">&amp;mut </span><span class="self">self</span>, status_bar: <span class="kw-2">&amp;</span>StatusBar, height: u16, width: u16) {
+        <span class="kw">let </span>width = width + <span class="number">4</span>;
         <span class="kw">let </span>mode: String = <span class="kw">match </span>status_bar.mode {
             Mode::Normal =&gt; <span class="string">&quot;NORMAL &quot;</span>.to_string(),
             Mode::Insert =&gt; <span class="string">&quot;INSERT &quot;</span>.to_string(),
@@ -268,8 +270,8 @@
             status_bar.path,
             status_bar.file_name,
             <span class="string">&quot; &quot;</span>.repeat(padding <span class="kw">as </span>usize),
-            cursor::Goto(width, height + <span class="number">1</span>),
-            color::Fg(color::Reset),
+            cursor::Goto(width, height + <span class="number">1</span>), <span class="comment">// width + 4 because of the line numbers in editor run
+            </span>color::Fg(color::Reset),
             color::Bg(color::Reset),
         )
         .unwrap_or_default();
