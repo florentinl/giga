@@ -139,7 +139,7 @@ impl Editor {
                 let mut lines_to_refresh = HashSet::new();
                 for i in y..self.view.height {
                     lines_to_refresh.insert(i as u16);
-                } 
+                }
                 RefreshOrder::Lines(lines_to_refresh)
             }
             Command::CommandBlock(cmds) => {
@@ -203,7 +203,8 @@ impl Editor {
                             self.tui.draw_status_bar(&sb, height, width)
                         }
                         RefreshOrder::CursorPos => {
-                            self.tui.draw_view(&self.view, &sb)
+                            let (x, y) = self.view.cursor;
+                            self.tui.move_cursor(x, y)
                         }
                         RefreshOrder::Lines(lines) => self.tui.refresh_lines(&self.view, lines),
                     }
