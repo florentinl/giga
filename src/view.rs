@@ -29,11 +29,13 @@ impl View {
         }
     }
 
+    /// Resize the view
     pub fn resize(&mut self, height: usize, width: usize) {
         self.height = height;
         self.width = width;
     }
 
+    /// Get the line at the given index in the view
     pub fn get_line(&self, index: usize) -> String {
         let line = self
             .file
@@ -47,54 +49,59 @@ impl View {
     /// Navigate the cursor by a given amount and eventually scroll the view
     /// if the cursor is out of bounds of the file, it will be moved to the
     /// closest valid position instead.
-    pub fn navigate(&mut self, dx: isize, dy: isize) -> bool{
+    pub fn navigate(&mut self, dx: isize, dy: isize) -> bool {
         // We move onto the new line
-        let a = self.navigate_y(dy);
+        let has_scrolled_on_y = self.navigate_y(dy);
 
         // We move onto the new column
-        let b = self.navigate_x(dx);
+        let has_scrolled_on_x = self.navigate_x(dx);
 
-        a || b
+        has_scrolled_on_x || has_scrolled_on_y
     }
     /// Navigate along the y axis and eventually scroll the view
-    fn navigate_y(&mut self, dy: isize) -> bool{
-        let mut is_on_scroll:bool = false;
+    fn navigate_y(&mut self, dy: isize) -> bool {
         let (_, y) = self.cursor;
         let file_height = self.file.len() as isize;
         let view_height = self.height as isize;
-        let start = self.start_line as isize;
-        let mut new_y = y as isize + dy;
+        let top = self.start_line as isize;
 
-        if new_y < 0 {
-            self.start_line = (start + new_y).max(0) as usize;
-            new_y = 0;
-            is_on_scroll = true;
-        } else if new_y >= view_height {
-            self.start_line = (start + new_y - view_height + 1)
+        // calculate the absolute position of the cursor
+        let abs_y = (y as isize)
+            .saturating_add(dy)
+            .saturating_add(top)
+            .max(0)
+            .min(file_height - 1);
+        let rel_y = abs_y - top;
+
+        if rel_y < 0 {
+            self.start_line = (top + rel_y) as usize;
+            self.cursor.1 = 0;
+            true
+        } else if rel_y >= view_height {
+            self.start_line = (top + rel_y - view_height + 1)
                 .min(file_height - view_height)
                 .max(0) as usize;
-            new_y = (view_height - 1).min(file_height - 1);
-            is_on_scroll = true;
+            self.cursor.1 = (view_height - 1).min(file_height - 1) as usize;
+            true
         } else {
-            new_y = new_y.max(0).min(file_height - 1);
+            self.cursor.1 = rel_y as usize;
+            false
         }
-        self.cursor.1 = new_y as usize;
-        is_on_scroll
     }
 
     /// Navigate along the x axis and eventually scroll the view
-    fn navigate_x(&mut self, dx: isize) -> bool{
-        let mut is_on_scroll:bool = false;
+    fn navigate_x(&mut self, dx: isize) -> bool {
+        let (x, y) = self.cursor;
         let line_len = self
             .file
-            .get_line(self.cursor.1 + self.start_line)
+            .get_line(y + self.start_line)
             .unwrap_or_default()
             .len() as isize;
         let left = self.start_col as isize;
         let width = self.width as isize;
 
         // calculate the absolute position of the cursor
-        let abs_x = (self.cursor.0 as isize)
+        let abs_x = (x as isize)
             .saturating_add(dx)
             .saturating_add(left)
             .max(0)
@@ -104,21 +111,21 @@ impl View {
         if rel_x < 0 {
             self.start_col = (left + rel_x).max(0) as usize;
             self.cursor.0 = 0;
-            is_on_scroll = true;
+            true
         } else if rel_x >= width {
             self.start_col = ((left + rel_x).min(line_len) - width + 1).max(0) as usize;
             self.cursor.0 = (width - 1) as usize;
-            is_on_scroll = true;
+            true
         } else {
             self.cursor.0 = rel_x as usize;
+            false
         }
-        is_on_scroll
     }
 
     /// # Insert a character at the cursor position
     /// This function will insert a character at the cursor position and move
     /// the cursor to the right.
-    pub fn insert(&mut self, c: char) -> bool{
+    pub fn insert(&mut self, c: char) -> bool {
         let (rel_x, rel_y) = self.cursor;
         // Calculate the absolute position of the cursor in the file
         let (x, y) = (rel_x + self.start_col, rel_y + self.start_line);
@@ -140,7 +147,7 @@ impl View {
     /// world!
     /// ^ cursor is here
     /// ```
-    pub fn insert_new_line(&mut self) -> bool{
+    pub fn insert_new_line(&mut self) -> bool {
         let (rel_x, rel_y) = self.cursor;
         // Calculate the absolute position of the cursor in the file
         let (x, y) = (rel_x + self.start_col, rel_y + self.start_line);
@@ -150,8 +157,8 @@ impl View {
         self.navigate(-(x as isize), 1)
     }
 
-    pub fn delete(&mut self) -> bool{
-        let scroll:bool;
+    pub fn delete(&mut self) -> bool {
+        let scroll: bool;
         let (rel_x, rel_y) = self.cursor;
         // Calculate the absolute position of the cursor in the file
         let (x, y) = (rel_x + self.start_col, rel_y + self.start_line);
