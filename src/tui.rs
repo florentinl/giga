@@ -118,7 +118,7 @@ impl Tui {
 
     /// Draw the view on the screen
     /// The view is the portion of the file being displayed
-    pub fn draw_view(&mut self, view: &View, file_name: &Option<String>, mode: &Mode) {
+    pub fn draw_view(&mut self, view: &View, file_name: &String, mode: &Mode) {
         self.clear();
         let height = view.height;
         let width = view.width;
@@ -128,7 +128,7 @@ impl Tui {
         }
         // print the status bar
         let sb = StatusBar {
-            file_name: file_name.clone().unwrap_or("NewFile".to_string()),
+            file_name: file_name.clone(),
             mode: mode.clone(),
         };
         self.draw_status_bar(&sb, height as u16, width as u16);
