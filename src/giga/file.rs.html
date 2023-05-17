@@ -199,9 +199,23 @@
 <a href="#199" id="199">199</a>
 <a href="#200" id="200">200</a>
 <a href="#201" id="201">201</a>
-</pre><pre class="rust"><code><span class="kw">use </span>std::vec;
-
-<span class="doccomment">/// The File structure is the in-memory representation of the full file being edited.
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+</pre><pre class="rust"><code><span class="doccomment">/// The File structure is the in-memory representation of the full file being edited.
 /// It is a vector of lines, each line being a vector of bytes.
 </span><span class="kw">pub struct </span>File {
     content: Vec&lt;Vec&lt;char&gt;&gt;,
@@ -216,8 +230,20 @@
 
     <span class="doccomment">/// Create a File abstraction from a string
     </span><span class="kw">pub fn </span>from_string(str: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>content = str.split(<span class="string">&#39;\n&#39;</span>).map(|line| line.chars().collect()).collect();
-
+        <span class="kw">let </span><span class="kw-2">mut </span>content: Vec&lt;Vec&lt;char&gt;&gt; =
+            str.split(<span class="string">&#39;\n&#39;</span>).map(|line| line.chars().collect()).collect();
+        <span class="kw">for </span>line <span class="kw">in </span>content.iter_mut() {
+            <span class="kw">let </span><span class="kw-2">mut </span>range: Vec&lt;usize&gt; = Vec::new();
+            <span class="kw">for </span>(i, c) <span class="kw">in </span>line.iter_mut().enumerate() {
+                <span class="kw">if </span><span class="kw-2">*</span>c == <span class="string">&#39;\t&#39; </span>{
+                    range.push(i);
+                }
+            }
+            <span class="kw">for </span>i <span class="kw">in </span>range {
+                line.splice(i..i, <span class="string">&quot;    &quot;</span>.chars()); <span class="comment">// insert 4 spaces
+                </span>line.remove(i + <span class="number">4</span>); <span class="comment">// remove the remaining &#39;\t&#39;
+            </span>}
+        }
         <span class="self">Self </span>{ content }
     }
 
@@ -398,6 +424,12 @@
         <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_string(<span class="string">&quot;Hello, World !&quot;</span>);
         file.split_line(<span class="number">0</span>, <span class="number">20</span>);
         <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;Hello, World !&quot;</span>);
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>file_from_sting_with_tabs() {
+        <span class="kw">let </span>file = File::from_string(<span class="string">&quot;Hello,\tWorld !&quot;</span>);
+        <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;Hello,    World !&quot;</span>);
     }
 }
 </code></pre></div>
