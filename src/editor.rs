@@ -77,6 +77,10 @@ impl Editor {
     }
 
     fn split_path_name(path: &str) -> (String, String) {
+        // if there is no '/' in the path, the file is in the current directory
+        if !path.contains('/') {
+            return ("./".to_string(), path.to_string());
+        }
         let mut path = path.to_string();
         let mut file_name = path.clone();
         let mut i = path.len() - 1;
