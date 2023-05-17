@@ -2,7 +2,7 @@ use std::{collections::HashSet, process::exit};
 
 use crate::{
     command::Command,
-    file::{File},
+    file::File,
     tui::{StatusBar, Tui},
     view::View,
 };
@@ -33,9 +33,15 @@ pub enum Mode {
 }
 
 pub enum RefreshOrder {
+    /// No need to refresh the screen
+    None,
+    /// Refresh the cursor position
     CursorPos,
+    /// Refresh the given lines
     Lines(HashSet<u16>),
+    /// Refresh the status bar
     StatusBar,
+    /// Refresh the whole screen
     AllLines,
 }
 
@@ -68,7 +74,7 @@ impl Editor {
         })
     }
 
-    fn split_path_name(path: &str) -> (String, String){
+    fn split_path_name(path: &str) -> (String, String) {
         let mut path = path.to_string();
         let mut file_name = path.clone();
         let mut i = path.len() - 1;
@@ -82,18 +88,18 @@ impl Editor {
         (path, file_name)
     }
 
-    fn save(&self) {
-        let path = String::from(&self.path) + &self.file_name;
-        {
-            let content = self.view.dump_file();
-            std::fs::write(path.clone() + ".tmp", content).unwrap_or_default();
-            std::fs::rename(path.clone() + ".tmp", path).unwrap_or_default();
-        }
-    }
-
+    /// Close the editor
     fn terminate(&mut self) {
         self.tui.cleanup();
         exit(0);
+    }
+
+    /// Save the current file
+    fn save(&self) {
+        let path = String::from(&self.path) + &self.file_name;
+        let content = self.view.dump_file();
+        std::fs::write(path.clone() + ".tmp", content).unwrap_or_default();
+        std::fs::rename(path.clone() + ".tmp", path).unwrap_or_default();
     }
 
     /// Execute an editor command
@@ -107,6 +113,7 @@ impl Editor {
         match cmd {
             Command::Quit => {
                 self.terminate();
+                // Doesn't matter as self.terminate() never returns
                 RefreshOrder::AllLines
             }
             Command::Move(x, y) => {
@@ -129,53 +136,49 @@ impl Editor {
                 let scroll = self.view.insert(c);
                 if scroll {
                     return RefreshOrder::AllLines;
+                } else {
+                    // Refresh only the current line: self.view.cursor.1
+                    RefreshOrder::Lines(HashSet::from_iter(vec![self.view.cursor.1 as u16]))
                 }
-                let y = self.view.cursor.1;
-                let mut lines_to_refresh = HashSet::new();
-                lines_to_refresh.insert(y as u16);
-                RefreshOrder::Lines(lines_to_refresh)
             }
             Command::InsertNewLine => {
-                let y = self.view.cursor.1;
-                let mut lines_to_refresh = HashSet::new();
                 let scroll = self.view.insert_new_line();
                 if scroll {
-                    return RefreshOrder::AllLines;
+                    // If we scroll (because we are at the bottom of the view),
+                    // we need to refresh all lines.
+                    RefreshOrder::AllLines
                 } else {
-                    for i in y..self.view.height {
-                        lines_to_refresh.insert(i as u16);
-                    }
+                    // Refresh only the lines below the cursor
+                    RefreshOrder::Lines(HashSet::from_iter(
+                        self.view.cursor.1 as u16..self.view.height as u16,
+                    ))
                 }
-                RefreshOrder::Lines(lines_to_refresh)
             }
             Command::Delete => {
                 let scroll = self.view.delete();
                 if scroll {
-                    return RefreshOrder::AllLines;
+                    // If we scroll (because we deleted a char at the left of the view),
+                    // we need to refresh all lines.
+                    RefreshOrder::AllLines
+                } else {
+                    // Refresh only the lines below the cursor
+                    RefreshOrder::Lines(HashSet::from_iter(
+                        self.view.cursor.1 as u16..self.view.height as u16,
+                    ))
                 }
-                let y = self.view.cursor.1;
-                let mut lines_to_refresh = HashSet::new();
-                for i in y..self.view.height {
-                    lines_to_refresh.insert(i as u16);
-                }
-                RefreshOrder::Lines(lines_to_refresh)
             }
             Command::CommandBlock(cmds) => {
-                let mut refr: RefreshOrder = RefreshOrder::StatusBar;
-                let mut lines_to_refresh: HashSet<u16> = HashSet::new();
-                cmds.into_iter().for_each(|cmd| {
-                    refr = self.execute(cmd);
-                    match &refr {
-                        RefreshOrder::Lines(lines) => {
-                            lines_to_refresh.extend(lines);
+                cmds.into_iter().fold(RefreshOrder::None, |refr, cmd| {
+                    use RefreshOrder::*;
+                    match (refr, self.execute(cmd)) {
+                        (None, r) | (r, None) => r,
+                        (Lines(mut s1), Lines(s2)) => {
+                            s1.extend(s2);
+                            Lines(s1)
                         }
-                        RefreshOrder::CursorPos | RefreshOrder::StatusBar => {
-                            refr = RefreshOrder::AllLines
-                        } // on command, we can refresh all lines as it may be undo / redo
-                        _ => {}
+                        _ => AllLines,
                     }
-                });
-                refr
+                })
             }
         }
     }
@@ -195,10 +198,12 @@ impl Editor {
             file_name: self.file_name.clone(),
             mode: self.mode.clone(),
         };
+
         // set view size
         let (width, height) = self.tui.get_term_size();
+
         // height - 1 to leave space for the status bar
-        // width - 3 to leave space for the line numbers
+        // width - 4 to leave space for the line numbers
         self.view
             .resize((height - 1) as usize, (width - 4) as usize);
         // draw initial view
@@ -210,19 +215,23 @@ impl Editor {
         for c in stdin {
             if let Ok(c) = c {
                 if let Ok(cmd) = Command::parse(c, &self.mode) {
-                    let refresh_order = self.execute(cmd);
-                    match refresh_order {
-                        RefreshOrder::AllLines => self.tui.draw_view(&self.view, &sb),
+                    match self.execute(cmd) {
+                        RefreshOrder::None => (),
+                        RefreshOrder::CursorPos => {
+                            let (x, y) = self.view.cursor;
+                            self.tui.move_cursor(x, y)
+                        }
                         RefreshOrder::StatusBar => {
                             sb.file_name = self.file_name.clone();
                             sb.mode = self.mode.clone();
                             self.tui.draw_status_bar(&sb, height, width)
                         }
-                        RefreshOrder::CursorPos => {
-                            let (x, y) = self.view.cursor;
-                            self.tui.move_cursor(x, y)
-                        }
                         RefreshOrder::Lines(lines) => self.tui.refresh_lines(&self.view, lines),
+                        RefreshOrder::AllLines => {
+                            sb.file_name = self.file_name.clone();
+                            sb.mode = self.mode.clone();
+                            self.tui.draw_view(&self.view, &sb)
+                        }
                     }
                 }
             }

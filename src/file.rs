@@ -110,7 +110,10 @@ mod tests {
     fn file_from_bytes() {
         let file = File::from_string("Hello, World !");
         assert_eq!(file.content.len(), 1);
-        assert_eq!(file.content[0], "Hello, World !".chars().collect::<Vec<_>>());
+        assert_eq!(
+            file.content[0],
+            "Hello, World !".chars().collect::<Vec<_>>()
+        );
     }
 
     #[test]

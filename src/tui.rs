@@ -17,10 +17,10 @@ pub struct StatusBar {
     pub mode: Mode,
 }
 
-/// Terminal User Interface
+/// # Terminal User Interface
 /// Responsible for drawing the editor and handling user input using termion in raw mode
 pub struct Tui {
-    // Async input reader (stdin)
+    /// The raw terminal output we can write to using termion
     pub stdout: RawTerminal<std::io::Stdout>,
 }
 
@@ -31,13 +31,13 @@ impl Tui {
         }
     }
 
-    /// Get the terminal size
+    /// # Get the terminal size
     /// Returns a tuple of (width, height)
     pub fn get_term_size(&self) -> (u16, u16) {
         termion::terminal_size().unwrap_or_default()
     }
 
-    /// Clear the screen
+    /// # Clear the screen
     pub fn clear(&mut self) {
         // Clear the screen with the "\x1B[3J" escape code (clear screen and scrollback buffer)
         write!(self.stdout, "{}", clear::All).unwrap_or_default();
@@ -46,7 +46,7 @@ impl Tui {
         write!(self.stdout, "{}", cursor::Goto(1, 1)).unwrap_or_default();
     }
 
-    /// Cleanup the terminal before exiting the program
+    /// # Cleanup the terminal before exiting the program
     /// This will :
     /// - Flush the stdout buffer
     /// - Clear the screen
@@ -66,20 +66,25 @@ impl Tui {
         // Reset the terminal colors
         write!(self.stdout, "{}", color::Fg(color::Reset)).unwrap_or_default();
         write!(self.stdout, "{}", color::Bg(color::Reset)).unwrap_or_default();
-        // Reset the terminal cursor
-        write!(self.stdout, "{}", cursor::Show).unwrap_or_default();
+        // Disable raw mode
         self.stdout.suspend_raw_mode().unwrap_or_default();
+        // Show the terminal cursor
+        write!(self.stdout, "{}", cursor::Show).unwrap_or_default();
     }
 
-    /// Draw the status bar
-    /// The status bar is displayed at the bottom of the screen
-    /// It contains the current mode and the file name
+    /// # Draw the status bar
+    /// The status bar is displayed at the bottom of the screen,
+    /// it contains the current mode and the file name
     pub fn draw_status_bar(&mut self, status_bar: &StatusBar, height: u16, width: u16) {
         let mode: String = match status_bar.mode {
             Mode::Normal => "NORMAL ".to_string(),
             Mode::Insert => "INSERT ".to_string(),
         };
-        let padding = width - status_bar.file_name.len() as u16 - mode.len() as u16 - status_bar.path.len() as u16 - 1;
+        let padding = width
+            - status_bar.file_name.len() as u16
+            - mode.len() as u16
+            - status_bar.path.len() as u16
+            - 1;
         write!(
             self.stdout,
             "{}{}{}{}{}{}{}{}{}{}",
@@ -98,7 +103,7 @@ impl Tui {
         self.stdout.flush().unwrap_or_default();
     }
 
-    /// Draw the line numbers
+    /// # Draw the line numbers
     /// The line numbers are displayed at the left of the screen in blue
     pub fn draw_line_numbers(&mut self, line: usize) {
         let number = format!("{:3} ", line);
@@ -117,7 +122,7 @@ impl Tui {
         self.stdout.flush().unwrap_or_default();
     }
 
-    /// Draw the view on the screen
+    /// # Draw the view on the screen
     /// The view is the portion of the file being displayed
     pub fn draw_view(&mut self, view: &View, sb: &StatusBar) {
         self.clear();
@@ -140,6 +145,7 @@ impl Tui {
         std::io::stdout().flush().unwrap_or_default();
     }
 
+    /// # Refresh only some lines of the view
     pub fn refresh_lines(&mut self, view: &View, lines: HashSet<u16>) {
         for line in lines {
             self.draw_line_numbers((line + 1) as usize);
@@ -154,8 +160,12 @@ impl Tui {
         std::io::stdout().flush().unwrap_or_default();
     }
 
+    /// # Refresh the cursor position
     pub fn move_cursor(&mut self, x: usize, y: usize) {
-        print!("{}", cursor::Goto(x as u16 + LINE_NUMBER_WIDTH as u16 + 1, y as u16 + 1));
+        print!(
+            "{}",
+            cursor::Goto(x as u16 + LINE_NUMBER_WIDTH as u16 + 1, y as u16 + 1)
+        );
         std::io::stdout().flush().unwrap_or_default();
     }
 }
