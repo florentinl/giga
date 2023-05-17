@@ -1,4 +1,4 @@
-use std::vec;
+use std::{collections::btree_map::Range, ops::RangeBounds, vec};
 
 /// The File structure is the in-memory representation of the full file being edited.
 /// It is a vector of lines, each line being a vector of bytes.
@@ -15,16 +15,20 @@ impl File {
 
     /// Create a File abstraction from a string
     pub fn from_string(str: &str) -> Self {
-        let content: Vec<Vec<char>> = str.split('\n').map(|line| line.chars().collect()).collect();
-        // replace '\t" by 4 spaces
-        let content = content
-            .iter()
-            .map(|line| {
-                line.iter()
-                    .map(|c| if *c == '\t' { ' ' } else { *c })
-                    .collect()
-            })
-            .collect();
+        let mut content: Vec<Vec<char>> =
+            str.split('\n').map(|line| line.chars().collect()).collect();
+        for line in content.iter_mut() {
+            let mut range: Vec<usize> = Vec::new();
+            for (i, c) in line.iter_mut().enumerate() {
+                if *c == '\t' {
+                    range.push(i);
+                }
+            }
+            for i in range {
+                line.splice(i..i, "    ".chars()); // insert 4 spaces
+                line.remove(i + 4); // remove the remaining '\t'
+            }
+        }
         Self { content }
     }
 
@@ -205,5 +209,11 @@ mod tests {
         let mut file = File::from_string("Hello, World !");
         file.split_line(0, 20);
         assert_eq!(file.to_string(), "Hello, World !");
+    }
+
+    #[test]
+    fn file_from_sting_with_tabs() {
+        let file = File::from_string("Hello,\tWorld !");
+        assert_eq!(file.to_string(), "Hello,    World !");
     }
 }
