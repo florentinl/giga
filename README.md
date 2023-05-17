@@ -61,9 +61,9 @@ You can know the current mode by Looking to the status bar beneath the editor.
 As giga is under development, we need to fix these:
 
 - [x] UTF-8 support
-- [ ] Rename a file
+- [x] Rename a file
 - [ ] Syntax Highlighting
 - [x] Refresh only lines changed
-- [ ] Use Tab instead of 4 spaces
+- [x] Trandfomr tabs in spaces
 - [ ] Unit Testing 100%
 - [ ] Documentation
