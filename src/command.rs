@@ -107,7 +107,6 @@ impl Command {
             Key::Char(c) => Ok(Command::Rename(Some(c))),
             _ => Err("Invalid command"),
         }
-        
     }
 
     /// Parse a character in insert mode
