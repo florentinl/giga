@@ -169,6 +169,7 @@
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
 <a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
 </pre><pre class="rust"><code><span class="kw">extern crate </span>termion;
 <span class="kw">use </span><span class="kw">crate</span>::editor::Mode;
 <span class="kw">use </span><span class="kw">crate</span>::view::View;
@@ -250,6 +251,7 @@
         <span class="kw">let </span>mode: String = <span class="kw">match </span>status_bar.mode {
             Mode::Normal =&gt; <span class="string">&quot;NORMAL &quot;</span>.to_string(),
             Mode::Insert =&gt; <span class="string">&quot;INSERT &quot;</span>.to_string(),
+            Mode::Rename =&gt; <span class="string">&quot;RENAME &quot;</span>.to_string(),
         };
         <span class="kw">let </span>padding = width
             - status_bar.file_name.len() <span class="kw">as </span>u16
