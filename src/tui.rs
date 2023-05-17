@@ -80,7 +80,11 @@ impl Tui {
             Mode::Normal => "NORMAL ".to_string(),
             Mode::Insert => "INSERT ".to_string(),
         };
-        let padding = width - status_bar.file_name.len() as u16 - mode.len() as u16 - status_bar.path.len() as u16 - 1;
+        let padding = width
+            - status_bar.file_name.len() as u16
+            - mode.len() as u16
+            - status_bar.path.len() as u16
+            - 1;
         write!(
             self.stdout,
             "{}{}{}{}{}{}{}{}{}{}",
