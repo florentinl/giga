@@ -229,11 +229,20 @@
 <a href="#229" id="229">229</a>
 <a href="#230" id="230">230</a>
 <a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{collections::HashSet, process::exit};
 
 <span class="kw">use crate</span>::{
     command::Command,
-    file::{File},
+    file::File,
     tui::{StatusBar, Tui},
     view::View,
 };
@@ -264,10 +273,16 @@
 }
 
 <span class="kw">pub enum </span>RefreshOrder {
-    CursorPos,
-    Lines(HashSet&lt;u16&gt;),
-    StatusBar,
-    AllLines,
+    <span class="doccomment">/// No need to refresh the screen
+    </span><span class="prelude-val">None</span>,
+    <span class="doccomment">/// Refresh the cursor position
+    </span>CursorPos,
+    <span class="doccomment">/// Refresh the given lines
+    </span>Lines(HashSet&lt;u16&gt;),
+    <span class="doccomment">/// Refresh the status bar
+    </span>StatusBar,
+    <span class="doccomment">/// Refresh the whole screen
+    </span>AllLines,
 }
 
 <span class="kw">impl </span>Editor {
@@ -299,7 +314,7 @@
         })
     }
 
-    <span class="kw">fn </span>split_path_name(path: <span class="kw-2">&amp;</span>str) -&gt; (String, String){
+    <span class="kw">fn </span>split_path_name(path: <span class="kw-2">&amp;</span>str) -&gt; (String, String) {
         <span class="kw">let </span><span class="kw-2">mut </span>path = path.to_string();
         <span class="kw">let </span><span class="kw-2">mut </span>file_name = path.clone();
         <span class="kw">let </span><span class="kw-2">mut </span>i = path.len() - <span class="number">1</span>;
@@ -313,18 +328,18 @@
         (path, file_name)
     }
 
-    <span class="kw">fn </span>save(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="kw">let </span>path = String::from(<span class="kw-2">&amp;</span><span class="self">self</span>.path) + <span class="kw-2">&amp;</span><span class="self">self</span>.file_name;
-        {
-            <span class="kw">let </span>content = <span class="self">self</span>.view.dump_file();
-            std::fs::write(path.clone() + <span class="string">&quot;.tmp&quot;</span>, content).unwrap_or_default();
-            std::fs::rename(path.clone() + <span class="string">&quot;.tmp&quot;</span>, path).unwrap_or_default();
-        }
-    }
-
-    <span class="kw">fn </span>terminate(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+    <span class="doccomment">/// Close the editor
+    </span><span class="kw">fn </span>terminate(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="self">self</span>.tui.cleanup();
         exit(<span class="number">0</span>);
+    }
+
+    <span class="doccomment">/// Save the current file
+    </span><span class="kw">fn </span>save(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw">let </span>path = String::from(<span class="kw-2">&amp;</span><span class="self">self</span>.path) + <span class="kw-2">&amp;</span><span class="self">self</span>.file_name;
+        <span class="kw">let </span>content = <span class="self">self</span>.view.dump_file();
+        std::fs::write(path.clone() + <span class="string">&quot;.tmp&quot;</span>, content).unwrap_or_default();
+        std::fs::rename(path.clone() + <span class="string">&quot;.tmp&quot;</span>, path).unwrap_or_default();
     }
 
     <span class="doccomment">/// Execute an editor command
@@ -338,7 +353,8 @@
         <span class="kw">match </span>cmd {
             Command::Quit =&gt; {
                 <span class="self">self</span>.terminate();
-                RefreshOrder::AllLines
+                <span class="comment">// Doesn&#39;t matter as self.terminate() never returns
+                </span>RefreshOrder::AllLines
             }
             Command::Move(x, y) =&gt; {
                 <span class="kw">let </span>scroll = <span class="self">self</span>.view.navigate(x, y);
@@ -360,53 +376,49 @@
                 <span class="kw">let </span>scroll = <span class="self">self</span>.view.insert(c);
                 <span class="kw">if </span>scroll {
                     <span class="kw">return </span>RefreshOrder::AllLines;
+                } <span class="kw">else </span>{
+                    <span class="comment">// Refresh only the current line: self.view.cursor.1
+                    </span>RefreshOrder::Lines(HashSet::from_iter(<span class="macro">vec!</span>[<span class="self">self</span>.view.cursor.<span class="number">1 </span><span class="kw">as </span>u16]))
                 }
-                <span class="kw">let </span>y = <span class="self">self</span>.view.cursor.<span class="number">1</span>;
-                <span class="kw">let </span><span class="kw-2">mut </span>lines_to_refresh = HashSet::new();
-                lines_to_refresh.insert(y <span class="kw">as </span>u16);
-                RefreshOrder::Lines(lines_to_refresh)
             }
             Command::InsertNewLine =&gt; {
-                <span class="kw">let </span>y = <span class="self">self</span>.view.cursor.<span class="number">1</span>;
-                <span class="kw">let </span><span class="kw-2">mut </span>lines_to_refresh = HashSet::new();
                 <span class="kw">let </span>scroll = <span class="self">self</span>.view.insert_new_line();
                 <span class="kw">if </span>scroll {
-                    <span class="kw">return </span>RefreshOrder::AllLines;
+                    <span class="comment">// If we scroll (because we are at the bottom of the view),
+                    // we need to refresh all lines.
+                    </span>RefreshOrder::AllLines
                 } <span class="kw">else </span>{
-                    <span class="kw">for </span>i <span class="kw">in </span>y..<span class="self">self</span>.view.height {
-                        lines_to_refresh.insert(i <span class="kw">as </span>u16);
-                    }
+                    <span class="comment">// Refresh only the lines below the cursor
+                    </span>RefreshOrder::Lines(HashSet::from_iter(
+                        <span class="self">self</span>.view.cursor.<span class="number">1 </span><span class="kw">as </span>u16..<span class="self">self</span>.view.height <span class="kw">as </span>u16,
+                    ))
                 }
-                RefreshOrder::Lines(lines_to_refresh)
             }
             Command::Delete =&gt; {
                 <span class="kw">let </span>scroll = <span class="self">self</span>.view.delete();
                 <span class="kw">if </span>scroll {
-                    <span class="kw">return </span>RefreshOrder::AllLines;
+                    <span class="comment">// If we scroll (because we deleted a char at the left of the view),
+                    // we need to refresh all lines.
+                    </span>RefreshOrder::AllLines
+                } <span class="kw">else </span>{
+                    <span class="comment">// Refresh only the lines below the cursor
+                    </span>RefreshOrder::Lines(HashSet::from_iter(
+                        <span class="self">self</span>.view.cursor.<span class="number">1 </span><span class="kw">as </span>u16..<span class="self">self</span>.view.height <span class="kw">as </span>u16,
+                    ))
                 }
-                <span class="kw">let </span>y = <span class="self">self</span>.view.cursor.<span class="number">1</span>;
-                <span class="kw">let </span><span class="kw-2">mut </span>lines_to_refresh = HashSet::new();
-                <span class="kw">for </span>i <span class="kw">in </span>y..<span class="self">self</span>.view.height {
-                    lines_to_refresh.insert(i <span class="kw">as </span>u16);
-                }
-                RefreshOrder::Lines(lines_to_refresh)
             }
             Command::CommandBlock(cmds) =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>refr: RefreshOrder = RefreshOrder::StatusBar;
-                <span class="kw">let </span><span class="kw-2">mut </span>lines_to_refresh: HashSet&lt;u16&gt; = HashSet::new();
-                cmds.into_iter().for_each(|cmd| {
-                    refr = <span class="self">self</span>.execute(cmd);
-                    <span class="kw">match </span><span class="kw-2">&amp;</span>refr {
-                        RefreshOrder::Lines(lines) =&gt; {
-                            lines_to_refresh.extend(lines);
+                cmds.into_iter().fold(RefreshOrder::None, |refr, cmd| {
+                    <span class="kw">use </span>RefreshOrder::<span class="kw-2">*</span>;
+                    <span class="kw">match </span>(refr, <span class="self">self</span>.execute(cmd)) {
+                        (<span class="prelude-val">None</span>, r) | (r, <span class="prelude-val">None</span>) =&gt; r,
+                        (Lines(<span class="kw-2">mut </span>s1), Lines(s2)) =&gt; {
+                            s1.extend(s2);
+                            Lines(s1)
                         }
-                        RefreshOrder::CursorPos | RefreshOrder::StatusBar =&gt; {
-                            refr = RefreshOrder::AllLines
-                        } <span class="comment">// on command, we can refresh all lines as it may be undo / redo
-                        </span><span class="kw">_ </span>=&gt; {}
+                        <span class="kw">_ </span>=&gt; AllLines,
                     }
-                });
-                refr
+                })
             }
         }
     }
@@ -426,10 +438,12 @@
             file_name: <span class="self">self</span>.file_name.clone(),
             mode: <span class="self">self</span>.mode.clone(),
         };
+
         <span class="comment">// set view size
         </span><span class="kw">let </span>(width, height) = <span class="self">self</span>.tui.get_term_size();
+
         <span class="comment">// height - 1 to leave space for the status bar
-        // width - 3 to leave space for the line numbers
+        // width - 4 to leave space for the line numbers
         </span><span class="self">self</span>.view
             .resize((height - <span class="number">1</span>) <span class="kw">as </span>usize, (width - <span class="number">4</span>) <span class="kw">as </span>usize);
         <span class="comment">// draw initial view
@@ -441,19 +455,23 @@
         <span class="kw">for </span>c <span class="kw">in </span>stdin {
             <span class="kw">if let </span><span class="prelude-val">Ok</span>(c) = c {
                 <span class="kw">if let </span><span class="prelude-val">Ok</span>(cmd) = Command::parse(c, <span class="kw-2">&amp;</span><span class="self">self</span>.mode) {
-                    <span class="kw">let </span>refresh_order = <span class="self">self</span>.execute(cmd);
-                    <span class="kw">match </span>refresh_order {
-                        RefreshOrder::AllLines =&gt; <span class="self">self</span>.tui.draw_view(<span class="kw-2">&amp;</span><span class="self">self</span>.view, <span class="kw-2">&amp;</span>sb),
+                    <span class="kw">match </span><span class="self">self</span>.execute(cmd) {
+                        RefreshOrder::None =&gt; (),
+                        RefreshOrder::CursorPos =&gt; {
+                            <span class="kw">let </span>(x, y) = <span class="self">self</span>.view.cursor;
+                            <span class="self">self</span>.tui.move_cursor(x, y)
+                        }
                         RefreshOrder::StatusBar =&gt; {
                             sb.file_name = <span class="self">self</span>.file_name.clone();
                             sb.mode = <span class="self">self</span>.mode.clone();
                             <span class="self">self</span>.tui.draw_status_bar(<span class="kw-2">&amp;</span>sb, height, width)
                         }
-                        RefreshOrder::CursorPos =&gt; {
-                            <span class="kw">let </span>(x, y) = <span class="self">self</span>.view.cursor;
-                            <span class="self">self</span>.tui.move_cursor(x, y)
-                        }
                         RefreshOrder::Lines(lines) =&gt; <span class="self">self</span>.tui.refresh_lines(<span class="kw-2">&amp;</span><span class="self">self</span>.view, lines),
+                        RefreshOrder::AllLines =&gt; {
+                            sb.file_name = <span class="self">self</span>.file_name.clone();
+                            sb.mode = <span class="self">self</span>.mode.clone();
+                            <span class="self">self</span>.tui.draw_view(<span class="kw-2">&amp;</span><span class="self">self</span>.view, <span class="kw-2">&amp;</span>sb)
+                        }
                     }
                 }
             }
