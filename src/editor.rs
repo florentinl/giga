@@ -41,10 +41,10 @@ pub enum RefreshOrder {
 
 impl Editor {
     /// Create a new editor
-    pub fn new(file_name: Option<&str>) -> Self {
+    pub fn new(file_name: &str) -> Self {
         Self {
-            path: file_name.unwrap_or_default().to_string(),
-            file_name: file_name.unwrap_or_default().to_string(),
+            path: "./".to_string(),
+            file_name: file_name.to_string(),
             view: View::new(File::new(), 0, 0),
             tui: Tui::new(),
             mode: Mode::Normal,
@@ -57,16 +57,34 @@ impl Editor {
         let content = File::from_string(&content);
         let view = View::new(content, 0, 0);
 
+        let (path, file_name) = Self::split_path_name(path);
+
         Ok(Self {
             path: path.to_string(),
-            file_name: path.to_string(),
+            file_name: file_name.to_string(),
             view,
             tui: Tui::new(),
             mode: Mode::Normal,
         })
     }
+
+    fn split_path_name(path: &str) -> (String, String){
+        let mut path = path.to_string();
+        let mut file_name = path.clone();
+        let mut i = path.len() - 1;
+        while i > 0 {
+            if path.chars().nth(i).unwrap() == '/' {
+                file_name = path.split_off(i + 1);
+                break;
+            }
+            i -= 1;
+        }
+        (path, file_name)
+    }
+
     fn save(&self) {
-        let path = &self.file_name; {
+        let path = String::from(&self.path) + &self.file_name;
+        {
             let content = self.view.dump_file();
             std::fs::write(path.clone() + ".tmp", content).unwrap_or_default();
             std::fs::rename(path.clone() + ".tmp", path).unwrap_or_default();
@@ -173,7 +191,7 @@ impl Editor {
     /// Run the editor loop
     pub fn run(&mut self) {
         let mut sb = StatusBar {
-            path: ".".to_string(),
+            path: self.path.clone(),
             file_name: self.file_name.clone(),
             mode: self.mode.clone(),
         };
@@ -194,9 +212,7 @@ impl Editor {
                 if let Ok(cmd) = Command::parse(c, &self.mode) {
                     let refresh_order = self.execute(cmd);
                     match refresh_order {
-                        RefreshOrder::AllLines => {
-                            self.tui.draw_view(&self.view, &sb)
-                        }
+                        RefreshOrder::AllLines => self.tui.draw_view(&self.view, &sb),
                         RefreshOrder::StatusBar => {
                             sb.file_name = self.file_name.clone();
                             sb.mode = self.mode.clone();

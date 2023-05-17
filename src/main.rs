@@ -15,8 +15,8 @@ fn main() {
     let file: Option<&str> = args.get(1).map(|s| s.as_str());
 
     let mut editor = match file {
-        Some(path) => editor::Editor::open(path).unwrap_or(editor::Editor::new(file)),
-        None => editor::Editor::new(Some("Newfile")),
+        Some(path) => editor::Editor::open(path).unwrap_or(editor::Editor::new(path)),
+        None => editor::Editor::new("Newfile"),
     };
     editor.run();
 }
