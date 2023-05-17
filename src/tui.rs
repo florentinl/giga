@@ -96,7 +96,7 @@ impl Tui {
             status_bar.path,
             status_bar.file_name,
             " ".repeat(padding as usize),
-            cursor::Goto(width, height + 1), 
+            cursor::Goto(width, height + 1),
             color::Fg(color::Reset),
             color::Bg(color::Reset),
         )
@@ -134,7 +134,7 @@ impl Tui {
             write!(self.stdout, "{}", view.get_line(line - 1)).unwrap_or_default();
         }
         // print the status bar
-        self.draw_status_bar(&sb, height as u16, width as u16 + LINE_NUMBER_WIDTH ); // to account for the line numbers
+        self.draw_status_bar(&sb, height as u16, width as u16 + LINE_NUMBER_WIDTH); // to account for the line numbers
         print!("{}", cursor::Goto(1, 1));
 
         // move the cursor to the correct position
