@@ -279,12 +279,13 @@
 <a href="#279" id="279">279</a>
 <a href="#280" id="280">280</a>
 <a href="#281" id="281">281</a>
-</pre><pre class="rust"><code><span class="kw">use </span>std::{collections::HashSet, process::exit};
+<a href="#282" id="282">282</a>
+</pre><pre class="rust"><code><span class="kw">use </span>std::{collections::HashSet, fmt::Display, process::exit};
 
 <span class="kw">use crate</span>::{
     command::Command,
     file::File,
-    tui::{StatusBar, Tui},
+    terminal::{termion::TermionTerminalDrawer, StatusBarInfos, TerminalDrawer},
     view::View,
 };
 <span class="kw">use </span>termion::input::TermRead;
@@ -293,13 +294,13 @@
 /// represents the state of the program
 </span><span class="kw">pub struct </span>Editor {
     <span class="doccomment">/// The path of the file being edited
-    </span>path: String,
+    </span>file_path: String,
     <span class="doccomment">/// The name of the file being edited
     </span>file_name: String,
     <span class="doccomment">/// The current view of the file
     </span>view: View,
     <span class="doccomment">/// The Tui responsible for drawing the editor
-    </span>tui: Tui,
+    </span>tui: Box&lt;<span class="kw">dyn </span>TerminalDrawer&gt;,
     <span class="doccomment">/// The mode of the editor
     </span>mode: Mode,
 }
@@ -315,13 +316,24 @@
     </span>Rename,
 }
 
+<span class="kw">impl </span>Display <span class="kw">for </span>Mode {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+        <span class="kw">let </span>mode = <span class="kw">match </span><span class="self">self </span>{
+            Mode::Normal =&gt; <span class="string">&quot;NORMAL&quot;</span>,
+            Mode::Insert =&gt; <span class="string">&quot;INSERT&quot;</span>,
+            Mode::Rename =&gt; <span class="string">&quot;RENAME&quot;</span>,
+        };
+        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, mode)
+    }
+}
+
 <span class="kw">pub enum </span>RefreshOrder {
     <span class="doccomment">/// No need to refresh the screen
     </span><span class="prelude-val">None</span>,
     <span class="doccomment">/// Refresh the cursor position
     </span>CursorPos,
     <span class="doccomment">/// Refresh the given lines
-    </span>Lines(HashSet&lt;u16&gt;),
+    </span>Lines(HashSet&lt;usize&gt;),
     <span class="doccomment">/// Refresh the status bar
     </span>StatusBar,
     <span class="doccomment">/// Refresh the whole screen
@@ -332,10 +344,10 @@
     <span class="doccomment">/// Create a new editor
     </span><span class="kw">pub fn </span>new(file_name: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            path: <span class="string">&quot;./&quot;</span>.to_string(),
+            file_path: <span class="string">&quot;./&quot;</span>.to_string(),
             file_name: file_name.to_string(),
             view: View::new(File::new(), <span class="number">0</span>, <span class="number">0</span>),
-            tui: Tui::new(),
+            tui: TermionTerminalDrawer::new(),
             mode: Mode::Normal,
         }
     }
@@ -349,10 +361,10 @@
         <span class="kw">let </span>(path, file_name) = <span class="self">Self</span>::split_path_name(path);
 
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
-            path: path.to_string(),
+            file_path: path.to_string(),
             file_name: file_name.to_string(),
             view,
-            tui: Tui::new(),
+            tui: TermionTerminalDrawer::new(),
             mode: Mode::Normal,
         })
     }
@@ -377,7 +389,7 @@
 
     <span class="doccomment">/// Close the editor
     </span><span class="kw">fn </span>terminate(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.tui.cleanup();
+        <span class="self">self</span>.tui.terminate();
         exit(<span class="number">0</span>);
     }
 
@@ -386,7 +398,7 @@
         <span class="kw">if </span><span class="self">self</span>.file_name == <span class="string">&quot;&quot; </span>{
             <span class="kw">return</span>;
         }
-        <span class="kw">let </span>path = String::from(<span class="kw-2">&amp;</span><span class="self">self</span>.path) + <span class="kw-2">&amp;</span><span class="self">self</span>.file_name;
+        <span class="kw">let </span>path = String::from(<span class="kw-2">&amp;</span><span class="self">self</span>.file_path) + <span class="kw-2">&amp;</span><span class="self">self</span>.file_name;
         <span class="kw">let </span>content = <span class="self">self</span>.view.dump_file();
         std::fs::write(path.clone() + <span class="string">&quot;.tmp&quot;</span>, content).unwrap_or_default();
         std::fs::rename(path.clone() + <span class="string">&quot;.tmp&quot;</span>, path).unwrap_or_default();
@@ -403,6 +415,15 @@
                 <span class="string">&#39; &#39; </span>| <span class="string">&#39;\&#39;&#39; </span>=&gt; <span class="self">self</span>.file_name = <span class="self">self</span>.file_name.clone() + <span class="string">&quot;_&quot;</span>,
                 <span class="kw">_ </span>=&gt; <span class="self">self</span>.file_name = <span class="self">self</span>.file_name.clone() + <span class="kw-2">&amp;</span>c.to_string(),
             },
+        }
+    }
+
+    <span class="doccomment">/// Make status bar infos
+    </span><span class="kw">fn </span>get_status_bar_infos(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; StatusBarInfos {
+        StatusBarInfos {
+            file_path: <span class="self">self</span>.file_path.clone(),
+            file_name: <span class="self">self</span>.file_name.clone(),
+            mode: <span class="self">self</span>.mode.clone(),
         }
     }
 
@@ -448,22 +469,20 @@
             Command::Insert(c) =&gt; {
                 <span class="kw">let </span>scroll = <span class="self">self</span>.view.insert(c);
                 <span class="kw">if </span>scroll {
-                    <span class="kw">return </span>RefreshOrder::AllLines;
+                    RefreshOrder::AllLines
                 } <span class="kw">else </span>{
                     <span class="comment">// Refresh only the current line: self.view.cursor.1
-                    </span>RefreshOrder::Lines(HashSet::from_iter(<span class="macro">vec!</span>[<span class="self">self</span>.view.cursor.<span class="number">1 </span><span class="kw">as </span>u16]))
+                    </span>RefreshOrder::Lines(HashSet::from_iter(<span class="macro">vec!</span>[<span class="self">self</span>.view.cursor.<span class="number">1</span>]))
                 }
             }
             Command::InsertNewLine =&gt; {
                 <span class="kw">let </span>scroll = <span class="self">self</span>.view.insert_new_line();
                 <span class="kw">if </span>scroll {
-                    <span class="comment">// If we scroll (because we are at the bottom of the view),
-                    // we need to refresh all lines.
-                    </span>RefreshOrder::AllLines
+                    RefreshOrder::AllLines
                 } <span class="kw">else </span>{
                     <span class="comment">// Refresh only the lines below the cursor
                     </span>RefreshOrder::Lines(HashSet::from_iter(
-                        <span class="self">self</span>.view.cursor.<span class="number">1 </span><span class="kw">as </span>u16..<span class="self">self</span>.view.height <span class="kw">as </span>u16,
+                        <span class="self">self</span>.view.cursor.<span class="number">1 </span>- <span class="number">1</span>..<span class="self">self</span>.view.height,
                     ))
                 }
             }
@@ -475,9 +494,7 @@
                     </span>RefreshOrder::AllLines
                 } <span class="kw">else </span>{
                     <span class="comment">// Refresh only the lines below the cursor
-                    </span>RefreshOrder::Lines(HashSet::from_iter(
-                        <span class="self">self</span>.view.cursor.<span class="number">1 </span><span class="kw">as </span>u16..<span class="self">self</span>.view.height <span class="kw">as </span>u16,
-                    ))
+                    </span>RefreshOrder::Lines(HashSet::from_iter(<span class="self">self</span>.view.cursor.<span class="number">1</span>..<span class="self">self</span>.view.height))
                 }
             }
             Command::CommandBlock(cmds) =&gt; {
@@ -515,22 +532,13 @@
 
     <span class="doccomment">/// Run the editor loop
     </span><span class="kw">pub fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span><span class="kw-2">mut </span>sb = StatusBar {
-            path: <span class="self">self</span>.path.clone(),
-            file_name: <span class="self">self</span>.file_name.clone(),
-            mode: <span class="self">self</span>.mode.clone(),
-        };
-
         <span class="comment">// set view size
         </span><span class="kw">let </span>(width, height) = <span class="self">self</span>.tui.get_term_size();
 
-        <span class="comment">// height - 1 to leave space for the status bar
-        // width - 4 to leave space for the line numbers
-        </span><span class="self">self</span>.view
-            .resize((height - <span class="number">1</span>) <span class="kw">as </span>usize, (width - <span class="number">4</span>) <span class="kw">as </span>usize);
+        <span class="self">self</span>.view.resize(height, width);
         <span class="comment">// draw initial view
         </span><span class="self">self</span>.tui.clear();
-        <span class="self">self</span>.tui.draw_view(<span class="kw-2">&amp;</span><span class="self">self</span>.view, <span class="kw-2">&amp;</span>sb);
+        <span class="self">self</span>.tui.draw(<span class="kw-2">&amp;</span><span class="self">self</span>.view, <span class="kw-2">&amp;</span><span class="self">self</span>.get_status_bar_infos());
 
         <span class="kw">let </span>stdin = std::io::stdin().keys();
 
@@ -539,20 +547,14 @@
                 <span class="kw">if let </span><span class="prelude-val">Ok</span>(cmd) = Command::parse(c, <span class="kw-2">&amp;</span><span class="self">self</span>.mode) {
                     <span class="kw">match </span><span class="self">self</span>.execute(cmd) {
                         RefreshOrder::None =&gt; (),
-                        RefreshOrder::CursorPos =&gt; {
-                            <span class="kw">let </span>(x, y) = <span class="self">self</span>.view.cursor;
-                            <span class="self">self</span>.tui.move_cursor(x, y)
-                        }
+                        RefreshOrder::CursorPos =&gt; <span class="self">self</span>.tui.move_cursor(<span class="self">self</span>.view.cursor),
                         RefreshOrder::StatusBar =&gt; {
-                            sb.file_name = <span class="self">self</span>.file_name.clone();
-                            sb.mode = <span class="self">self</span>.mode.clone();
-                            <span class="self">self</span>.tui.draw_status_bar(<span class="kw-2">&amp;</span>sb, height, width)
+                            <span class="self">self</span>.tui.draw_status_bar(<span class="kw-2">&amp;</span><span class="self">self</span>.get_status_bar_infos());
+                            <span class="self">self</span>.tui.move_cursor(<span class="self">self</span>.view.cursor)
                         }
-                        RefreshOrder::Lines(lines) =&gt; <span class="self">self</span>.tui.refresh_lines(<span class="kw-2">&amp;</span><span class="self">self</span>.view, lines),
+                        RefreshOrder::Lines(lines) =&gt; <span class="self">self</span>.tui.draw_lines(<span class="kw-2">&amp;</span><span class="self">self</span>.view, lines),
                         RefreshOrder::AllLines =&gt; {
-                            sb.file_name = <span class="self">self</span>.file_name.clone();
-                            sb.mode = <span class="self">self</span>.mode.clone();
-                            <span class="self">self</span>.tui.draw_view(<span class="kw-2">&amp;</span><span class="self">self</span>.view, <span class="kw-2">&amp;</span>sb)
+                            <span class="self">self</span>.tui.draw(<span class="kw-2">&amp;</span><span class="self">self</span>.view, <span class="kw-2">&amp;</span><span class="self">self</span>.get_status_bar_infos())
                         }
                     }
                 }
