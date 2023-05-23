@@ -3,8 +3,9 @@ use std::{collections::HashSet, fmt::Display, process::exit};
 use crate::{
     command::Command,
     file::File,
+    git::get_ref_name,
     terminal::{termion::TermionTerminalDrawer, StatusBarInfos, TerminalDrawer},
-    view::View, git::get_ref_name,
+    view::View,
 };
 use termion::input::TermRead;
 
@@ -63,14 +64,16 @@ pub enum RefreshOrder {
 
 impl Editor {
     /// Create a new editor
-    pub fn new(file_name: &str) -> Self {
+    pub fn new(file_path: &str) -> Self {
+        let (file_path, file_name) = Self::split_path_name(file_path);
+        let ref_name = get_ref_name(&file_path);
         Self {
-            file_path: "./".to_string(),
-            file_name: file_name.to_string(),
+            file_path,
+            file_name,
             view: View::new(File::new(), 0, 0),
             tui: TermionTerminalDrawer::new(),
             mode: Mode::Normal,
-            git_ref: get_ref_name("./"),
+            git_ref: ref_name,
         }
     }
 

@@ -135,6 +135,13 @@ impl TerminalDrawer for TermionTerminalDrawer {
                 - git_branch.len();
             print_to_term!(self.stdout, " ".repeat(offset));
             print_to_term!(self.stdout, git_branch);
+        } else {
+            // If we are not in a git repository, we still need to print spaces to fill the status bar
+            let offset = width as usize
+                - "NORMAL".len() // All modes have the same length
+                - status_bar_infos.file_name.len()
+                - offset;
+            print_to_term!(self.stdout, " ".repeat(offset));
         }
         // Reset the status bar colors
         print_to_term!(self.stdout, color::Fg(color::Reset));
