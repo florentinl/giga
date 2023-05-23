@@ -187,7 +187,7 @@ impl Editor {
             Command::Insert(c) => {
                 let scroll = self.view.insert(c);
                 if scroll {
-                    return RefreshOrder::AllLines;
+                    RefreshOrder::AllLines
                 } else {
                     // Refresh only the current line: self.view.cursor.1
                     RefreshOrder::Lines(HashSet::from_iter(vec![self.view.cursor.1]))
@@ -196,12 +196,12 @@ impl Editor {
             Command::InsertNewLine => {
                 let scroll = self.view.insert_new_line();
                 if scroll {
-                    // If we scroll (because we are at the bottom of the view),
-                    // we need to refresh all lines.
                     RefreshOrder::AllLines
                 } else {
                     // Refresh only the lines below the cursor
-                    RefreshOrder::Lines(HashSet::from_iter(self.view.cursor.1..self.view.height))
+                    RefreshOrder::Lines(HashSet::from_iter(
+                        self.view.cursor.1 - 1..self.view.height,
+                    ))
                 }
             }
             Command::Delete => {
@@ -253,10 +253,7 @@ impl Editor {
         // set view size
         let (width, height) = self.tui.get_term_size();
 
-        // height - 1 to leave space for the status bar
-        // width - 4 to leave space for the line numbers
-        self.view
-            .resize((height - 1) as usize, (width - 4) as usize);
+        self.view.resize(height, width);
         // draw initial view
         self.tui.clear();
         self.tui.draw(&self.view, &self.get_status_bar_infos());
