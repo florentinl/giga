@@ -4,7 +4,7 @@ use crate::{
     command::Command,
     file::File,
     terminal::{termion::TermionTerminalDrawer, StatusBarInfos, TerminalDrawer},
-    view::View,
+    view::View, git::get_ref_name,
 };
 use termion::input::TermRead;
 
@@ -21,6 +21,9 @@ pub struct Editor {
     tui: Box<dyn TerminalDrawer>,
     /// The mode of the editor
     mode: Mode,
+
+    /// Git Branch/Commit/Tag if any
+    git_ref: Option<String>,
 }
 
 #[derive(Clone)]
@@ -67,6 +70,7 @@ impl Editor {
             view: View::new(File::new(), 0, 0),
             tui: TermionTerminalDrawer::new(),
             mode: Mode::Normal,
+            git_ref: get_ref_name(),
         }
     }
 
@@ -78,12 +82,15 @@ impl Editor {
 
         let (path, file_name) = Self::split_path_name(path);
 
+        let git_ref = get_ref_name();
+
         Ok(Self {
             file_path: path.to_string(),
             file_name: file_name.to_string(),
             view,
             tui: TermionTerminalDrawer::new(),
             mode: Mode::Normal,
+            git_ref: git_ref,
         })
     }
 
@@ -142,6 +149,7 @@ impl Editor {
             file_path: self.file_path.clone(),
             file_name: self.file_name.clone(),
             mode: self.mode.clone(),
+            ref_name: self.git_ref.clone(),
         }
     }
 

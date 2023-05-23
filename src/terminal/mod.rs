@@ -26,4 +26,5 @@ pub struct StatusBarInfos {
     pub file_path: String,
     pub file_name: String,
     pub mode: Mode,
+    pub ref_name: Option<String>,
 }

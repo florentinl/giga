@@ -107,6 +107,10 @@ impl TerminalDrawer for TermionTerminalDrawer {
         self.move_cursor(view.cursor);
     }
 
+    // The status bar is at the bottom of the screen and displays the following information:
+    // - The current mode (NORMAL/INSERT/RENAME) (left)
+    // - The current file name (in the middle)
+    // - The current git branch (if we are in a git) (right)
     fn draw_status_bar(&mut self, status_bar_infos: &StatusBarInfos) {
         let (width, height) = termion::terminal_size().unwrap_or_default();
 
@@ -118,10 +122,20 @@ impl TerminalDrawer for TermionTerminalDrawer {
         print_to_term!(self.stdout, color::Fg(color::Black));
         // Print the mode (NORMAL or INSERT)
         print_to_term!(self.stdout, status_bar_infos.mode);
-        // Print the file name at the end of the status bar
-        let offset = width as usize - status_bar_infos.file_name.len() - "NORMAL".len();
+        // Print the file name in the middle of the status bar
+        let offset = (width as usize - status_bar_infos.file_name.len()) / 2 - "NORMAL".len();
         print_to_term!(self.stdout, " ".repeat(offset));
         print_to_term!(self.stdout, status_bar_infos.file_name);
+        // Print the git branch if we are in a git repository at the right of the status bar
+        if let Some(git_branch) = &status_bar_infos.ref_name {
+            let offset = width as usize
+                - "NORMAL".len() // All modes have the same length
+                - status_bar_infos.file_name.len()
+                - offset
+                - git_branch.len();
+            print_to_term!(self.stdout, " ".repeat(offset));
+            print_to_term!(self.stdout, git_branch);
+        }
         // Reset the status bar colors
         print_to_term!(self.stdout, color::Fg(color::Reset));
         print_to_term!(self.stdout, color::Bg(color::Reset));
