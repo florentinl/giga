@@ -1,7 +1,7 @@
 mod command;
 mod editor;
 mod file;
-mod tui;
+mod terminal;
 mod view;
 
 fn main() {

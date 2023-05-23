@@ -5,7 +5,7 @@ pub struct View {
     /// The file being displayed
     file: File,
     /// The line number of the first line being displayed
-    start_line: usize,
+    pub start_line: usize,
     /// The column number of the first column being displayed
     start_col: usize,
     /// The number of lines being displayed

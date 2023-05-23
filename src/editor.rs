@@ -1,9 +1,9 @@
-use std::{collections::HashSet, process::exit};
+use std::{collections::HashSet, fmt::Display, process::exit};
 
 use crate::{
     command::Command,
     file::File,
-    tui::{StatusBar, Tui},
+    terminal::{termion::TermionTerminalDrawer, StatusBarInfos, TerminalDrawer},
     view::View,
 };
 use termion::input::TermRead;
@@ -12,13 +12,13 @@ use termion::input::TermRead;
 /// represents the state of the program
 pub struct Editor {
     /// The path of the file being edited
-    path: String,
+    file_path: String,
     /// The name of the file being edited
     file_name: String,
     /// The current view of the file
     view: View,
     /// The Tui responsible for drawing the editor
-    tui: Tui,
+    tui: Box<dyn TerminalDrawer>,
     /// The mode of the editor
     mode: Mode,
 }
@@ -34,13 +34,24 @@ pub enum Mode {
     Rename,
 }
 
+impl Display for Mode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mode = match self {
+            Mode::Normal => "NORMAL",
+            Mode::Insert => "INSERT",
+            Mode::Rename => "RENAME",
+        };
+        write!(f, "{}", mode)
+    }
+}
+
 pub enum RefreshOrder {
     /// No need to refresh the screen
     None,
     /// Refresh the cursor position
     CursorPos,
     /// Refresh the given lines
-    Lines(HashSet<u16>),
+    Lines(HashSet<usize>),
     /// Refresh the status bar
     StatusBar,
     /// Refresh the whole screen
@@ -51,10 +62,10 @@ impl Editor {
     /// Create a new editor
     pub fn new(file_name: &str) -> Self {
         Self {
-            path: "./".to_string(),
+            file_path: "./".to_string(),
             file_name: file_name.to_string(),
             view: View::new(File::new(), 0, 0),
-            tui: Tui::new(),
+            tui: TermionTerminalDrawer::new(),
             mode: Mode::Normal,
         }
     }
@@ -68,10 +79,10 @@ impl Editor {
         let (path, file_name) = Self::split_path_name(path);
 
         Ok(Self {
-            path: path.to_string(),
+            file_path: path.to_string(),
             file_name: file_name.to_string(),
             view,
-            tui: Tui::new(),
+            tui: TermionTerminalDrawer::new(),
             mode: Mode::Normal,
         })
     }
@@ -96,7 +107,7 @@ impl Editor {
 
     /// Close the editor
     fn terminate(&mut self) {
-        self.tui.cleanup();
+        self.tui.terminate();
         exit(0);
     }
 
@@ -105,7 +116,7 @@ impl Editor {
         if self.file_name == "" {
             return;
         }
-        let path = String::from(&self.path) + &self.file_name;
+        let path = String::from(&self.file_path) + &self.file_name;
         let content = self.view.dump_file();
         std::fs::write(path.clone() + ".tmp", content).unwrap_or_default();
         std::fs::rename(path.clone() + ".tmp", path).unwrap_or_default();
@@ -122,6 +133,15 @@ impl Editor {
                 ' ' | '\'' => self.file_name = self.file_name.clone() + "_",
                 _ => self.file_name = self.file_name.clone() + &c.to_string(),
             },
+        }
+    }
+
+    /// Make status bar infos
+    fn get_status_bar_infos(&self) -> StatusBarInfos {
+        StatusBarInfos {
+            file_path: self.file_path.clone(),
+            file_name: self.file_name.clone(),
+            mode: self.mode.clone(),
         }
     }
 
@@ -170,7 +190,7 @@ impl Editor {
                     return RefreshOrder::AllLines;
                 } else {
                     // Refresh only the current line: self.view.cursor.1
-                    RefreshOrder::Lines(HashSet::from_iter(vec![self.view.cursor.1 as u16]))
+                    RefreshOrder::Lines(HashSet::from_iter(vec![self.view.cursor.1]))
                 }
             }
             Command::InsertNewLine => {
@@ -181,9 +201,7 @@ impl Editor {
                     RefreshOrder::AllLines
                 } else {
                     // Refresh only the lines below the cursor
-                    RefreshOrder::Lines(HashSet::from_iter(
-                        self.view.cursor.1 as u16..self.view.height as u16,
-                    ))
+                    RefreshOrder::Lines(HashSet::from_iter(self.view.cursor.1..self.view.height))
                 }
             }
             Command::Delete => {
@@ -194,9 +212,7 @@ impl Editor {
                     RefreshOrder::AllLines
                 } else {
                     // Refresh only the lines below the cursor
-                    RefreshOrder::Lines(HashSet::from_iter(
-                        self.view.cursor.1 as u16..self.view.height as u16,
-                    ))
+                    RefreshOrder::Lines(HashSet::from_iter(self.view.cursor.1..self.view.height))
                 }
             }
             Command::CommandBlock(cmds) => {
@@ -234,12 +250,6 @@ impl Editor {
 
     /// Run the editor loop
     pub fn run(&mut self) {
-        let mut sb = StatusBar {
-            path: self.path.clone(),
-            file_name: self.file_name.clone(),
-            mode: self.mode.clone(),
-        };
-
         // set view size
         let (width, height) = self.tui.get_term_size();
 
@@ -249,7 +259,7 @@ impl Editor {
             .resize((height - 1) as usize, (width - 4) as usize);
         // draw initial view
         self.tui.clear();
-        self.tui.draw_view(&self.view, &sb);
+        self.tui.draw(&self.view, &self.get_status_bar_infos());
 
         let stdin = std::io::stdin().keys();
 
@@ -258,20 +268,14 @@ impl Editor {
                 if let Ok(cmd) = Command::parse(c, &self.mode) {
                     match self.execute(cmd) {
                         RefreshOrder::None => (),
-                        RefreshOrder::CursorPos => {
-                            let (x, y) = self.view.cursor;
-                            self.tui.move_cursor(x, y)
-                        }
+                        RefreshOrder::CursorPos => self.tui.move_cursor(self.view.cursor),
                         RefreshOrder::StatusBar => {
-                            sb.file_name = self.file_name.clone();
-                            sb.mode = self.mode.clone();
-                            self.tui.draw_status_bar(&sb, height, width)
+                            self.tui.draw_status_bar(&self.get_status_bar_infos());
+                            self.tui.move_cursor(self.view.cursor)
                         }
-                        RefreshOrder::Lines(lines) => self.tui.refresh_lines(&self.view, lines),
+                        RefreshOrder::Lines(lines) => self.tui.draw_lines(&self.view, lines),
                         RefreshOrder::AllLines => {
-                            sb.file_name = self.file_name.clone();
-                            sb.mode = self.mode.clone();
-                            self.tui.draw_view(&self.view, &sb)
+                            self.tui.draw(&self.view, &self.get_status_bar_infos())
                         }
                     }
                 }
