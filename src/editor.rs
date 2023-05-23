@@ -70,7 +70,7 @@ impl Editor {
             view: View::new(File::new(), 0, 0),
             tui: TermionTerminalDrawer::new(),
             mode: Mode::Normal,
-            git_ref: get_ref_name(),
+            git_ref: get_ref_name("./"),
         }
     }
 
@@ -82,7 +82,7 @@ impl Editor {
 
         let (path, file_name) = Self::split_path_name(path);
 
-        let git_ref = get_ref_name();
+        let git_ref = get_ref_name(&path);
 
         Ok(Self {
             file_path: path.to_string(),
