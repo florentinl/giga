@@ -156,6 +156,83 @@
 <a href="#156" id="156">156</a>
 <a href="#157" id="157">157</a>
 <a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashSet,
     io::{Stdout, Write},
@@ -166,7 +243,10 @@
     raw::{IntoRawMode, RawTerminal},
 };
 
-<span class="kw">use </span><span class="kw">crate</span>::view::View;
+<span class="kw">use crate</span>::{
+    git::{Diff, Patches},
+    view::View,
+};
 
 <span class="kw">use super</span>::{StatusBarInfos, TerminalDrawer};
 
@@ -254,10 +334,11 @@
         </span><span class="kw">for </span>line <span class="kw">in </span>lines {
             <span class="comment">// Move the cursor to the beginning of the line
             </span><span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, cursor::Goto(<span class="number">1</span>, line <span class="kw">as </span>u16 + <span class="number">1</span>));
-            <span class="comment">// Clear the line
-            </span><span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, clear::CurrentLine);
             <span class="comment">// Print the line number
             </span><span class="self">self</span>.draw_line_number(line + view.start_line + <span class="number">1</span>);
+            <span class="comment">// Clear the content of the line
+            </span><span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, cursor::Right(<span class="number">1</span>));
+            <span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, clear::UntilNewline);
             <span class="comment">// Print the line content
             </span><span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, view.get_line(line));
         }
@@ -265,7 +346,11 @@
         </span><span class="self">self</span>.move_cursor(view.cursor);
     }
 
-    <span class="kw">fn </span>draw_status_bar(<span class="kw-2">&amp;mut </span><span class="self">self</span>, status_bar_infos: <span class="kw-2">&amp;</span>StatusBarInfos) {
+    <span class="comment">// The status bar is at the bottom of the screen and displays the following information:
+    // - The current mode (NORMAL/INSERT/RENAME) (left)
+    // - The current file name (in the middle)
+    // - The current git branch (if we are in a git) (right)
+    </span><span class="kw">fn </span>draw_status_bar(<span class="kw-2">&amp;mut </span><span class="self">self</span>, status_bar_infos: <span class="kw-2">&amp;</span>StatusBarInfos) {
         <span class="kw">let </span>(width, height) = termion::terminal_size().unwrap_or_default();
 
         <span class="comment">// Move the cursor to the status bar
@@ -275,16 +360,87 @@
         <span class="comment">// Set the status bar foreground color to black
         </span><span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, color::Fg(color::Black));
         <span class="comment">// Print the mode (NORMAL or INSERT)
-        </span><span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, status_bar_infos.mode);
-        <span class="comment">// Print the file name at the end of the status bar
-        </span><span class="kw">let </span>offset = width <span class="kw">as </span>usize - status_bar_infos.file_name.len() - <span class="string">&quot;NORMAL&quot;</span>.len();
+        </span><span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, <span class="string">&quot; &quot;</span>);
+        <span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, status_bar_infos.mode);
+        <span class="comment">// Print the file name in the middle of the status bar
+        </span><span class="kw">let </span>offset = (width <span class="kw">as </span>usize - status_bar_infos.file_name.len()) / <span class="number">2 </span>- <span class="string">&quot; NORMAL&quot;</span>.len();
         <span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, <span class="string">&quot; &quot;</span>.repeat(offset));
         <span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, status_bar_infos.file_name);
+        <span class="comment">// Print the git branch if we are in a git repository at the right of the status bar
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(git_branch) = <span class="kw-2">&amp;</span>status_bar_infos.ref_name {
+            <span class="kw">let </span>offset = width <span class="kw">as </span>usize
+                - <span class="string">&quot;NORMAL&quot;</span>.len() <span class="comment">// All modes have the same length
+                </span>- status_bar_infos.file_name.len()
+                - offset
+                - <span class="number">2
+                </span>- git_branch.len();
+            <span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, <span class="string">&quot; &quot;</span>.repeat(offset));
+            <span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, git_branch);
+        } <span class="kw">else </span>{
+            <span class="comment">// If we are not in a git repository, we still need to print spaces to fill the status bar
+            </span><span class="kw">let </span>offset = width <span class="kw">as </span>usize
+                - <span class="string">&quot;NORMAL&quot;</span>.len() <span class="comment">// All modes have the same length
+                </span>- status_bar_infos.file_name.len()
+                - <span class="number">2
+                </span>- offset;
+            <span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, <span class="string">&quot; &quot;</span>.repeat(offset));
+        }
+        <span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, <span class="string">&quot; &quot;</span>);
         <span class="comment">// Reset the status bar colors
         </span><span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, color::Fg(color::Reset));
         <span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, color::Bg(color::Reset));
 
         <span class="self">self</span>.flush();
+    }
+
+    <span class="doccomment">/// Draw the diff markers on the left of the screen
+    /// - &#39;+&#39; (green) for added lines
+    /// - &#39;-&#39; (red) for removed lines
+    /// - &#39;~&#39; (yellow) for modified lines
+    /// - &#39; &#39; (default) for unchanged lines
+    </span><span class="kw">fn </span>draw_diff_markers(<span class="kw-2">&amp;mut </span><span class="self">self</span>, diff: <span class="kw-2">&amp;</span>Diff, view: <span class="kw-2">&amp;</span>View) {
+        <span class="comment">// Hide the cursor to avoid flickering
+        </span><span class="lifetime">&#39;outer</span>: <span class="kw">for </span>line <span class="kw">in </span><span class="number">0</span>..view.height {
+            <span class="comment">// Move the cursor to the marker column of the current line
+            </span><span class="macro">print_to_term!</span>(
+                <span class="self">self</span>.stdout,
+                cursor::Goto(LINE_NUMBER_WIDTH + <span class="number">1</span>, line <span class="kw">as </span>u16 + <span class="number">1</span>)
+            );
+            <span class="kw">let </span>line = line + view.start_line;
+            <span class="kw">for </span>patch <span class="kw">in </span>diff {
+                <span class="kw">match </span>patch {
+                    Patches::Added { start, count } =&gt; {
+                        <span class="kw">if </span>line &gt;= <span class="kw-2">*</span>start &amp;&amp; line &lt; <span class="kw-2">*</span>start + <span class="kw-2">*</span>count {
+                            <span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, color::Fg(color::Green));
+                            <span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, <span class="string">&quot;+&quot;</span>);
+                            <span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, color::Fg(color::Reset));
+                            <span class="kw">continue </span><span class="lifetime">&#39;outer</span>;
+                        }
+                    }
+                    Patches::Deleted { start } =&gt; {
+                        <span class="kw">if </span>line == <span class="kw-2">*</span>start {
+                            <span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, color::Fg(color::Red));
+                            <span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, <span class="string">&quot;-&quot;</span>);
+                            <span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, color::Fg(color::Reset));
+                            <span class="kw">continue </span><span class="lifetime">&#39;outer</span>;
+                        }
+                    }
+                    Patches::Changed { start, count } =&gt; {
+                        <span class="kw">if </span>line &gt;= <span class="kw-2">*</span>start &amp;&amp; line &lt; <span class="kw-2">*</span>start + <span class="kw-2">*</span>count {
+                            <span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, color::Fg(color::Yellow));
+                            <span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, <span class="string">&quot;~&quot;</span>);
+                            <span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, color::Fg(color::Reset));
+                            <span class="kw">continue </span><span class="lifetime">&#39;outer</span>;
+                        }
+                    }
+                }
+            }
+            <span class="comment">// If we reach this point, the line is unchanged
+            </span><span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, <span class="string">&quot; &quot;</span>);
+        }
+
+        <span class="comment">// Go back to the cursor position
+        </span><span class="self">self</span>.move_cursor(view.cursor);
     }
 }
 
@@ -310,8 +466,6 @@
         <span class="comment">// Reset both foreground and background colors
         </span><span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, color::Fg(color::Reset));
         <span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, color::Bg(color::Reset));
-        <span class="comment">// Leave one space between the line number and the text
-        </span><span class="macro">print_to_term!</span>(<span class="self">self</span>.stdout, cursor::Right(<span class="number">1</span>));
     }
 }
 </code></pre></div>

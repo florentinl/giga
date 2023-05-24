@@ -27,9 +27,12 @@
 <a href="#27" id="27">27</a>
 <a href="#28" id="28">28</a>
 <a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::HashSet;
 
-<span class="kw">use crate</span>::{editor::Mode, view::View};
+<span class="kw">use crate</span>::{editor::Mode, git::Diff, view::View};
 
 <span class="kw">pub mod </span>termion;
 <span class="doccomment">/// A TerminalDrawer instance is responsible for drawing the editor on the terminal
@@ -48,6 +51,8 @@
     </span><span class="kw">fn </span>draw_lines(<span class="kw-2">&amp;mut </span><span class="self">self</span>, view: <span class="kw-2">&amp;</span>View, lines: HashSet&lt;usize&gt;);
     <span class="doccomment">/// (Re)Draw the status bar
     </span><span class="kw">fn </span>draw_status_bar(<span class="kw-2">&amp;mut </span><span class="self">self</span>, status_bar_infos: <span class="kw-2">&amp;</span>StatusBarInfos);
+    <span class="doccomment">/// (Re)Draw the diff markers on the left of the editor
+    </span><span class="kw">fn </span>draw_diff_markers(<span class="kw-2">&amp;mut </span><span class="self">self</span>, diff: <span class="kw-2">&amp;</span>Diff, view: <span class="kw-2">&amp;</span>View);
 }
 
 <span class="doccomment">/// Information that go in the status bar
@@ -55,6 +60,7 @@
     <span class="kw">pub </span>file_path: String,
     <span class="kw">pub </span>file_name: String,
     <span class="kw">pub </span>mode: Mode,
+    <span class="kw">pub </span>ref_name: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="giga" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0 (84c898d65 2023-04-16)" data-search-js="search-8a59a8356673ec1f.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
