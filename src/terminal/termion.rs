@@ -165,8 +165,6 @@ impl TerminalDrawer for TermionTerminalDrawer {
     /// - ' ' (default) for unchanged lines
     fn draw_diff_markers(&mut self, diff: &Diff, view: &View) {
         // Hide the cursor to avoid flickering
-        print_to_term!(self.stdout, cursor::Hide);
-
         'outer: for line in 0..view.height {
             // Move the cursor to the marker column of the current line
             print_to_term!(
@@ -205,6 +203,9 @@ impl TerminalDrawer for TermionTerminalDrawer {
             // If we reach this point, the line is unchanged
             print_to_term!(self.stdout, " ");
         }
+
+        // Go back to the cursor position
+        self.move_cursor(view.cursor);
     }
 }
 

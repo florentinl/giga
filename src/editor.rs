@@ -281,9 +281,6 @@ impl Editor {
         let (width, height) = self.tui.get_term_size();
 
         self.view.lock().unwrap().resize(height, width);
-        // draw initial view
-        self.tui.clear();
-        self.tui.draw(&self.view.lock().unwrap(), &self.get_status_bar_infos());
 
         // If we are in a git repo (i.e. if self.git_ref is not None),
         // compute the diff a first time
@@ -311,6 +308,16 @@ impl Editor {
             self.git_thread = Some(diff_thread);
         }
 
+        // draw initial view
+        let view = self.view.lock().unwrap();
+        self.tui.clear();
+        self.tui
+            .draw(&view, &self.get_status_bar_infos());
+        self.diff.lock().unwrap().as_ref().map(|diff| {
+            self.tui.draw_diff_markers(&diff, &view);
+        });
+        drop(view);
+
         let stdin = std::io::stdin().keys();
 
         for c in stdin {
@@ -330,7 +337,10 @@ impl Editor {
                             self.tui.draw(&view, &self.get_status_bar_infos())
                         }
                     }
-                    drop(view);
+
+                    self.diff.lock().unwrap().as_ref().map(|diff| {
+                        self.tui.draw_diff_markers(&diff, &view);
+                    });
                 }
             }
         }

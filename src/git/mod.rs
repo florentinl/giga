@@ -1,4 +1,8 @@
-use std::{error::Error, io::Write, process::Command};
+use std::{
+    error::Error,
+    io::Write,
+    process::{Command, Stdio},
+};
 
 /// The Diff is used to show ticks on the left of the editor
 /// to show which lines have been Changed/added/Deleted since the last commit
@@ -48,6 +52,9 @@ fn get_diff_result(
     // Execute the shell command
     let mut diff = Command::new("bash")
         .current_dir(file_path)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .arg("-c")
         .arg(format!("diff <(git show HEAD:{}) -", file_name))
         .spawn()?;
@@ -141,12 +148,11 @@ mod tests {
         let content = "Hello\nWorld\n";
         let file_path = "tests";
         let file_name = "sample.txt";
-        let expected = "1c1,3
+        let expected = "1c1,2
 < Hello, World !
 ---
 > Hello
-> World
-> ";
+> World";
         let diff = get_diff_result(content, file_path, file_name);
         assert!(diff.is_ok());
         assert_eq!(diff.unwrap(), expected);
