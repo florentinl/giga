@@ -3,6 +3,8 @@ use std::{
     fmt::Display,
     process::exit,
     sync::{Arc, Mutex},
+    thread,
+    time::Duration,
 };
 
 use crate::{
@@ -32,8 +34,6 @@ pub struct Editor {
     git_ref: Option<String>,
     /// Git diff since last commit if any
     pub diff: Arc<Mutex<Option<Diff>>>,
-    /// Git thread handle
-    git_thread: Option<std::thread::JoinHandle<()>>,
 }
 
 #[derive(Clone)]
@@ -84,7 +84,6 @@ impl Editor {
             mode: Mode::Normal,
             git_ref: ref_name,
             diff: Arc::new(Mutex::new(None)),
-            git_thread: None,
         }
     }
 
@@ -106,7 +105,6 @@ impl Editor {
             mode: Mode::Normal,
             git_ref: git_ref,
             diff: Arc::new(Mutex::new(None)),
-            git_thread: None,
         })
     }
 
@@ -205,7 +203,7 @@ impl Editor {
                 RefreshOrder::StatusBar
             }
             Command::ToggleRename => {
-                self.togle_rename();
+                self.toggle_rename();
                 RefreshOrder::StatusBar
             }
             Command::Insert(c) => {
@@ -265,7 +263,7 @@ impl Editor {
         }
     }
 
-    fn togle_rename(&mut self) {
+    fn toggle_rename(&mut self) {
         self.mode = match self.mode {
             Mode::Normal => Mode::Rename,
             Mode::Rename => Mode::Normal,
@@ -273,50 +271,50 @@ impl Editor {
         }
     }
 
-    ///
+    /// Initialize git operations
+    fn init_git(&mut self) {
+        // Compute the git diff a first time
+        let view = self.view.lock().unwrap();
+        let diff = compute_diff(&view.dump_file(), &self.file_path, &self.file_name).unwrap();
+
+        // Draw the initial diff
+        self.tui.draw_diff_markers(&diff, &view);
+
+        // Initialize the diff
+        self.diff = Arc::new(Mutex::new(Some(diff)));
+
+        // Spawn a thread to compute the diff in background
+        let view = self.view.clone();
+        let diff = self.diff.clone();
+        let file_path = self.file_path.clone();
+        let file_name = self.file_name.clone();
+        thread::spawn({
+            move || loop {
+                let new_diff =
+                    compute_diff(&view.lock().unwrap().dump_file(), &file_path, &file_name);
+                *diff.lock().unwrap() = new_diff.ok();
+                thread::sleep(Duration::from_secs(1));
+            }
+        });
+    }
 
     /// Run the editor loop
     pub fn run(&mut self) {
+        let mut view = self.view.lock().unwrap();
+
         // set view size
         let (width, height) = self.tui.get_term_size();
+        view.resize(height, width);
 
-        self.view.lock().unwrap().resize(height, width);
+        // Draw the initial view
+        self.tui.draw(&view, &self.get_status_bar_infos());
 
-        // If we are in a git repo (i.e. if self.git_ref is not None),
-        // compute the diff a first time
-        if let Some(_) = self.git_ref {
-            let diff = compute_diff(
-                &self.view.lock().unwrap().dump_file(),
-                &self.file_path,
-                &self.file_name,
-            )
-            .unwrap();
-            self.diff = Arc::new(Mutex::new(Some(diff)));
-            let view = self.view.clone();
-            let diff = self.diff.clone();
-            let file_path = self.file_path.clone();
-            let file_name = self.file_name.clone();
-            // Spawn a thread to compute the diff in background
-            let diff_thread = std::thread::spawn({
-                move || loop {
-                    let new_diff =
-                        compute_diff(&view.lock().unwrap().dump_file(), &file_path, &file_name);
-                    *diff.lock().unwrap() = new_diff.ok();
-                    std::thread::sleep(std::time::Duration::from_secs(1));
-                }
-            });
-            self.git_thread = Some(diff_thread);
-        }
-
-        // draw initial view
-        let view = self.view.lock().unwrap();
-        self.tui.clear();
-        self.tui
-            .draw(&view, &self.get_status_bar_infos());
-        self.diff.lock().unwrap().as_ref().map(|diff| {
-            self.tui.draw_diff_markers(&diff, &view);
-        });
         drop(view);
+
+        // Initialize git operations if needed
+        if matches!(self.git_ref, Some(_)) {
+            self.init_git();
+        }
 
         let stdin = std::io::stdin().keys();
 
@@ -325,6 +323,7 @@ impl Editor {
                 if let Ok(cmd) = Command::parse(c, &self.mode) {
                     let refresh_order = self.execute(cmd);
                     let view = self.view.lock().unwrap();
+
                     match refresh_order {
                         RefreshOrder::None => (),
                         RefreshOrder::CursorPos => self.tui.move_cursor(view.cursor),
