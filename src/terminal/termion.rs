@@ -8,7 +8,10 @@ use termion::{
     raw::{IntoRawMode, RawTerminal},
 };
 
-use crate::view::View;
+use crate::{
+    git::{Diff, Patches},
+    view::View,
+};
 
 use super::{StatusBarInfos, TerminalDrawer};
 
@@ -96,10 +99,11 @@ impl TerminalDrawer for TermionTerminalDrawer {
         for line in lines {
             // Move the cursor to the beginning of the line
             print_to_term!(self.stdout, cursor::Goto(1, line as u16 + 1));
-            // Clear the line
-            print_to_term!(self.stdout, clear::CurrentLine);
             // Print the line number
             self.draw_line_number(line + view.start_line + 1);
+            // Clear the content of the line
+            print_to_term!(self.stdout, cursor::Right(1));
+            print_to_term!(self.stdout, clear::UntilNewline);
             // Print the line content
             print_to_term!(self.stdout, view.get_line(line));
         }
@@ -107,6 +111,10 @@ impl TerminalDrawer for TermionTerminalDrawer {
         self.move_cursor(view.cursor);
     }
 
+    // The status bar is at the bottom of the screen and displays the following information:
+    // - The current mode (NORMAL/INSERT/RENAME) (left)
+    // - The current file name (in the middle)
+    // - The current git branch (if we are in a git) (right)
     fn draw_status_bar(&mut self, status_bar_infos: &StatusBarInfos) {
         let (width, height) = termion::terminal_size().unwrap_or_default();
 
@@ -117,16 +125,87 @@ impl TerminalDrawer for TermionTerminalDrawer {
         // Set the status bar foreground color to black
         print_to_term!(self.stdout, color::Fg(color::Black));
         // Print the mode (NORMAL or INSERT)
+        print_to_term!(self.stdout, " ");
         print_to_term!(self.stdout, status_bar_infos.mode);
-        // Print the file name at the end of the status bar
-        let offset = width as usize - status_bar_infos.file_name.len() - "NORMAL".len();
+        // Print the file name in the middle of the status bar
+        let offset = (width as usize - status_bar_infos.file_name.len()) / 2 - " NORMAL".len();
         print_to_term!(self.stdout, " ".repeat(offset));
         print_to_term!(self.stdout, status_bar_infos.file_name);
+        // Print the git branch if we are in a git repository at the right of the status bar
+        if let Some(git_branch) = &status_bar_infos.ref_name {
+            let offset = width as usize
+                - "NORMAL".len() // All modes have the same length
+                - status_bar_infos.file_name.len()
+                - offset
+                - 2
+                - git_branch.len();
+            print_to_term!(self.stdout, " ".repeat(offset));
+            print_to_term!(self.stdout, git_branch);
+        } else {
+            // If we are not in a git repository, we still need to print spaces to fill the status bar
+            let offset = width as usize
+                - "NORMAL".len() // All modes have the same length
+                - status_bar_infos.file_name.len()
+                - 2
+                - offset;
+            print_to_term!(self.stdout, " ".repeat(offset));
+        }
+        print_to_term!(self.stdout, " ");
         // Reset the status bar colors
         print_to_term!(self.stdout, color::Fg(color::Reset));
         print_to_term!(self.stdout, color::Bg(color::Reset));
 
         self.flush();
+    }
+
+    /// Draw the diff markers on the left of the screen
+    /// - '+' (green) for added lines
+    /// - '-' (red) for removed lines
+    /// - '~' (yellow) for modified lines
+    /// - ' ' (default) for unchanged lines
+    fn draw_diff_markers(&mut self, diff: &Diff, view: &View) {
+        // Hide the cursor to avoid flickering
+        'outer: for line in 0..view.height {
+            // Move the cursor to the marker column of the current line
+            print_to_term!(
+                self.stdout,
+                cursor::Goto(LINE_NUMBER_WIDTH + 1, line as u16 + 1)
+            );
+            let line = line + view.start_line;
+            for patch in diff {
+                match patch {
+                    Patches::Added { start, count } => {
+                        if line >= *start && line < *start + *count {
+                            print_to_term!(self.stdout, color::Fg(color::Green));
+                            print_to_term!(self.stdout, "+");
+                            print_to_term!(self.stdout, color::Fg(color::Reset));
+                            continue 'outer;
+                        }
+                    }
+                    Patches::Deleted { start } => {
+                        if line == *start {
+                            print_to_term!(self.stdout, color::Fg(color::Red));
+                            print_to_term!(self.stdout, "-");
+                            print_to_term!(self.stdout, color::Fg(color::Reset));
+                            continue 'outer;
+                        }
+                    }
+                    Patches::Changed { start, count } => {
+                        if line >= *start && line < *start + *count {
+                            print_to_term!(self.stdout, color::Fg(color::Yellow));
+                            print_to_term!(self.stdout, "~");
+                            print_to_term!(self.stdout, color::Fg(color::Reset));
+                            continue 'outer;
+                        }
+                    }
+                }
+            }
+            // If we reach this point, the line is unchanged
+            print_to_term!(self.stdout, " ");
+        }
+
+        // Go back to the cursor position
+        self.move_cursor(view.cursor);
     }
 }
 
@@ -152,7 +231,5 @@ impl TermionTerminalDrawer {
         // Reset both foreground and background colors
         print_to_term!(self.stdout, color::Fg(color::Reset));
         print_to_term!(self.stdout, color::Bg(color::Reset));
-        // Leave one space between the line number and the text
-        print_to_term!(self.stdout, cursor::Right(1));
     }
 }

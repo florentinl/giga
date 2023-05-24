@@ -1,6 +1,7 @@
 mod command;
 mod editor;
 mod file;
+mod git;
 mod terminal;
 mod view;
 

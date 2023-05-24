@@ -1,8 +1,16 @@
-use std::{collections::HashSet, fmt::Display, process::exit};
+use std::{
+    collections::HashSet,
+    fmt::Display,
+    process::exit,
+    sync::{Arc, Mutex},
+    thread,
+    time::Duration,
+};
 
 use crate::{
     command::Command,
     file::File,
+    git::{compute_diff, get_ref_name, Diff},
     terminal::{termion::TermionTerminalDrawer, StatusBarInfos, TerminalDrawer},
     view::View,
 };
@@ -16,11 +24,16 @@ pub struct Editor {
     /// The name of the file being edited
     file_name: String,
     /// The current view of the file
-    view: View,
+    view: Arc<Mutex<View>>,
     /// The Tui responsible for drawing the editor
     tui: Box<dyn TerminalDrawer>,
     /// The mode of the editor
     mode: Mode,
+
+    /// Git Branch/Commit/Tag if any
+    git_ref: Option<String>,
+    /// Git diff since last commit if any
+    pub diff: Arc<Mutex<Option<Diff>>>,
 }
 
 #[derive(Clone)]
@@ -60,13 +73,17 @@ pub enum RefreshOrder {
 
 impl Editor {
     /// Create a new editor
-    pub fn new(file_name: &str) -> Self {
+    pub fn new(file_path: &str) -> Self {
+        let (file_path, file_name) = Self::split_path_name(file_path);
+        let ref_name = get_ref_name(&file_path);
         Self {
-            file_path: "./".to_string(),
-            file_name: file_name.to_string(),
-            view: View::new(File::new(), 0, 0),
+            file_path,
+            file_name,
+            view: Arc::new(Mutex::new(View::new(File::new(), 0, 0))),
             tui: TermionTerminalDrawer::new(),
             mode: Mode::Normal,
+            git_ref: ref_name,
+            diff: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -74,9 +91,11 @@ impl Editor {
     pub fn open(path: &str) -> Result<Self, std::io::Error> {
         let content = std::fs::read_to_string(path)?;
         let content = File::from_string(&content);
-        let view = View::new(content, 0, 0);
+        let view = Arc::new(Mutex::new(View::new(content, 0, 0)));
 
         let (path, file_name) = Self::split_path_name(path);
+
+        let git_ref = get_ref_name(&path);
 
         Ok(Self {
             file_path: path.to_string(),
@@ -84,6 +103,8 @@ impl Editor {
             view,
             tui: TermionTerminalDrawer::new(),
             mode: Mode::Normal,
+            git_ref: git_ref,
+            diff: Arc::new(Mutex::new(None)),
         })
     }
 
@@ -117,7 +138,7 @@ impl Editor {
             return;
         }
         let path = String::from(&self.file_path) + &self.file_name;
-        let content = self.view.dump_file();
+        let content = self.view.lock().unwrap().dump_file();
         std::fs::write(path.clone() + ".tmp", content).unwrap_or_default();
         std::fs::rename(path.clone() + ".tmp", path).unwrap_or_default();
     }
@@ -142,6 +163,7 @@ impl Editor {
             file_path: self.file_path.clone(),
             file_name: self.file_name.clone(),
             mode: self.mode.clone(),
+            ref_name: self.git_ref.clone(),
         }
     }
 
@@ -161,7 +183,7 @@ impl Editor {
                 RefreshOrder::AllLines
             }
             Command::Move(x, y) => {
-                let scroll = self.view.navigate(x, y);
+                let scroll = self.view.lock().unwrap().navigate(x, y);
                 if scroll {
                     RefreshOrder::AllLines
                 } else {
@@ -181,38 +203,39 @@ impl Editor {
                 RefreshOrder::StatusBar
             }
             Command::ToggleRename => {
-                self.togle_rename();
+                self.toggle_rename();
                 RefreshOrder::StatusBar
             }
             Command::Insert(c) => {
-                let scroll = self.view.insert(c);
+                let mut view = self.view.lock().unwrap();
+                let scroll = view.insert(c);
                 if scroll {
                     RefreshOrder::AllLines
                 } else {
                     // Refresh only the current line: self.view.cursor.1
-                    RefreshOrder::Lines(HashSet::from_iter(vec![self.view.cursor.1]))
+                    RefreshOrder::Lines(HashSet::from_iter(vec![view.cursor.1]))
                 }
             }
             Command::InsertNewLine => {
-                let scroll = self.view.insert_new_line();
+                let mut view = self.view.lock().unwrap();
+                let scroll = view.insert_new_line();
                 if scroll {
                     RefreshOrder::AllLines
                 } else {
                     // Refresh only the lines below the cursor
-                    RefreshOrder::Lines(HashSet::from_iter(
-                        self.view.cursor.1 - 1..self.view.height,
-                    ))
+                    RefreshOrder::Lines(HashSet::from_iter(view.cursor.1 - 1..view.height))
                 }
             }
             Command::Delete => {
-                let scroll = self.view.delete();
+                let mut view = self.view.lock().unwrap();
+                let scroll = view.delete();
                 if scroll {
                     // If we scroll (because we deleted a char at the left of the view),
                     // we need to refresh all lines.
                     RefreshOrder::AllLines
                 } else {
                     // Refresh only the lines below the cursor
-                    RefreshOrder::Lines(HashSet::from_iter(self.view.cursor.1..self.view.height))
+                    RefreshOrder::Lines(HashSet::from_iter(view.cursor.1..view.height))
                 }
             }
             Command::CommandBlock(cmds) => {
@@ -240,7 +263,7 @@ impl Editor {
         }
     }
 
-    fn togle_rename(&mut self) {
+    fn toggle_rename(&mut self) {
         self.mode = match self.mode {
             Mode::Normal => Mode::Rename,
             Mode::Rename => Mode::Normal,
@@ -248,33 +271,75 @@ impl Editor {
         }
     }
 
+    /// Initialize git operations
+    fn init_git(&mut self) {
+        // Compute the git diff a first time
+        let view = self.view.lock().unwrap();
+        let diff = compute_diff(&view.dump_file(), &self.file_path, &self.file_name).unwrap();
+
+        // Draw the initial diff
+        self.tui.draw_diff_markers(&diff, &view);
+
+        // Initialize the diff
+        self.diff = Arc::new(Mutex::new(Some(diff)));
+
+        // Spawn a thread to compute the diff in background
+        let view = self.view.clone();
+        let diff = self.diff.clone();
+        let file_path = self.file_path.clone();
+        let file_name = self.file_name.clone();
+        thread::spawn({
+            move || loop {
+                let new_diff =
+                    compute_diff(&view.lock().unwrap().dump_file(), &file_path, &file_name);
+                *diff.lock().unwrap() = new_diff.ok();
+                thread::sleep(Duration::from_secs(1));
+            }
+        });
+    }
+
     /// Run the editor loop
     pub fn run(&mut self) {
+        let mut view = self.view.lock().unwrap();
+
         // set view size
         let (width, height) = self.tui.get_term_size();
+        view.resize(height, width);
 
-        self.view.resize(height, width);
-        // draw initial view
-        self.tui.clear();
-        self.tui.draw(&self.view, &self.get_status_bar_infos());
+        // Draw the initial view
+        self.tui.draw(&view, &self.get_status_bar_infos());
+
+        drop(view);
+
+        // Initialize git operations if needed
+        if matches!(self.git_ref, Some(_)) {
+            self.init_git();
+        }
 
         let stdin = std::io::stdin().keys();
 
         for c in stdin {
             if let Ok(c) = c {
                 if let Ok(cmd) = Command::parse(c, &self.mode) {
-                    match self.execute(cmd) {
+                    let refresh_order = self.execute(cmd);
+                    let view = self.view.lock().unwrap();
+
+                    match refresh_order {
                         RefreshOrder::None => (),
-                        RefreshOrder::CursorPos => self.tui.move_cursor(self.view.cursor),
+                        RefreshOrder::CursorPos => self.tui.move_cursor(view.cursor),
                         RefreshOrder::StatusBar => {
                             self.tui.draw_status_bar(&self.get_status_bar_infos());
-                            self.tui.move_cursor(self.view.cursor)
+                            self.tui.move_cursor(view.cursor)
                         }
-                        RefreshOrder::Lines(lines) => self.tui.draw_lines(&self.view, lines),
+                        RefreshOrder::Lines(lines) => self.tui.draw_lines(&view, lines),
                         RefreshOrder::AllLines => {
-                            self.tui.draw(&self.view, &self.get_status_bar_infos())
+                            self.tui.draw(&view, &self.get_status_bar_infos())
                         }
                     }
+
+                    self.diff.lock().unwrap().as_ref().map(|diff| {
+                        self.tui.draw_diff_markers(&diff, &view);
+                    });
                 }
             }
         }
