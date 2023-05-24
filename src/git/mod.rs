@@ -49,6 +49,11 @@ fn get_diff_result(
         .stdout;
     let file_name = String::from_utf8_lossy(&file_name).trim().to_string();
 
+    if file_name.is_empty() {
+        // It is a new file in the git repository
+        return Ok(format!("0a1,{}", content.lines().count().max(1)));
+    }
+
     // Execute the shell command
     let mut diff = Command::new("bash")
         .current_dir(file_path)
