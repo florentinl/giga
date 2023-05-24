@@ -19,6 +19,8 @@ pub trait TerminalDrawer {
     fn draw_lines(&mut self, view: &View, lines: HashSet<usize>);
     /// (Re)Draw the status bar
     fn draw_status_bar(&mut self, status_bar_infos: &StatusBarInfos);
+    /// (Re)Draw the diff markers on the left of the editor
+    fn draw_diff_markers(&mut self, view: &View);
 }
 
 /// Information that go in the status bar

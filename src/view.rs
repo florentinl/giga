@@ -1,9 +1,13 @@
-use crate::file::File;
+use crate::{file::File, git::Diff};
 
 /// The View struct represents the actual portion of the File being displayed.
 pub struct View {
     /// The file being displayed
     file: File,
+
+    /// Git diff since last commit if any
+    pub diff: Option<Diff>,
+
     /// The line number of the first line being displayed
     pub start_line: usize,
     /// The column number of the first column being displayed
@@ -21,6 +25,7 @@ impl View {
     pub fn new(file: File, height: usize, width: usize) -> Self {
         Self {
             file,
+            diff: None,
             start_line: 0,
             start_col: 0,
             height,

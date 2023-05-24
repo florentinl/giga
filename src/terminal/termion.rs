@@ -8,7 +8,7 @@ use termion::{
     raw::{IntoRawMode, RawTerminal},
 };
 
-use crate::view::View;
+use crate::{view::View, git::Patches};
 
 use super::{StatusBarInfos, TerminalDrawer};
 
@@ -96,10 +96,11 @@ impl TerminalDrawer for TermionTerminalDrawer {
         for line in lines {
             // Move the cursor to the beginning of the line
             print_to_term!(self.stdout, cursor::Goto(1, line as u16 + 1));
-            // Clear the line
-            print_to_term!(self.stdout, clear::CurrentLine);
             // Print the line number
             self.draw_line_number(line + view.start_line + 1);
+            // Clear the content of the line
+            print_to_term!(self.stdout, cursor::Right(1));
+            print_to_term!(self.stdout, clear::UntilNewline);
             // Print the line content
             print_to_term!(self.stdout, view.get_line(line));
         }
@@ -153,6 +154,60 @@ impl TerminalDrawer for TermionTerminalDrawer {
 
         self.flush();
     }
+
+    /// Draw the diff markers on the left of the screen
+    /// - '+' (green) for added lines
+    /// - '-' (red) for removed lines
+    /// - '~' (yellow) for modified lines
+    /// - ' ' (default) for unchanged lines
+    fn draw_diff_markers(&mut self, view: &View) {
+        // If the view has no diff markers, we don't need to draw anything
+        if view.diff.is_none() {
+            return;
+        }
+        let diff = view.diff.as_ref().unwrap();
+
+        // Hide the cursor to avoid flickering
+        print_to_term!(self.stdout, cursor::Hide);
+
+        'outer: for line in 0..view.height {
+            // Move the cursor to the marker column of the current line
+            print_to_term!(self.stdout, cursor::Goto(LINE_NUMBER_WIDTH + 1, line as u16 + 1));
+            let line = line + view.start_line;
+            for patch in diff {
+                match patch {
+                    Patches::Added{start, count} => {
+                        if line >= *start && line < *start + *count {
+                            print_to_term!(self.stdout, color::Fg(color::Green));
+                            print_to_term!(self.stdout, "+");
+                            print_to_term!(self.stdout, color::Fg(color::Reset));
+                            continue 'outer;
+                        }
+                    },
+                    Patches::Deleted{start} => {
+                        if line == *start{
+                            print_to_term!(self.stdout, color::Fg(color::Red));
+                            print_to_term!(self.stdout, "-");
+                            print_to_term!(self.stdout, color::Fg(color::Reset));
+                            continue 'outer;
+                        }
+                    },
+                    Patches::Changed{start, count} => {
+                        if line >= *start && line < *start + *count {
+                            print_to_term!(self.stdout, color::Fg(color::Yellow));
+                            print_to_term!(self.stdout, "~");
+                            print_to_term!(self.stdout, color::Fg(color::Reset));
+                            continue 'outer;
+                        }
+                    },
+                }
+            }
+            // If we reach this point, the line is unchanged
+            print_to_term!(self.stdout, " ");
+        }
+
+    }
+
 }
 
 impl TermionTerminalDrawer {
@@ -177,7 +232,5 @@ impl TermionTerminalDrawer {
         // Reset both foreground and background colors
         print_to_term!(self.stdout, color::Fg(color::Reset));
         print_to_term!(self.stdout, color::Bg(color::Reset));
-        // Leave one space between the line number and the text
-        print_to_term!(self.stdout, cursor::Right(1));
     }
 }
