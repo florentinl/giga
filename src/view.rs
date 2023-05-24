@@ -162,6 +162,14 @@ impl View {
         let (rel_x, rel_y) = self.cursor;
         // Calculate the absolute position of the cursor in the file
         let (x, y) = (rel_x + self.start_col, rel_y + self.start_line);
+
+        // Get previous line length in case we need to go to the end of it
+        let prev_line_len = self
+            .file
+            .get_line(y.saturating_sub(1))
+            .unwrap_or_default()
+            .len();
+
         // Delete the character at the cursor
         self.file.delete(y, x);
 
@@ -169,13 +177,7 @@ impl View {
         if x > 0 {
             scroll = self.navigate(-1, 0);
         } else {
-            // we go to the end of the previous line
-            let line_len = self
-                .file
-                .get_line(y.saturating_sub(1))
-                .unwrap_or_default()
-                .len();
-            scroll = self.navigate(line_len as isize, -1);
+            scroll = self.navigate(prev_line_len as isize, -1);
         }
         scroll
     }
