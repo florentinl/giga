@@ -50,7 +50,8 @@ fn get_diff_result(
     let file_name = String::from_utf8_lossy(&file_name).trim().to_string();
 
     if file_name.is_empty() {
-        // It is a new file in the git repository
+        // It is a new file in the git repository so we return the number of lines
+        // as the number of lines added at the beginning of the file
         return Ok(format!("0a1,{}", content.lines().count().max(1)));
     }
 
