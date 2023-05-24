@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::{editor::Mode, view::View};
+use crate::{editor::Mode, git::Diff, view::View};
 
 pub mod termion;
 /// A TerminalDrawer instance is responsible for drawing the editor on the terminal
@@ -20,7 +20,7 @@ pub trait TerminalDrawer {
     /// (Re)Draw the status bar
     fn draw_status_bar(&mut self, status_bar_infos: &StatusBarInfos);
     /// (Re)Draw the diff markers on the left of the editor
-    fn draw_diff_markers(&mut self, view: &View);
+    fn draw_diff_markers(&mut self, diff: &Diff, view: &View);
 }
 
 /// Information that go in the status bar

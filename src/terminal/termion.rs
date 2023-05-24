@@ -8,7 +8,10 @@ use termion::{
     raw::{IntoRawMode, RawTerminal},
 };
 
-use crate::{view::View, git::Patches};
+use crate::{
+    git::{Diff, Patches},
+    view::View,
+};
 
 use super::{StatusBarInfos, TerminalDrawer};
 
@@ -160,54 +163,49 @@ impl TerminalDrawer for TermionTerminalDrawer {
     /// - '-' (red) for removed lines
     /// - '~' (yellow) for modified lines
     /// - ' ' (default) for unchanged lines
-    fn draw_diff_markers(&mut self, view: &View) {
-        // If the view has no diff markers, we don't need to draw anything
-        if view.diff.is_none() {
-            return;
-        }
-        let diff = view.diff.as_ref().unwrap();
-
+    fn draw_diff_markers(&mut self, diff: &Diff, view: &View) {
         // Hide the cursor to avoid flickering
         print_to_term!(self.stdout, cursor::Hide);
 
         'outer: for line in 0..view.height {
             // Move the cursor to the marker column of the current line
-            print_to_term!(self.stdout, cursor::Goto(LINE_NUMBER_WIDTH + 1, line as u16 + 1));
+            print_to_term!(
+                self.stdout,
+                cursor::Goto(LINE_NUMBER_WIDTH + 1, line as u16 + 1)
+            );
             let line = line + view.start_line;
             for patch in diff {
                 match patch {
-                    Patches::Added{start, count} => {
+                    Patches::Added { start, count } => {
                         if line >= *start && line < *start + *count {
                             print_to_term!(self.stdout, color::Fg(color::Green));
                             print_to_term!(self.stdout, "+");
                             print_to_term!(self.stdout, color::Fg(color::Reset));
                             continue 'outer;
                         }
-                    },
-                    Patches::Deleted{start} => {
-                        if line == *start{
+                    }
+                    Patches::Deleted { start } => {
+                        if line == *start {
                             print_to_term!(self.stdout, color::Fg(color::Red));
                             print_to_term!(self.stdout, "-");
                             print_to_term!(self.stdout, color::Fg(color::Reset));
                             continue 'outer;
                         }
-                    },
-                    Patches::Changed{start, count} => {
+                    }
+                    Patches::Changed { start, count } => {
                         if line >= *start && line < *start + *count {
                             print_to_term!(self.stdout, color::Fg(color::Yellow));
                             print_to_term!(self.stdout, "~");
                             print_to_term!(self.stdout, color::Fg(color::Reset));
                             continue 'outer;
                         }
-                    },
+                    }
                 }
             }
             // If we reach this point, the line is unchanged
             print_to_term!(self.stdout, " ");
         }
-
     }
-
 }
 
 impl TermionTerminalDrawer {

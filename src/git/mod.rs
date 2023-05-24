@@ -1,4 +1,4 @@
-use std::{error::Error, process::Command};
+use std::{error::Error, io::Write, process::Command};
 
 /// The Diff is used to show ticks on the left of the editor
 /// to show which lines have been Changed/added/Deleted since the last commit
@@ -14,6 +14,17 @@ pub enum Patches {
     Deleted { start: usize },
 }
 
+/// Compute the diff between the current commit and the string given in parameter
+/// for the given file path.
+pub fn compute_diff(
+    content: &str,
+    file_path: &str,
+    file_name: &str,
+) -> Result<Diff, Box<dyn Error>> {
+    let diff_result = get_diff_result(content, file_path, file_name)?;
+    Ok(parse_diff_result(&diff_result)?)
+}
+
 /// Get the result of the `diff` command between the current commit and the string given in parameter
 /// for the given file path. The exact command is:
 ///
@@ -21,7 +32,7 @@ pub enum Patches {
 /// diff -u <(git show HEAD:{file_name}) <(echo {content})
 /// ```
 /// and should be run where the file is located (`file_path`).
-pub fn get_diff_result(
+fn get_diff_result(
     content: &str,
     file_path: &str,
     file_name: &str,
@@ -35,14 +46,16 @@ pub fn get_diff_result(
     let file_name = String::from_utf8_lossy(&file_name).trim().to_string();
 
     // Execute the shell command
-    let mut diff_output = Command::new("bash")
+    let mut diff = Command::new("bash")
         .current_dir(file_path)
         .arg("-c")
-        .arg(format!(
-            "diff <(git show HEAD:{}) <(echo '{}')",
-            file_name, content
-        ))
-        .output()?;
+        .arg(format!("diff <(git show HEAD:{}) -", file_name))
+        .spawn()?;
+
+    let diff_input = diff.stdin.as_mut().unwrap();
+    diff_input.write_all(content.as_bytes())?;
+
+    let mut diff_output = diff.wait_with_output()?;
 
     let status_code = diff_output.status.code();
     if matches!(status_code, Some(0 | 1)) {
@@ -65,7 +78,7 @@ pub fn get_diff_result(
 /// >
 /// ```
 /// Only the lines starting with `@@` are parsed.
-pub fn parse_diff_result(diff: &str) -> Result<Diff, Box<dyn Error>> {
+fn parse_diff_result(diff: &str) -> Result<Diff, Box<dyn Error>> {
     let mut result = vec![];
 
     for line in diff.lines() {
