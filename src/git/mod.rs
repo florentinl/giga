@@ -31,7 +31,6 @@ pub fn compute_diff(
 
 /// Get the result of the `diff` command between the current commit and the string given in parameter
 /// for the given file path. The exact command is:
-///
 /// ```sh
 /// diff -u <(git show HEAD:{file_name}) <(echo {content})
 /// ```
@@ -41,7 +40,7 @@ fn get_diff_result(
     file_path: &str,
     file_name: &str,
 ) -> Result<String, Box<dyn Error>> {
-    // Get the file_name relative to the current git repository
+    // Get the file_name relative to the file_path git repository
     let file_name = Command::new("git")
         .current_dir(file_path)
         .args(&["ls-files", "--full-name", file_name])
@@ -56,6 +55,8 @@ fn get_diff_result(
     }
 
     // Execute the shell command
+    // It would be better to not rely on bash but I don't know how to emulate the process substitution
+    // with Rust.
     let mut diff = Command::new("bash")
         .current_dir(file_path)
         .stdin(Stdio::piped())
@@ -65,15 +66,16 @@ fn get_diff_result(
         .arg(format!("diff <(git show HEAD:{}) -", file_name))
         .spawn()?;
 
+    // Write the content to diff on the stdin of the process
     let diff_input = diff.stdin.as_mut().unwrap();
     diff_input.write_all(content.as_bytes())?;
 
-    let mut diff_output = diff.wait_with_output()?;
+    // Wait for the process to finish
+    let diff_output = diff.wait_with_output()?;
 
+    // Check the exit code and parse stdout/stderr accordingly
     let status_code = diff_output.status.code();
     if matches!(status_code, Some(0 | 1)) {
-        // Remove the trailing newline
-        diff_output.stdout.pop();
         Ok(String::from_utf8(diff_output.stdout)?)
     } else {
         Err(String::from_utf8(diff_output.stderr)?.into())
@@ -90,7 +92,7 @@ fn get_diff_result(
 /// > World
 /// >
 /// ```
-/// Only the lines starting with `@@` are parsed.
+/// Only the lines starting with digits are parsed.
 fn parse_diff_result(diff: &str) -> Result<Diff, Box<dyn Error>> {
     let mut result = vec![];
 
