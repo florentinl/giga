@@ -1,26 +1,17 @@
-use std::{
-    error::Error,
-    io::Write,
-    process::{Command, Stdio},
-};
+use std::{error::Error, process::Command};
 
 /// The Diff is used to show ticks on the left of the editor
-/// to show which lines have been modified/added/removed since the last commit
-type Diff = Vec<DiffLine>;
-enum DiffType {
-    /// The line has been modified
-    Modified,
-    /// The line has been added
-    Added,
-    /// The line has been removed
-    Removed,
-}
-/// A line in the diff
-struct DiffLine {
-    /// The line number
-    line: usize,
-    /// The type of modification
-    diff_type: DiffType,
+/// to show which lines have been Changed/added/Deleted since the last commit
+pub type Diff = Vec<Patches>;
+
+#[derive(Debug, PartialEq)]
+pub enum Patches {
+    /// {count} lines have been Changed starting at {start}
+    Changed { start: usize, count: usize },
+    /// {count} lines have been added starting at {start}
+    Added { start: usize, count: usize },
+    /// Lines have been Deleted starting at {start}
+    Deleted { start: usize },
 }
 
 /// Get the result of the `diff` command between the current commit and the string given in parameter
@@ -44,34 +35,80 @@ pub fn get_diff_result(
     let file_name = String::from_utf8_lossy(&file_name).trim().to_string();
 
     // Execute the shell command
-    let diff_output = Command::new("bash")
+    let mut diff_output = Command::new("bash")
         .current_dir(file_path)
-        .stdout(Stdio::piped())
-        // .stderr(Stdio::piped())
         .arg("-c")
         .arg(format!(
-            "diff -u <(git show HEAD:{}) <(echo '{}')",
+            "diff <(git show HEAD:{}) <(echo '{}')",
             file_name, content
         ))
-        .spawn()?
-        .wait_with_output()?;
+        .output()?;
 
     let status_code = diff_output.status.code();
     if matches!(status_code, Some(0 | 1)) {
+        // Remove the trailing newline
+        diff_output.stdout.pop();
         Ok(String::from_utf8(diff_output.stdout)?)
     } else {
         Err(String::from_utf8(diff_output.stderr)?.into())
     }
 }
 
+/// Parse the diff result and return a vector of Patches
+/// The diff result is a string of the form:
+/// ```diff
+/// 1c1,3
+/// < Hello, World !
+/// ---
+/// > Hello
+/// > World
+/// >
+/// ```
+/// Only the lines starting with `@@` are parsed.
+pub fn parse_diff_result(diff: &str) -> Result<Diff, Box<dyn Error>> {
+    let mut result = vec![];
+
+    for line in diff.lines() {
+        // We only care for lines starting with a digit (the line number)
+        if line.starts_with(char::is_numeric) {
+            // Add patch
+            if line.contains('a') {
+                let parts = line.split('a').collect::<Vec<_>>();
+                let mut added = parts[1].split(',');
+                let start = added.next().unwrap_or_default().parse::<usize>()? - 1;
+                let count = added
+                    .next()
+                    .map(|s| s.parse::<usize>().unwrap() - start)
+                    .unwrap_or(1);
+                result.push(Patches::Added { start, count });
+            } else if line.contains('d') {
+                let parts = line.split('d').collect::<Vec<_>>();
+                let start = parts[1].parse::<usize>()? - 1;
+                result.push(Patches::Deleted { start });
+            } else if line.contains('c') {
+                let parts = line.split('c').collect::<Vec<_>>();
+                let mut changed = parts[1].split(',');
+                let start = changed.next().unwrap_or_default().parse::<usize>()? - 1;
+                let count = changed
+                    .next()
+                    .map(|s| s.parse::<usize>().unwrap() - start)
+                    .unwrap_or(1);
+                result.push(Patches::Changed { start, count });
+            }
+        }
+    }
+
+    Ok(result)
+}
+
 /// Get wether or not the current directory is a git repository
 /// If it is, return the current reference name
 pub fn get_ref_name(path: &str) -> Option<String> {
     let output = Command::new("git")
+        .current_dir(path)
         .arg("rev-parse")
         .arg("--abbrev-ref")
         .arg("HEAD")
-        .current_dir(path)
         .output()
         .ok()?;
     if output.status.success() {
@@ -91,7 +128,78 @@ mod tests {
         let content = "Hello\nWorld\n";
         let file_path = "tests";
         let file_name = "sample.txt";
-        let diff = get_diff_result(content, file_path, file_name).unwrap();
-        println!("Diff is {}", diff);
+        let expected = "1c1,3
+< Hello, World !
+---
+> Hello
+> World
+> ";
+        let diff = get_diff_result(content, file_path, file_name);
+        assert!(diff.is_ok());
+        assert_eq!(diff.unwrap(), expected);
+    }
+
+    #[test]
+    fn test_parse_diff_result() {
+        let diff = "1c1,3
+< Hello, World !
+---
+> Hello
+> World
+> ";
+        let expected = vec![Patches::Changed { start: 0, count: 3 }];
+
+        let parsed = parse_diff_result(diff);
+        assert!(parsed.is_ok());
+        let parsed = parsed.unwrap();
+        assert_eq!(parsed, expected);
+    }
+
+    #[test]
+    fn test_long_parse_diff_result() {
+        // The diff is in the file `tests/long_diff.txt`
+        let diff = include_str!("../../tests/long_diff.txt");
+
+        let parsed = parse_diff_result(diff);
+        assert!(parsed.is_ok());
+        let parsed = parsed.unwrap();
+        let expected = vec![
+            Patches::Changed { start: 0, count: 1 },
+            Patches::Changed {
+                start: 4,
+                count: 10,
+            },
+            Patches::Changed {
+                start: 37,
+                count: 1,
+            },
+            Patches::Deleted { start: 38 },
+            Patches::Changed {
+                start: 41,
+                count: 1,
+            },
+            Patches::Changed {
+                start: 44,
+                count: 1,
+            },
+            Patches::Added {
+                start: 48,
+                count: 2,
+            },
+            Patches::Added {
+                start: 56,
+                count: 41,
+            },
+            Patches::Added {
+                start: 101,
+                count: 1,
+            },
+            Patches::Deleted { start: 104 },
+            Patches::Changed {
+                start: 124,
+                count: 37,
+            },
+        ];
+        assert_eq!(parsed, expected);
     }
 }
