@@ -386,6 +386,9 @@ impl Editor {
                             let locked_diff = diff.lock().unwrap();
                             tui.draw_diff_markers(locked_diff.as_ref().unwrap(), &locked_view);
                         }
+
+                        // Sleep for 1000/60 ms to avoid hogging the CPU
+                        thread::sleep(Duration::from_millis(1000 / 60));
                     }
                 } else {
                     // If we don't have a diff channel, no need to draw diff markers
@@ -403,6 +406,9 @@ impl Editor {
                                 refresh_order,
                             );
                         }
+
+                        // Sleep for 1000/60 ms to avoid hogging the CPU
+                        thread::sleep(Duration::from_millis(1000 / 60));
                     }
                 }
             }
