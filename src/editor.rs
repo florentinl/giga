@@ -287,7 +287,7 @@ impl Editor {
                 }
                 // Drop the lock before sleeping
                 drop(current_diff);
-                thread::sleep(Duration::from_secs(1));
+                thread::sleep(Duration::from_millis(250));
             }
         });
         rx
