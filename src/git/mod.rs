@@ -26,7 +26,7 @@ pub fn compute_diff(
     file_name: &str,
 ) -> Result<Diff, Box<dyn Error>> {
     let diff_result = get_diff_result(content, file_path, file_name)?;
-    Ok(parse_diff_result(&diff_result)?)
+    parse_diff_result(&diff_result)
 }
 
 /// Get the result of the `diff` command between the current commit and the string given in parameter
@@ -43,7 +43,7 @@ fn get_diff_result(
     // Get the file_name relative to the file_path git repository
     let file_name = Command::new("git")
         .current_dir(file_path)
-        .args(&["ls-files", "--full-name", file_name])
+        .args(["ls-files", "--full-name", file_name])
         .output()?
         .stdout;
     let file_name = String::from_utf8_lossy(&file_name).trim().to_string();

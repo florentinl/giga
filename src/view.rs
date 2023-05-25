@@ -158,7 +158,6 @@ impl View {
     }
 
     pub fn delete(&mut self) -> bool {
-        let scroll: bool;
         let (rel_x, rel_y) = self.cursor;
         // Calculate the absolute position of the cursor in the file
         let (x, y) = (rel_x + self.start_col, rel_y + self.start_line);
@@ -175,11 +174,10 @@ impl View {
 
         // Navigate the cursor
         if x > 0 {
-            scroll = self.navigate(-1, 0);
+            self.navigate(-1, 0)
         } else {
-            scroll = self.navigate(prev_line_len as isize, -1);
+            self.navigate(prev_line_len as isize, -1)
         }
-        scroll
     }
 
     pub fn dump_file(&self) -> String {
