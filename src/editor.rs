@@ -120,7 +120,10 @@ impl Editor {
 
     fn split_path_name(path: &str) -> (String, String) {
         let path = path::Path::new(path);
-        let file_path = path.parent().unwrap().to_str().unwrap_or_default();
+        let mut file_path = path.parent().unwrap().to_str().unwrap_or_default();
+        if file_path == "" {
+            file_path = ".";
+        }
         let file_name = path.file_name().unwrap().to_str().unwrap_or_default();
         (String::from(file_path) + "/", String::from(file_name))
     }
