@@ -1,7 +1,7 @@
 use std::{
     collections::HashSet,
     fmt::Display,
-    io,
+    io, path,
     process::exit,
     sync::{
         mpsc::{self, Receiver, Sender},
@@ -119,28 +119,11 @@ impl Editor {
     }
 
     fn split_path_name(path: &str) -> (String, String) {
-        // if there is no '/' in the path, the file is in the current directory
-        if !path.contains('/') {
-            return ("./".to_string(), path.to_string());
-        }
-        let mut path = path.to_string();
-        let mut file_name = path.clone();
-        let mut i = path.len() - 1;
-        while i > 0 {
-            if path.chars().nth(i).unwrap() == '/' {
-                file_name = path.split_off(i + 1);
-                break;
-            }
-            i -= 1;
-        }
-        (path, file_name)
+        let path = path::Path::new(path);
+        let file_path = path.parent().unwrap().to_str().unwrap_or_default();
+        let file_name = path.file_name().unwrap().to_str().unwrap_or_default();
+        (String::from(file_path) + "/", String::from(file_name))
     }
-
-    // /// Close the editor
-    // fn terminate(&mut self) {
-    //     self.tui.terminate();
-    //     exit(0);
-    // }
 
     /// Save the current file
     fn save(&self) {
@@ -354,30 +337,28 @@ impl Editor {
         let mut tui = TermionTerminalDrawer::new();
         let (tx, rx) = mpsc::channel::<RefreshOrder>();
 
+        // Get the terminal size and initialize the view
+        let (width, height) = tui.get_term_size();
+        let mut locked_view = self.view.lock().unwrap();
+        locked_view.resize(height, width);
+
+        // Get the initial status bar infos
+        let status_bar_infos =
+            Self::get_status_bar_infos(&self.mode, &self.file_name, &self.git_ref);
+
+        // Draw the initial TUI
+        tui.draw(&locked_view, &status_bar_infos);
+
         // Spawn a thread to draw the TUI in background
         let view = self.view.clone();
         let diff = self.diff.clone();
         let mode = self.mode.clone();
         let file_name = self.file_name.clone();
         let git_ref = self.git_ref.clone();
-        // let diff = self.diff.clone();
         thread::spawn({
             move || {
-                // Get the terminal size and initialize the view
-                let (width, height) = tui.get_term_size();
-                let mut locked_view = view.lock().unwrap();
-                locked_view.resize(height, width);
-
-                // Get the initial status bar infos
-                let status_bar_infos = Self::get_status_bar_infos(&mode, &file_name, &git_ref);
-
-                // Draw the initial TUI
-                tui.draw(&locked_view, &status_bar_infos);
-
-                drop(locked_view);
-
                 if let Some(diff_changed) = diff_changed {
-                    // If we don't have a diff channel, we don't need to refresh the diff markers
+                    // If we have a diff_changed channel, we are in git mode
                     loop {
                         // Wait for a command
                         if let Ok(refresh_order) = rx.try_recv() {
@@ -403,7 +384,7 @@ impl Editor {
                         }
                     }
                 } else {
-                    // If we don't have a diff channel, we need to refresh the diff markers
+                    // If we don't have a diff channel, no need to draw diff markers
                     loop {
                         // Wait for a command
                         if let Ok(refresh_order) = rx.try_recv() {
