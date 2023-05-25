@@ -6,16 +6,20 @@ use std::{
 
 /// The Diff is used to show ticks on the left of the editor
 /// to show which lines have been Changed/added/Deleted since the last commit
-pub type Diff = Vec<Patches>;
+pub type Diff = Vec<Patch>;
 
 #[derive(Debug, PartialEq)]
-pub enum Patches {
-    /// {count} lines have been Changed starting at {start}
-    Changed { start: usize, count: usize },
-    /// {count} lines have been added starting at {start}
-    Added { start: usize, count: usize },
-    /// Lines have been Deleted starting at {start}
-    Deleted { start: usize },
+pub enum PatchType {
+    Added,
+    Deleted,
+    Changed,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Patch {
+    pub start: usize,
+    pub count: usize,
+    pub patch_type: PatchType,
 }
 
 /// Compute the diff between the current commit and the string given in parameter
@@ -108,11 +112,19 @@ fn parse_diff_result(diff: &str) -> Result<Diff, Box<dyn Error>> {
                     .next()
                     .map(|s| s.parse::<usize>().unwrap() - start)
                     .unwrap_or(1);
-                result.push(Patches::Added { start, count });
+                result.push(Patch {
+                    start,
+                    count,
+                    patch_type: PatchType::Added,
+                });
             } else if line.contains('d') {
                 let parts = line.split('d').collect::<Vec<_>>();
                 let start = parts[1].parse::<usize>()? - 1;
-                result.push(Patches::Deleted { start });
+                result.push(Patch {
+                    start,
+                    count: 1,
+                    patch_type: PatchType::Deleted,
+                });
             } else if line.contains('c') {
                 let parts = line.split('c').collect::<Vec<_>>();
                 let mut changed = parts[1].split(',');
@@ -121,11 +133,14 @@ fn parse_diff_result(diff: &str) -> Result<Diff, Box<dyn Error>> {
                     .next()
                     .map(|s| s.parse::<usize>().unwrap() - start)
                     .unwrap_or(1);
-                result.push(Patches::Changed { start, count });
+                result.push(Patch {
+                    start,
+                    count,
+                    patch_type: PatchType::Changed,
+                });
             }
         }
     }
-
     Ok(result)
 }
 
@@ -175,7 +190,11 @@ mod tests {
 > Hello
 > World
 > ";
-        let expected = vec![Patches::Changed { start: 0, count: 3 }];
+        let expected = vec![Patch {
+            start: 0,
+            count: 3,
+            patch_type: PatchType::Changed,
+        }];
 
         let parsed = parse_diff_result(diff);
         assert!(parsed.is_ok());
@@ -186,48 +205,70 @@ mod tests {
     #[test]
     fn test_long_parse_diff_result() {
         // The diff is in the file `tests/long_diff.txt`
-        let diff = include_str!("../../tests/long_diff.txt");
+        let diff = include_str!("../tests/long_diff.txt");
 
         let parsed = parse_diff_result(diff);
         assert!(parsed.is_ok());
         let parsed = parsed.unwrap();
+        use PatchType::*;
         let expected = vec![
-            Patches::Changed { start: 0, count: 1 },
-            Patches::Changed {
+            Patch {
+                start: 0,
+                count: 1,
+                patch_type: Changed,
+            },
+            Patch {
                 start: 4,
                 count: 10,
+                patch_type: Changed,
             },
-            Patches::Changed {
+            Patch {
                 start: 37,
                 count: 1,
+                patch_type: Changed,
             },
-            Patches::Deleted { start: 38 },
-            Patches::Changed {
+            Patch {
+                start: 38,
+                count: 1,
+                patch_type: Deleted,
+            },
+            Patch {
                 start: 41,
                 count: 1,
+                patch_type: Changed,
             },
-            Patches::Changed {
+            Patch {
                 start: 44,
                 count: 1,
+                patch_type: Changed,
             },
-            Patches::Added {
+            Patch {
                 start: 48,
                 count: 2,
+                patch_type: Added,
             },
-            Patches::Added {
+            Patch {
                 start: 56,
                 count: 41,
+                patch_type: Added,
             },
-            Patches::Added {
+            Patch {
                 start: 101,
                 count: 1,
+                patch_type: Added,
             },
-            Patches::Deleted { start: 104 },
-            Patches::Changed {
+            Patch {
+                start: 104,
+                count: 1,
+                patch_type: Deleted,
+            },
+            Patch {
                 start: 124,
                 count: 37,
+                patch_type: Changed,
             },
         ];
+        println!("{:?}", parsed);
         assert_eq!(parsed, expected);
     }
 }

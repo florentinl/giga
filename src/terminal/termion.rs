@@ -9,7 +9,7 @@ use termion::{
 };
 
 use crate::{
-    git::{Diff, Patches},
+    git::{Diff, Patch, PatchType},
     view::View,
 };
 
@@ -183,42 +183,30 @@ impl TerminalDrawer for TermionTerminalDrawer {
                     print_to_term!(self.stdout, " ");
                     view_line += 1;
                 }
-                Some(Patches::Added { start, count }) => match line {
+                Some(Patch {
+                    start,
+                    count,
+                    patch_type,
+                }) => match line {
                     l if l < *start => {
                         print_to_term!(self.stdout, " ");
                         view_line += 1;
                     }
                     l if l >= *start && l < start + count => {
-                        print_to_term!(self.stdout, color::Fg(color::Green));
-                        print_to_term!(self.stdout, "▐");
-                        view_line += 1;
-                    }
-                    _ => {
-                        patch = patches.next();
-                    }
-                },
-                Some(Patches::Changed { start, count }) => match line {
-                    l if l < *start => {
-                        print_to_term!(self.stdout, " ");
-                        view_line += 1;
-                    }
-                    l if l >= *start && l < start + count => {
-                        print_to_term!(self.stdout, color::Fg(color::Yellow));
-                        print_to_term!(self.stdout, "▐");
-                        view_line += 1;
-                    }
-                    _ => {
-                        patch = patches.next();
-                    }
-                },
-                Some(Patches::Deleted { start }) => match line {
-                    l if l < *start => {
-                        print_to_term!(self.stdout, " ");
-                        view_line += 1;
-                    }
-                    l if l == *start => {
-                        print_to_term!(self.stdout, color::Fg(color::Red));
-                        print_to_term!(self.stdout, "▗");
+                        match patch_type {
+                            PatchType::Added => {
+                                print_to_term!(self.stdout, color::Fg(color::Green));
+                                print_to_term!(self.stdout, "▐");
+                            }
+                            PatchType::Deleted => {
+                                print_to_term!(self.stdout, color::Fg(color::Red));
+                                print_to_term!(self.stdout, "▗");
+                            }
+                            PatchType::Changed => {
+                                print_to_term!(self.stdout, color::Fg(color::Yellow));
+                                print_to_term!(self.stdout, "▐");
+                            }
+                        }
                         view_line += 1;
                     }
                     _ => {
