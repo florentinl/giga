@@ -339,12 +339,12 @@ impl Editor {
             RefreshOrder::None => (),
             RefreshOrder::CursorPos => tui.move_cursor(view.cursor),
             RefreshOrder::StatusBar => {
-                tui.draw_status_bar(&status_bar_infos);
+                tui.draw_status_bar(status_bar_infos);
                 tui.move_cursor(view.cursor)
             }
-            RefreshOrder::Lines(lines) => tui.draw_lines(&view, lines),
+            RefreshOrder::Lines(lines) => tui.draw_lines(view, lines),
             RefreshOrder::AllLines => {
-                tui.draw(&view, &status_bar_infos);
+                tui.draw(view, status_bar_infos);
             }
         }
     }

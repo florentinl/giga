@@ -73,8 +73,6 @@ impl TerminalDrawer for TermionTerminalDrawer {
     }
 
     fn draw(&mut self, view: &View, status_bar_infos: &StatusBarInfos) {
-        // Clear the screen
-        self.clear();
         // Draw the status bar
         self.draw_status_bar(status_bar_infos);
         // Draw all the lines of the editor
@@ -159,13 +157,13 @@ impl TerminalDrawer for TermionTerminalDrawer {
     }
 
     /// Draw the diff markers on the left of the screen
-    /// - '+' (green) for added lines
-    /// - '-' (red) for removed lines
-    /// - '~' (yellow) for modified lines
+    /// - '▐' (green) for added lines
+    /// - '▗' (red) for removed lines
+    /// - '▐' (yellow) for modified lines
     /// - ' ' (default) for unchanged lines
     fn draw_diff_markers(&mut self, diff: &Diff, view: &View) {
         // Move the cursor to the beginning of the screen
-        let mut patches = diff.into_iter();
+        let mut patches = diff.iter();
         let mut patch = patches.next();
         let mut view_line = 0;
 
@@ -181,42 +179,48 @@ impl TerminalDrawer for TermionTerminalDrawer {
                     print_to_term!(self.stdout, " ");
                     view_line += 1;
                 }
-                Some(Patches::Added { start, count }) => {
-                    if line < *start {
+                Some(Patches::Added { start, count }) => match line {
+                    l if l < *start => {
                         print_to_term!(self.stdout, " ");
                         view_line += 1;
-                    } else if line >= *start && line < start + count {
+                    }
+                    l if l >= *start && l < start + count => {
                         print_to_term!(self.stdout, color::Fg(color::Green));
                         print_to_term!(self.stdout, "▐");
                         view_line += 1;
-                    } else {
+                    }
+                    _ => {
                         patch = patches.next();
                     }
-                }
-                Some(Patches::Changed { start, count }) => {
-                    if line < *start {
+                },
+                Some(Patches::Changed { start, count }) => match line {
+                    l if l < *start => {
                         print_to_term!(self.stdout, " ");
                         view_line += 1;
-                    } else if line >= *start && line < start + count {
+                    }
+                    l if l >= *start && l < start + count => {
                         print_to_term!(self.stdout, color::Fg(color::Yellow));
                         print_to_term!(self.stdout, "▐");
                         view_line += 1;
-                    } else {
+                    }
+                    _ => {
                         patch = patches.next();
                     }
-                }
-                Some(Patches::Deleted { start }) => {
-                    if line < *start {
+                },
+                Some(Patches::Deleted { start }) => match line {
+                    l if l < *start => {
                         print_to_term!(self.stdout, " ");
                         view_line += 1;
-                    } else if line == *start {
+                    }
+                    l if l == *start => {
                         print_to_term!(self.stdout, color::Fg(color::Red));
                         print_to_term!(self.stdout, "▗");
                         view_line += 1;
-                    } else {
+                    }
+                    _ => {
                         patch = patches.next();
                     }
-                }
+                },
             }
         }
 
@@ -227,9 +231,11 @@ impl TerminalDrawer for TermionTerminalDrawer {
 
 impl TermionTerminalDrawer {
     pub fn new() -> Box<Self> {
-        Box::new(Self {
+        let mut drawer = Self {
             stdout: std::io::stdout().into_raw_mode().unwrap(),
-        })
+        };
+        drawer.clear();
+        Box::new(drawer)
     }
 
     /// # Helper funtion to flush the stdout buffer
