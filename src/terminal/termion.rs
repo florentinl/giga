@@ -103,11 +103,12 @@ impl TerminalDrawer for TermionTerminalDrawer {
             print_to_term!(self.stdout, cursor::Goto(1, line as u16 + 1));
             // Print the line number
             self.draw_line_number(line + view.start_line + 1);
-            // Clear the content of the line
+            // Leave one space for git diff markers
             print_to_term!(self.stdout, cursor::Right(1));
-            print_to_term!(self.stdout, clear::UntilNewline);
             // Print the line content
             print_to_term!(self.stdout, view.get_line(line));
+            // Clear the rest of the line
+            print_to_term!(self.stdout, clear::UntilNewline);
         }
         // Move the cursor to its actual position
         self.move_cursor(view.cursor);
@@ -166,7 +167,6 @@ impl TerminalDrawer for TermionTerminalDrawer {
     /// - '▐' (yellow) for modified lines
     /// - ' ' (default) for unchanged lines
     fn draw_diff_markers(&mut self, diff: &Diff, view: &View) {
-        // Move the cursor to the beginning of the screen
         let mut patches = diff.iter();
         let mut patch = patches.next();
         let mut view_line = 0;
