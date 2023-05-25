@@ -4,7 +4,7 @@ use std::{
     io, path,
     process::exit,
     sync::{
-        mpsc::{self, Receiver, Sender},
+        mpsc::{self, Receiver},
         Arc, Mutex,
     },
     thread,
@@ -337,14 +337,19 @@ impl Editor {
         }
     }
 
-    /// Initialize the tui drawing thread
+    /// # Initialize the tui drawing thread
+    /// This thread listens from three channels:
+    /// - `cmd_rx`: commands refresh orders from the main thread
+    /// - `diff_changed`: a channel that is notified when the diff has changed
+    /// - `resize_rx`: a channel that is notified when the terminal has been resized
+    /// It then draws the TUI accordingly.
     fn init_tui_thread(
         &mut self,
+        cmd_rx: Receiver<RefreshOrder>,
         diff_changed: Option<Receiver<()>>,
         resize_rx: Receiver<()>,
-    ) -> Sender<RefreshOrder> {
+    ) {
         let mut tui = TermionTerminalDrawer::new();
-        let (tx, rx) = mpsc::channel::<RefreshOrder>();
 
         // Get the terminal size and initialize the view
         let (width, height) = tui.get_term_size();
@@ -370,7 +375,7 @@ impl Editor {
                     // If we have a diff_changed channel, we are in git mode
                     loop {
                         // Wait for a command
-                        if let Ok(refresh_order) = rx.try_recv() {
+                        if let Ok(refresh_order) = cmd_rx.try_recv() {
                             let locked_view = view.lock().unwrap();
                             let status_bar_infos =
                                 Self::get_status_bar_infos(&mode, &file_name, &git_ref);
@@ -422,7 +427,7 @@ impl Editor {
                     // If we don't have a diff channel, no need to draw diff markers
                     loop {
                         // Wait for a command
-                        if let Ok(refresh_order) = rx.try_recv() {
+                        if let Ok(refresh_order) = cmd_rx.try_recv() {
                             let locked_view = view.lock().unwrap();
                             let status_bar_infos =
                                 Self::get_status_bar_infos(&mode, &file_name, &git_ref);
@@ -454,13 +459,12 @@ impl Editor {
                             );
                         }
 
-                        // Sleep for 1000/60 ms to avoid hogging the CPU
+                        // Sleep for 1000/120 ms to avoid hogging the CPU
                         thread::sleep(Duration::from_millis(1000 / 120));
                     }
                 }
             }
         });
-        tx
     }
 
     /// Run the editor loop
@@ -473,18 +477,16 @@ impl Editor {
             None
         };
 
-        // Initialize the stdin reader
-        let keys = io::stdin().keys();
-
         // Initialize the resize signal handler
         let (resize_tx, resize_rx) = mpsc::channel::<()>();
         signal::init_resize_listener(resize_tx);
 
         // Initialize the TUI thread
-        let refresh_order_tx = self.init_tui_thread(git_diff_rx, resize_rx);
+        let (cmd_tx, cmd_rx) = mpsc::channel::<RefreshOrder>();
+        self.init_tui_thread(cmd_rx, git_diff_rx, resize_rx);
 
-        // Main loop of the editor
-        for key in keys.flatten() {
+        // Main loop of the editor (waiting for key events)
+        for key in io::stdin().keys().flatten() {
             let mode = self.mode.lock().unwrap().clone();
             // Parse the key
             if let Ok(cmd) = Command::parse(key, &mode) {
@@ -492,7 +494,7 @@ impl Editor {
                 let refresh_order = self.execute(cmd);
 
                 // Send the refresh order to the TUI
-                refresh_order_tx.send(refresh_order).unwrap();
+                cmd_tx.send(refresh_order).unwrap();
             }
         }
     }
