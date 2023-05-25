@@ -160,7 +160,8 @@ mod tests {
 < Hello, World !
 ---
 > Hello
-> World";
+> World
+";
         let diff = get_diff_result(content, file_path, file_name);
         assert!(diff.is_ok());
         assert_eq!(diff.unwrap(), expected);
