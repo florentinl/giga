@@ -73,11 +73,15 @@ impl TerminalDrawer for TermionTerminalDrawer {
     }
 
     fn draw(&mut self, view: &View, status_bar_infos: &StatusBarInfos) {
+        // Hide the terminal cursor
+        print_to_term!(self.stdout, cursor::Hide);
         // Draw the status bar
         self.draw_status_bar(status_bar_infos);
         // Draw all the lines of the editor
         let all_lines = HashSet::from_iter(0..view.height);
         self.draw_lines(view, all_lines);
+        // Show the cursor
+        print_to_term!(self.stdout, cursor::Show);
         // Move the cursor to the current position
         self.move_cursor(view.cursor);
     }
