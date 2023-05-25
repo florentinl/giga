@@ -118,6 +118,7 @@ impl Editor {
         })
     }
 
+    /// Split a file path into a relative path and a name
     fn split_path_name(path: &str) -> (String, String) {
         let path = path::Path::new(path);
         let mut file_path = path.parent().unwrap().to_str().unwrap_or_default();
