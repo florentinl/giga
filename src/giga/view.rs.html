@@ -348,8 +348,6 @@
 <a href="#348" id="348">348</a>
 <a href="#349" id="349">349</a>
 <a href="#350" id="350">350</a>
-<a href="#351" id="351">351</a>
-<a href="#352" id="352">352</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::file::File;
 
 <span class="doccomment">/// The View struct represents the actual portion of the File being displayed.
@@ -510,7 +508,6 @@
     }
 
     <span class="kw">pub fn </span>delete(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">let </span>scroll: bool;
         <span class="kw">let </span>(rel_x, rel_y) = <span class="self">self</span>.cursor;
         <span class="comment">// Calculate the absolute position of the cursor in the file
         </span><span class="kw">let </span>(x, y) = (rel_x + <span class="self">self</span>.start_col, rel_y + <span class="self">self</span>.start_line);
@@ -527,11 +524,10 @@
 
         <span class="comment">// Navigate the cursor
         </span><span class="kw">if </span>x &gt; <span class="number">0 </span>{
-            scroll = <span class="self">self</span>.navigate(-<span class="number">1</span>, <span class="number">0</span>);
+            <span class="self">self</span>.navigate(-<span class="number">1</span>, <span class="number">0</span>)
         } <span class="kw">else </span>{
-            scroll = <span class="self">self</span>.navigate(prev_line_len <span class="kw">as </span>isize, -<span class="number">1</span>);
+            <span class="self">self</span>.navigate(prev_line_len <span class="kw">as </span>isize, -<span class="number">1</span>)
         }
-        scroll
     }
 
     <span class="kw">pub fn </span>dump_file(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {

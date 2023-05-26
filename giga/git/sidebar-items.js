@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Patches"],"fn":["compute_diff","get_diff_result","get_ref_name","parse_diff_result"],"type":["Diff"]};
+window.SIDEBAR_ITEMS = {"enum":["PatchType"],"fn":["compute_diff","get_diff_result","get_ref_name","parse_diff_result"],"struct":["Patch"],"type":["Diff"]};
