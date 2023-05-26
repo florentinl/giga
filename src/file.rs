@@ -116,6 +116,12 @@ impl File {
             }
         }
     }
+
+    pub fn update_extension(&mut self, extension: &str) {
+        self.colorizer.extension = extension.to_string();
+        let content_as_string = self.to_string();
+        self.content = self.colorizer.colorize_string( &content_as_string);
+    }
 }
 
 /// Implement the ToString trait for File (used for saving the file)

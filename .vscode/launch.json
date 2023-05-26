@@ -20,7 +20,7 @@
                 }
             },
             "args": [
-                "./tests/test_py.py"
+                "tests/test_c.c"
             ],
             "cwd": "${workspaceFolder}"
         },

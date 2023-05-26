@@ -183,6 +183,10 @@ impl View {
     pub fn dump_file(&self) -> String {
         self.file.to_string()
     }
+
+    pub fn update_extension(&mut self, ext: &str) {
+        self.file.update_extension(ext);
+    }
 }
 
 impl ToString for View {

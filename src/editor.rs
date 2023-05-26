@@ -107,8 +107,6 @@ impl Editor {
         let content = File::from_string(&content, &ext);
         let view = Arc::new(Mutex::new(View::new(content, 0, 0)));
 
-        
-
         let git_ref = arc_mutex!(get_ref_name(&file_path));
 
         Ok(Self {
@@ -124,14 +122,25 @@ impl Editor {
     /// Split a file path into a relative path and a name
     fn split_path_name(path: &str) -> (String, String, String) {
         let path = path::Path::new(path);
-        let mut file_path = path.parent().unwrap().to_str().unwrap_or_default();
-        if file_path.is_empty() {
-            file_path = ".";
-        }
-        let file_name = path.file_name().unwrap().to_str().unwrap_or_default();
-        let file_ext = path.extension().unwrap_or_default().to_str().unwrap_or_default();
+        let file_path = match path.parent() {
+            None => ".",
+            Some(path) => path.to_str().unwrap_or("."),
+        };
+        let file_name = match path.file_name() {
+            None => "",
+            Some(name) => name.to_str().unwrap_or_default(),
+        };
+        let file_ext = path
+            .extension()
+            .unwrap_or_default()
+            .to_str()
+            .unwrap_or_default();
 
-        (String::from(file_path) + "/", String::from(file_name), String::from(file_ext))
+        (
+            String::from(file_path) + "/",
+            String::from(file_name),
+            String::from(file_ext),
+        )
     }
 
     /// Save the current file
@@ -154,10 +163,15 @@ impl Editor {
                 // delete a char
                 file_name.pop();
             }
-            Some(c) => match c {
-                ' ' | '\'' => *file_name = file_name.clone() + "_",
-                _ => *file_name = file_name.clone() + &c.to_string(),
-            },
+            Some(c) => {
+                match c {
+                    ' ' | '\'' => *file_name = file_name.clone() + "_",
+                    _ => *file_name = file_name.clone() + &c.to_string(),
+                }
+                let (_, _, ext) = Self::split_path_name(&self.file_path);
+                let mut locked_view = self.view.lock().unwrap();
+                locked_view.update_extension(&ext);
+            }
         }
     }
 
@@ -166,7 +180,7 @@ impl Editor {
     /// - Move: move the cursor
     /// - Save: save the file
     /// - Rename: rename the file
-    /// - ToggleMode: toogle editor mode
+    /// - ToggleMode: toggle editor mode
     /// - Insert: insert a character
     /// - Delete: delete a character
     fn execute(&mut self, cmd: Command) -> RefreshOrder {

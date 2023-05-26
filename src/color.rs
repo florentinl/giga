@@ -11,7 +11,7 @@ pub struct ColorChar {
 pub struct Colorizer {
     ps: SyntaxSet,
     ts: ThemeSet,
-    extension: String,
+    pub extension: String,
 }
 
 impl Colorizer {
