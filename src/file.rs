@@ -87,10 +87,14 @@ impl File {
                 let prev_line = self.content.remove(line);
                 if let Some(line) = self.content.get_mut(line - 1) {
                     line.extend(prev_line);
+                    let content_as_string = self.to_string();
+                    self.content = self.colorizer.colorize_string(&content_as_string);
                 }
             }
         } else if col <= line_len {
             self.content[line].remove(col - 1);
+            let content_as_string = self.to_string();
+            self.content = self.colorizer.colorize_string(&content_as_string);
         }
     }
 
@@ -107,6 +111,8 @@ impl File {
                 }
                 let new_line = vec.split_off(col);
                 self.content.insert(line + 1, new_line);
+                let content_as_string = self.to_string();
+                self.content = self.colorizer.colorize_string(&content_as_string);
             }
         }
     }
