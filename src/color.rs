@@ -53,7 +53,7 @@ impl Colorizer {
             for (style, substr) in line {
                 let color =
                     termion::color::Rgb(style.foreground.r, style.foreground.g, style.foreground.b);
-                for char in substr.chars() {
+                for char in substr.chars().filter(|c| *c != '\n') {
                     color_line.push(ColorChar { char, color });
                 }
             }
