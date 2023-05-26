@@ -51,6 +51,17 @@ impl View {
         )
     }
 
+    /// Get the line without the color information
+    fn get_line_without_color(&self, index: usize) -> String {
+        let line = self
+            .file
+            .get_line(index + self.start_line)
+            .unwrap_or_default();
+        let start = self.start_col.min(line.len());
+        let end = (self.start_col + self.width).min(line.len());
+        String::from(&line[start..end].iter().map(|c| c.char).collect::<String>())
+    }
+
     /// Navigate the cursor by a given amount and eventually scroll the view
     /// if the cursor is out of bounds of the file, it will be moved to the
     /// closest valid position instead.
@@ -185,6 +196,7 @@ impl View {
         }
     }
 
+    /// Dump the content of the file to save it to disk
     pub fn dump_file(&self) -> String {
         self.file.to_string()
     }
@@ -197,7 +209,7 @@ impl ToString for View {
             .min(self.file.len().saturating_sub(self.start_line));
 
         (0..bottom)
-            .map(|i| self.get_line(i))
+            .map(|i| self.get_line_without_color(i))
             .collect::<Vec<_>>()
             .join("\n")
     }
@@ -205,7 +217,17 @@ impl ToString for View {
 
 #[cfg(test)]
 mod tests {
+    use termion::color::{Rgb, Fg};
+
     use super::*;
+
+    fn default_color(str: &str) -> String {
+        let mut colored = String::new();
+        for c in str.chars() {
+            colored.push_str(&format!("{}{}", Fg(Rgb(192, 197, 206)), c));
+        }
+        colored
+    }
 
     #[test]
     fn view_new() {
@@ -233,7 +255,7 @@ mod tests {
     #[test]
     fn view_get_line() {
         let view = View::new(File::from_string("Hello, World !\n", "txt"), 1, 10);
-        assert_eq!(view.get_line(0), "Hello, Wor");
+        assert_eq!(view.get_line(0), default_color("Hello, Wor"));
     }
 
     #[test]
@@ -306,7 +328,7 @@ mod tests {
         assert_eq!(view.cursor, (9, 0));
         assert_eq!(view.start_col, 1);
         view.navigate(20, 0);
-        assert_eq!(view.get_line(0), ", World !");
+        assert_eq!(view.get_line(0), default_color(", World !"));
         assert_eq!(view.cursor, (9, 0));
         assert_eq!(view.start_col, 5);
         view.navigate(-20, 0);

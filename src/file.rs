@@ -137,7 +137,7 @@ mod tests {
         str.chars()
             .map(|c| ColorChar {
                 char: c,
-                color: termion::color::Rgb(0, 0, 0),
+                color: termion::color::Rgb(192, 197, 206),
             })
             .collect()
     }
@@ -149,7 +149,7 @@ mod tests {
     }
 
     #[test]
-    fn file_from_bytes() {
+    fn file_from_string() {
         let file = File::from_string("Hello, World !", "txt");
         assert_eq!(file.content.len(), 1);
         assert_eq!(file.content[0], string_to_colorchars("Hello, World !"));
