@@ -1,11 +1,17 @@
 use std::{
     collections::HashSet,
     fmt::Display,
+    io, path,
     process::exit,
-    sync::{Arc, Mutex},
+    sync::{
+        mpsc::{self, Receiver, Sender},
+        Arc, Mutex,
+    },
     thread,
     time::Duration,
 };
+
+use termion::input::TermRead;
 
 use crate::{
     command::Command,
@@ -14,7 +20,13 @@ use crate::{
     terminal::{termion::TermionTerminalDrawer, StatusBarInfos, TerminalDrawer},
     view::View,
 };
-use termion::input::TermRead;
+
+/// Macro to create arc mutexes quickly
+macro_rules! arc_mutex {
+    ($value:expr) => {
+        Arc::new(Mutex::new($value))
+    };
+}
 
 /// Editor structure
 /// represents the state of the program
@@ -22,16 +34,14 @@ pub struct Editor {
     /// The path of the file being edited
     file_path: String,
     /// The name of the file being edited
-    file_name: String,
+    file_name: Arc<Mutex<String>>,
     /// The current view of the file
     view: Arc<Mutex<View>>,
-    /// The Tui responsible for drawing the editor
-    tui: Box<dyn TerminalDrawer>,
     /// The mode of the editor
-    mode: Mode,
+    mode: Arc<Mutex<Mode>>,
 
     /// Git Branch/Commit/Tag if any
-    git_ref: Option<String>,
+    git_ref: Arc<Mutex<Option<String>>>,
     /// Git diff since last commit if any
     pub diff: Arc<Mutex<Option<Diff>>>,
 }
@@ -59,6 +69,8 @@ impl Display for Mode {
 }
 
 pub enum RefreshOrder {
+    /// Terminate the editor
+    Terminate,
     /// No need to refresh the screen
     None,
     /// Refresh the cursor position
@@ -78,11 +90,10 @@ impl Editor {
         let ref_name = get_ref_name(&file_path);
         Self {
             file_path,
-            file_name,
-            view: Arc::new(Mutex::new(View::new(File::new(), 0, 0))),
-            tui: TermionTerminalDrawer::new(),
-            mode: Mode::Normal,
-            git_ref: ref_name,
+            file_name: arc_mutex!(file_name),
+            view: arc_mutex!(View::new(File::new(), 0, 0)),
+            mode: arc_mutex!(Mode::Normal),
+            git_ref: arc_mutex!(ref_name),
             diff: Arc::new(Mutex::new(None)),
         }
     }
@@ -93,51 +104,38 @@ impl Editor {
         let content = File::from_string(&content);
         let view = Arc::new(Mutex::new(View::new(content, 0, 0)));
 
-        let (path, file_name) = Self::split_path_name(path);
+        let (file_path, file_name) = Self::split_path_name(path);
 
-        let git_ref = get_ref_name(&path);
+        let git_ref = arc_mutex!(get_ref_name(&file_path));
 
         Ok(Self {
-            file_path: path.to_string(),
-            file_name: file_name.to_string(),
+            file_path,
+            file_name: arc_mutex!(file_name),
             view,
-            tui: TermionTerminalDrawer::new(),
-            mode: Mode::Normal,
-            git_ref: git_ref,
-            diff: Arc::new(Mutex::new(None)),
+            mode: arc_mutex!(Mode::Normal),
+            git_ref,
+            diff: arc_mutex!(None),
         })
     }
 
+    /// Split a file path into a relative path and a name
     fn split_path_name(path: &str) -> (String, String) {
-        // if there is no '/' in the path, the file is in the current directory
-        if !path.contains('/') {
-            return ("./".to_string(), path.to_string());
+        let path = path::Path::new(path);
+        let mut file_path = path.parent().unwrap().to_str().unwrap_or_default();
+        if file_path.is_empty() {
+            file_path = ".";
         }
-        let mut path = path.to_string();
-        let mut file_name = path.clone();
-        let mut i = path.len() - 1;
-        while i > 0 {
-            if path.chars().nth(i).unwrap() == '/' {
-                file_name = path.split_off(i + 1);
-                break;
-            }
-            i -= 1;
-        }
-        (path, file_name)
-    }
-
-    /// Close the editor
-    fn terminate(&mut self) {
-        self.tui.terminate();
-        exit(0);
+        let file_name = path.file_name().unwrap().to_str().unwrap_or_default();
+        (String::from(file_path) + "/", String::from(file_name))
     }
 
     /// Save the current file
     fn save(&self) {
-        if self.file_name == "" {
+        let file_name = self.file_name.lock().unwrap();
+        if file_name.is_empty() {
             return;
         }
-        let path = String::from(&self.file_path) + &self.file_name;
+        let path = String::from(&self.file_path) + &file_name;
         let content = self.view.lock().unwrap().dump_file();
         std::fs::write(path.clone() + ".tmp", content).unwrap_or_default();
         std::fs::rename(path.clone() + ".tmp", path).unwrap_or_default();
@@ -145,25 +143,16 @@ impl Editor {
 
     /// Rename the current file
     fn rename(&mut self, c: Option<char>) {
+        let mut file_name = self.file_name.lock().unwrap();
         match c {
             None => {
                 // delete a char
-                self.file_name.pop();
+                file_name.pop();
             }
             Some(c) => match c {
-                ' ' | '\'' => self.file_name = self.file_name.clone() + "_",
-                _ => self.file_name = self.file_name.clone() + &c.to_string(),
+                ' ' | '\'' => *file_name = file_name.clone() + "_",
+                _ => *file_name = file_name.clone() + &c.to_string(),
             },
-        }
-    }
-
-    /// Make status bar infos
-    fn get_status_bar_infos(&self) -> StatusBarInfos {
-        StatusBarInfos {
-            file_path: self.file_path.clone(),
-            file_name: self.file_name.clone(),
-            mode: self.mode.clone(),
-            ref_name: self.git_ref.clone(),
         }
     }
 
@@ -178,9 +167,8 @@ impl Editor {
     fn execute(&mut self, cmd: Command) -> RefreshOrder {
         match cmd {
             Command::Quit => {
-                self.terminate();
                 // Doesn't matter as self.terminate() never returns
-                RefreshOrder::AllLines
+                RefreshOrder::Terminate
             }
             Command::Move(x, y) => {
                 let scroll = self.view.lock().unwrap().navigate(x, y);
@@ -256,7 +244,8 @@ impl Editor {
 
     /// Toggle the mode of the editor between normal and insert
     fn toggle_mode(&mut self) {
-        self.mode = match self.mode {
+        let mut mode = self.mode.lock().unwrap();
+        *mode = match mode.clone() {
             Mode::Normal => Mode::Insert,
             Mode::Insert => Mode::Normal,
             Mode::Rename => Mode::Normal,
@@ -264,7 +253,8 @@ impl Editor {
     }
 
     fn toggle_rename(&mut self) {
-        self.mode = match self.mode {
+        let mut mode = self.mode.lock().unwrap();
+        *mode = match mode.clone() {
             Mode::Normal => Mode::Rename,
             Mode::Rename => Mode::Normal,
             _ => Mode::Normal, // Could not be in insert mode
@@ -272,16 +262,12 @@ impl Editor {
     }
 
     /// Initialize git operations
-    fn init_git(&mut self) {
-        // Compute the git diff a first time
-        let view = self.view.lock().unwrap();
-        let diff = compute_diff(&view.dump_file(), &self.file_path, &self.file_name).unwrap();
-
-        // Draw the initial diff
-        self.tui.draw_diff_markers(&diff, &view);
-
+    fn init_git_thread(&mut self) -> Receiver<()> {
         // Initialize the diff
-        self.diff = Arc::new(Mutex::new(Some(diff)));
+        self.diff = Arc::new(Mutex::new(None));
+
+        // Initialize the diff_changed channel
+        let (tx, rx) = mpsc::channel();
 
         // Spawn a thread to compute the diff in background
         let view = self.view.clone();
@@ -290,57 +276,172 @@ impl Editor {
         let file_name = self.file_name.clone();
         thread::spawn({
             move || loop {
+                let file_name = file_name.lock().unwrap().clone();
                 let new_diff =
-                    compute_diff(&view.lock().unwrap().dump_file(), &file_path, &file_name);
-                *diff.lock().unwrap() = new_diff.ok();
-                thread::sleep(Duration::from_secs(1));
+                    compute_diff(&view.lock().unwrap().dump_file(), &file_path, &file_name).ok();
+                let mut current_diff = diff.lock().unwrap();
+
+                // If the diff has changed, redraw the diff markers
+                if new_diff != *current_diff {
+                    *current_diff = new_diff;
+                    tx.send(()).unwrap();
+                }
+                // Drop the lock before sleeping
+                drop(current_diff);
+                thread::sleep(Duration::from_millis(250));
             }
         });
+        rx
+    }
+
+    /// Get the status bar infos
+    fn get_status_bar_infos(
+        mode: &Arc<Mutex<Mode>>,
+        file_name: &Arc<Mutex<String>>,
+        git_ref: &Arc<Mutex<Option<String>>>,
+    ) -> StatusBarInfos {
+        let mode = mode.lock().unwrap();
+        let file_name = file_name.lock().unwrap();
+        let git_ref = git_ref.lock().unwrap();
+
+        StatusBarInfos {
+            file_name: file_name.clone(),
+            mode: mode.clone(),
+            ref_name: git_ref.clone(),
+        }
+    }
+
+    /// Refresh the TUI
+    fn refresh_tui(
+        tui: &mut TermionTerminalDrawer,
+        view: &View,
+        status_bar_infos: &StatusBarInfos,
+        refresh_order: RefreshOrder,
+    ) {
+        match refresh_order {
+            RefreshOrder::Terminate => {
+                tui.terminate();
+                exit(0);
+            }
+            RefreshOrder::None => (),
+            RefreshOrder::CursorPos => tui.move_cursor(view.cursor),
+            RefreshOrder::StatusBar => {
+                tui.draw_status_bar(status_bar_infos);
+                tui.move_cursor(view.cursor)
+            }
+            RefreshOrder::Lines(lines) => tui.draw_lines(view, lines),
+            RefreshOrder::AllLines => {
+                tui.draw(view, status_bar_infos);
+            }
+        }
+    }
+
+    /// Initialize the tui drawing thread
+    fn init_tui_thread(&mut self, diff_changed: Option<Receiver<()>>) -> Sender<RefreshOrder> {
+        let mut tui = TermionTerminalDrawer::new();
+        let (tx, rx) = mpsc::channel::<RefreshOrder>();
+
+        // Get the terminal size and initialize the view
+        let (width, height) = tui.get_term_size();
+        let mut locked_view = self.view.lock().unwrap();
+        locked_view.resize(height, width);
+
+        // Get the initial status bar infos
+        let status_bar_infos =
+            Self::get_status_bar_infos(&self.mode, &self.file_name, &self.git_ref);
+
+        // Draw the initial TUI
+        tui.draw(&locked_view, &status_bar_infos);
+
+        // Spawn a thread to draw the TUI in background
+        let view = self.view.clone();
+        let diff = self.diff.clone();
+        let mode = self.mode.clone();
+        let file_name = self.file_name.clone();
+        let git_ref = self.git_ref.clone();
+        thread::spawn({
+            move || {
+                if let Some(diff_changed) = diff_changed {
+                    // If we have a diff_changed channel, we are in git mode
+                    loop {
+                        // Wait for a command
+                        if let Ok(refresh_order) = rx.try_recv() {
+                            let locked_view = view.lock().unwrap();
+                            let status_bar_infos =
+                                Self::get_status_bar_infos(&mode, &file_name, &git_ref);
+
+                            Self::refresh_tui(
+                                &mut tui,
+                                &locked_view,
+                                &status_bar_infos,
+                                refresh_order,
+                            );
+
+                            let locked_diff = diff.lock().unwrap();
+                            tui.draw_diff_markers(locked_diff.as_ref().unwrap(), &locked_view);
+                        }
+
+                        if diff_changed.try_recv().is_ok() {
+                            let locked_view = view.lock().unwrap();
+                            let locked_diff = diff.lock().unwrap();
+                            tui.draw_diff_markers(locked_diff.as_ref().unwrap(), &locked_view);
+                        }
+
+                        // Sleep for 1000/60 ms to avoid hogging the CPU
+                        thread::sleep(Duration::from_millis(1000 / 60));
+                    }
+                } else {
+                    // If we don't have a diff channel, no need to draw diff markers
+                    loop {
+                        // Wait for a command
+                        if let Ok(refresh_order) = rx.try_recv() {
+                            let locked_view = view.lock().unwrap();
+                            let status_bar_infos =
+                                Self::get_status_bar_infos(&mode, &file_name, &git_ref);
+
+                            Self::refresh_tui(
+                                &mut tui,
+                                &locked_view,
+                                &status_bar_infos,
+                                refresh_order,
+                            );
+                        }
+
+                        // Sleep for 1000/60 ms to avoid hogging the CPU
+                        thread::sleep(Duration::from_millis(1000 / 60));
+                    }
+                }
+            }
+        });
+        tx
     }
 
     /// Run the editor loop
     pub fn run(&mut self) {
-        let mut view = self.view.lock().unwrap();
-
-        // set view size
-        let (width, height) = self.tui.get_term_size();
-        view.resize(height, width);
-
-        // Draw the initial view
-        self.tui.draw(&view, &self.get_status_bar_infos());
-
-        drop(view);
-
         // Initialize git operations if needed
-        if matches!(self.git_ref, Some(_)) {
-            self.init_git();
-        }
+        let git_ref = self.git_ref.lock().unwrap().clone();
+        let git_diff_rx = if git_ref.is_some() {
+            Some(self.init_git_thread())
+        } else {
+            None
+        };
 
-        let stdin = std::io::stdin().keys();
+        // Initialize the stdin reader
+        let keys = io::stdin().keys();
 
-        for c in stdin {
-            if let Ok(c) = c {
-                if let Ok(cmd) = Command::parse(c, &self.mode) {
-                    let refresh_order = self.execute(cmd);
-                    let view = self.view.lock().unwrap();
+        // Initialize the TUI thread
+        let refresh_order_tx = self.init_tui_thread(git_diff_rx);
 
-                    match refresh_order {
-                        RefreshOrder::None => (),
-                        RefreshOrder::CursorPos => self.tui.move_cursor(view.cursor),
-                        RefreshOrder::StatusBar => {
-                            self.tui.draw_status_bar(&self.get_status_bar_infos());
-                            self.tui.move_cursor(view.cursor)
-                        }
-                        RefreshOrder::Lines(lines) => self.tui.draw_lines(&view, lines),
-                        RefreshOrder::AllLines => {
-                            self.tui.draw(&view, &self.get_status_bar_infos())
-                        }
-                    }
+        // Main loop of the editor
+        for key in keys.flatten() {
+            let mode = self.mode.lock().unwrap().clone();
+            // Parse the key
+            if let Ok(cmd) = Command::parse(key, &mode) {
+                // Execute the command
+                let refresh_order = self.execute(cmd);
 
-                    self.diff.lock().unwrap().as_ref().map(|diff| {
-                        self.tui.draw_diff_markers(&diff, &view);
-                    });
-                }
+                // Send the refresh order to the TUI
+                refresh_order_tx.send(refresh_order).unwrap();
             }
         }
     }

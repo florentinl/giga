@@ -9,7 +9,7 @@ use termion::{
 };
 
 use crate::{
-    git::{Diff, Patches},
+    git::{Diff, Patch, PatchType},
     view::View,
 };
 
@@ -73,13 +73,15 @@ impl TerminalDrawer for TermionTerminalDrawer {
     }
 
     fn draw(&mut self, view: &View, status_bar_infos: &StatusBarInfos) {
-        // Clear the screen
-        self.clear();
+        // Hide the terminal cursor
+        print_to_term!(self.stdout, cursor::Hide);
         // Draw the status bar
         self.draw_status_bar(status_bar_infos);
         // Draw all the lines of the editor
         let all_lines = HashSet::from_iter(0..view.height);
         self.draw_lines(view, all_lines);
+        // Show the cursor
+        print_to_term!(self.stdout, cursor::Show);
         // Move the cursor to the current position
         self.move_cursor(view.cursor);
     }
@@ -101,11 +103,12 @@ impl TerminalDrawer for TermionTerminalDrawer {
             print_to_term!(self.stdout, cursor::Goto(1, line as u16 + 1));
             // Print the line number
             self.draw_line_number(line + view.start_line + 1);
-            // Clear the content of the line
+            // Leave one space for git diff markers
             print_to_term!(self.stdout, cursor::Right(1));
-            print_to_term!(self.stdout, clear::UntilNewline);
             // Print the line content
             print_to_term!(self.stdout, view.get_line(line));
+            // Clear the rest of the line
+            print_to_term!(self.stdout, clear::UntilNewline);
         }
         // Move the cursor to its actual position
         self.move_cursor(view.cursor);
@@ -159,49 +162,58 @@ impl TerminalDrawer for TermionTerminalDrawer {
     }
 
     /// Draw the diff markers on the left of the screen
-    /// - '+' (green) for added lines
-    /// - '-' (red) for removed lines
-    /// - '~' (yellow) for modified lines
+    /// - '▐' (green) for added lines
+    /// - '▗' (red) for removed lines
+    /// - '▐' (yellow) for modified lines
     /// - ' ' (default) for unchanged lines
     fn draw_diff_markers(&mut self, diff: &Diff, view: &View) {
-        // Hide the cursor to avoid flickering
-        'outer: for line in 0..view.height {
-            // Move the cursor to the marker column of the current line
+        let mut patches = diff.iter();
+        let mut patch = patches.next();
+        let mut view_line = 0;
+
+        while view_line < view.height {
+            let line = view_line + view.start_line;
+            // Go to the beginning of the line
             print_to_term!(
                 self.stdout,
-                cursor::Goto(LINE_NUMBER_WIDTH + 1, line as u16 + 1)
+                cursor::Goto(LINE_NUMBER_WIDTH + 1, view_line as u16 + 1)
             );
-            let line = line + view.start_line;
-            for patch in diff {
-                match patch {
-                    Patches::Added { start, count } => {
-                        if line >= *start && line < *start + *count {
-                            print_to_term!(self.stdout, color::Fg(color::Green));
-                            print_to_term!(self.stdout, "+");
-                            print_to_term!(self.stdout, color::Fg(color::Reset));
-                            continue 'outer;
-                        }
-                    }
-                    Patches::Deleted { start } => {
-                        if line == *start {
-                            print_to_term!(self.stdout, color::Fg(color::Red));
-                            print_to_term!(self.stdout, "-");
-                            print_to_term!(self.stdout, color::Fg(color::Reset));
-                            continue 'outer;
-                        }
-                    }
-                    Patches::Changed { start, count } => {
-                        if line >= *start && line < *start + *count {
-                            print_to_term!(self.stdout, color::Fg(color::Yellow));
-                            print_to_term!(self.stdout, "~");
-                            print_to_term!(self.stdout, color::Fg(color::Reset));
-                            continue 'outer;
-                        }
-                    }
+            match patch {
+                None => {
+                    print_to_term!(self.stdout, " ");
+                    view_line += 1;
                 }
+                Some(Patch {
+                    start,
+                    count,
+                    patch_type,
+                }) => match line {
+                    l if l < *start => {
+                        print_to_term!(self.stdout, " ");
+                        view_line += 1;
+                    }
+                    l if l >= *start && l < start + count => {
+                        match patch_type {
+                            PatchType::Added => {
+                                print_to_term!(self.stdout, color::Fg(color::Green));
+                                print_to_term!(self.stdout, "▐");
+                            }
+                            PatchType::Deleted => {
+                                print_to_term!(self.stdout, color::Fg(color::Red));
+                                print_to_term!(self.stdout, "▗");
+                            }
+                            PatchType::Changed => {
+                                print_to_term!(self.stdout, color::Fg(color::Yellow));
+                                print_to_term!(self.stdout, "▐");
+                            }
+                        }
+                        view_line += 1;
+                    }
+                    _ => {
+                        patch = patches.next();
+                    }
+                },
             }
-            // If we reach this point, the line is unchanged
-            print_to_term!(self.stdout, " ");
         }
 
         // Go back to the cursor position
@@ -211,9 +223,11 @@ impl TerminalDrawer for TermionTerminalDrawer {
 
 impl TermionTerminalDrawer {
     pub fn new() -> Box<Self> {
-        Box::new(Self {
+        let mut drawer = Self {
             stdout: std::io::stdout().into_raw_mode().unwrap(),
-        })
+        };
+        drawer.clear();
+        Box::new(drawer)
     }
 
     /// # Helper funtion to flush the stdout buffer
