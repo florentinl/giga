@@ -1,37 +1,40 @@
-/// The File structure is the in-memory representation of the full file being edited.
-/// It is a vector of lines, each line being a vector of bytes.
+//! The File structure is the in-memory representation of the full file being edited.
+//! It is a vector of lines, each line being a vector of ColorChar (a char and its associated color).
+
+use crate::color::{ColorChar, Colorizer};
+
 pub struct File {
-    content: Vec<Vec<char>>,
+    /// The content of the file
+    content: Vec<Vec<ColorChar>>,
+    /// The colorizer used to colorize the file
+    colorizer: Colorizer,
 }
 
 impl File {
-    pub fn new() -> Self {
+    pub fn new(extension: &str) -> Self {
         Self {
             content: vec![vec![]],
+            colorizer: Colorizer::new(extension),
         }
     }
 
     /// Create a File abstraction from a string
-    pub fn from_string(str: &str) -> Self {
-        let mut content: Vec<Vec<char>> =
-            str.split('\n').map(|line| line.chars().collect()).collect();
-        for line in content.iter_mut() {
-            let mut range: Vec<usize> = Vec::new();
-            for (i, c) in line.iter_mut().enumerate() {
-                if *c == '\t' {
-                    range.push(i);
-                }
-            }
-            for i in range {
-                line.splice(i..i, "    ".chars()); // insert 4 spaces
-                line.remove(i + 4); // remove the remaining '\t'
-            }
-        }
-        Self { content }
+    pub fn from_string(str: &str, extension: &str) -> Self {
+        // Replace tabs with 4 spaces
+        let str = str.replace('\t', "    ");
+        let mut colorizer = Colorizer::new(extension);
+        let content: Vec<Vec<ColorChar>> = colorizer.colorize_string(&str);
+        Self { content, colorizer }
+    }
+
+    /// Recolorize the file
+    pub fn recolorize(&mut self) {
+        let content_as_string = self.to_string();
+        self.content = self.colorizer.colorize_string(&content_as_string);
     }
 
     /// Get the nth line of the file
-    pub fn get_line(&self, index: usize) -> Option<Vec<char>> {
+    pub fn get_line(&self, index: usize) -> Option<Vec<ColorChar>> {
         self.content.get(index).cloned()
     }
 
@@ -50,7 +53,12 @@ impl File {
                 if col > line.len() {
                     return;
                 }
-                line.insert(col, c);
+                let cc = ColorChar {
+                    char: c,
+                    color: termion::color::Rgb(0, 0, 0),
+                };
+                line.insert(col, cc);
+                self.recolorize();
             }
         }
     }
@@ -70,10 +78,12 @@ impl File {
                 let prev_line = self.content.remove(line);
                 if let Some(line) = self.content.get_mut(line - 1) {
                     line.extend(prev_line);
+                    self.recolorize();
                 }
             }
         } else if col <= line_len {
             self.content[line].remove(col - 1);
+            self.recolorize();
         }
     }
 
@@ -90,6 +100,7 @@ impl File {
                 }
                 let new_line = vec.split_off(col);
                 self.content.insert(line + 1, new_line);
+                self.recolorize();
             }
         }
     }
@@ -100,7 +111,7 @@ impl ToString for File {
     fn to_string(&self) -> String {
         self.content
             .iter()
-            .map(|line| line.iter().collect::<String>())
+            .map(|line| line.iter().map(|c| c.char).collect::<String>())
             .collect::<Vec<_>>()
             .join("\n")
     }
@@ -110,45 +121,54 @@ impl ToString for File {
 mod tests {
     use super::*;
 
+    fn string_to_colorchars(str: &str) -> Vec<ColorChar> {
+        str.chars()
+            .map(|c| ColorChar {
+                char: c,
+                color: termion::color::Rgb(192, 197, 206),
+            })
+            .collect()
+    }
+
     #[test]
     fn file_new_empty() {
-        let file = File::new();
+        let file = File::new("txt");
         assert_eq!(file.content.len(), 1);
     }
 
     #[test]
-    fn file_from_bytes() {
-        let file = File::from_string("Hello, World !");
+    fn file_from_string() {
+        let file = File::from_string("Hello, World !", "txt");
         assert_eq!(file.content.len(), 1);
-        assert_eq!(
-            file.content[0],
-            "Hello, World !".chars().collect::<Vec<_>>()
-        );
+        assert_eq!(file.content[0], string_to_colorchars("Hello, World !"));
     }
 
     #[test]
     fn file_to_string() {
-        let file = File::from_string("Hello, World !");
+        let file = File::from_string("Hello, World !", "txt");
         assert_eq!(file.to_string(), "Hello, World !");
     }
 
     #[test]
     fn file_get_line() {
-        let file = File::from_string("Hello, World !\n");
-        assert_eq!(file.get_line(0), Some("Hello, World !".chars().collect()));
-        assert_eq!(file.get_line(1), Some("".chars().collect()));
+        let file = File::from_string("Hello, World !\n", "txt");
+        assert_eq!(
+            file.get_line(0),
+            Some(string_to_colorchars("Hello, World !"))
+        );
+        assert_eq!(file.get_line(1), Some(string_to_colorchars("")));
         assert_eq!(file.get_line(2), None);
     }
 
     #[test]
     fn file_get_len() {
-        let file = File::from_string("Hello, World !\n");
+        let file = File::from_string("Hello, World !\n", "txt");
         assert_eq!(file.len(), 2);
     }
 
     #[test]
     fn file_insert() {
-        let mut file = File::from_string("Hello, World !\n");
+        let mut file = File::from_string("Hello, World !\n", "txt");
         file.insert(0, 0, '!');
         assert_eq!(file.to_string(), "!Hello, World !\n");
         file.insert(1, 0, '!');
@@ -167,7 +187,7 @@ mod tests {
 
     #[test]
     fn file_delete() {
-        let mut file = File::from_string("HW\n");
+        let mut file = File::from_string("HW\n", "txt");
         file.delete(0, 1);
         assert_eq!(file.to_string(), "W\n");
         file.delete(0, 1);
@@ -176,42 +196,42 @@ mod tests {
 
     #[test]
     fn file_delete_out_of_bounds() {
-        let mut file = File::from_string("HW\n");
+        let mut file = File::from_string("HW\n", "txt");
         file.delete(1, 1);
         assert_eq!(file.to_string(), "HW\n");
     }
 
     #[test]
     fn file_delete_beginning_of_line() {
-        let mut file = File::from_string("HW\nGuys !");
+        let mut file = File::from_string("HW\nGuys !", "txt");
         file.delete(1, 0);
         assert_eq!(file.to_string(), "HWGuys !");
     }
 
     #[test]
     fn file_split_line() {
-        let mut file = File::from_string("Hello, World !");
+        let mut file = File::from_string("Hello, World !", "txt");
         file.split_line(0, 5);
         assert_eq!(file.to_string(), "Hello\n, World !");
     }
 
     #[test]
     fn file_split_line_out_of_bounds_line() {
-        let mut file = File::from_string("Hello, World !");
+        let mut file = File::from_string("Hello, World !", "txt");
         file.split_line(1, 5);
         assert_eq!(file.to_string(), "Hello, World !");
     }
 
     #[test]
     fn file_split_line_out_of_bounds_lcol() {
-        let mut file = File::from_string("Hello, World !");
+        let mut file = File::from_string("Hello, World !", "txt");
         file.split_line(0, 20);
         assert_eq!(file.to_string(), "Hello, World !");
     }
 
     #[test]
     fn file_from_sting_with_tabs() {
-        let file = File::from_string("Hello,\tWorld !");
+        let file = File::from_string("Hello,\tWorld !", "txt");
         assert_eq!(file.to_string(), "Hello,    World !");
     }
 }

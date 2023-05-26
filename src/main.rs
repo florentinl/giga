@@ -1,3 +1,4 @@
+mod color;
 mod command;
 mod editor;
 mod file;
