@@ -348,6 +348,33 @@
 <a href="#348" id="348">348</a>
 <a href="#349" id="349">349</a>
 <a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::file::File;
 
 <span class="doccomment">/// The View struct represents the actual portion of the File being displayed.
@@ -393,7 +420,23 @@
             .unwrap_or_default();
         <span class="kw">let </span>start = <span class="self">self</span>.start_col.min(line.len());
         <span class="kw">let </span>end = (<span class="self">self</span>.start_col + <span class="self">self</span>.width).min(line.len());
-        String::from(<span class="kw-2">&amp;</span>line[start..end].iter().collect::&lt;String&gt;())
+        String::from(
+            <span class="kw-2">&amp;</span>line[start..end]
+                .iter()
+                .map(|c| <span class="macro">format!</span>(<span class="string">&quot;{}{}&quot;</span>, termion::color::Fg(c.color), c.char))
+                .collect::&lt;String&gt;(),
+        )
+    }
+
+    <span class="doccomment">/// Get the line without the color information
+    </span><span class="kw">fn </span>get_line_without_color(<span class="kw-2">&amp;</span><span class="self">self</span>, index: usize) -&gt; String {
+        <span class="kw">let </span>line = <span class="self">self
+            </span>.file
+            .get_line(index + <span class="self">self</span>.start_line)
+            .unwrap_or_default();
+        <span class="kw">let </span>start = <span class="self">self</span>.start_col.min(line.len());
+        <span class="kw">let </span>end = (<span class="self">self</span>.start_col + <span class="self">self</span>.width).min(line.len());
+        String::from(<span class="kw-2">&amp;</span>line[start..end].iter().map(|c| c.char).collect::&lt;String&gt;())
     }
 
     <span class="doccomment">/// Navigate the cursor by a given amount and eventually scroll the view
@@ -530,7 +573,8 @@
         }
     }
 
-    <span class="kw">pub fn </span>dump_file(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+    <span class="doccomment">/// Dump the content of the file to save it to disk
+    </span><span class="kw">pub fn </span>dump_file(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
         <span class="self">self</span>.file.to_string()
     }
 }
@@ -542,7 +586,7 @@
             .min(<span class="self">self</span>.file.len().saturating_sub(<span class="self">self</span>.start_line));
 
         (<span class="number">0</span>..bottom)
-            .map(|i| <span class="self">self</span>.get_line(i))
+            .map(|i| <span class="self">self</span>.get_line_without_color(i))
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
             .join(<span class="string">&quot;\n&quot;</span>)
     }
@@ -550,11 +594,21 @@
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
+    <span class="kw">use </span>termion::color::{Fg, Rgb};
+
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
+
+    <span class="kw">fn </span>default_color(str: <span class="kw-2">&amp;</span>str) -&gt; String {
+        <span class="kw">let </span><span class="kw-2">mut </span>colored = String::new();
+        <span class="kw">for </span>c <span class="kw">in </span>str.chars() {
+            colored.push_str(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}{}&quot;</span>, Fg(Rgb(<span class="number">192</span>, <span class="number">197</span>, <span class="number">206</span>)), c));
+        }
+        colored
+    }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>view_new() {
-        <span class="kw">let </span>view = View::new(File::new(), <span class="number">10</span>, <span class="number">10</span>);
+        <span class="kw">let </span>view = View::new(File::new(<span class="string">&quot;txt&quot;</span>), <span class="number">10</span>, <span class="number">10</span>);
         <span class="macro">assert_eq!</span>(view.start_line, <span class="number">0</span>);
         <span class="macro">assert_eq!</span>(view.start_col, <span class="number">0</span>);
         <span class="macro">assert_eq!</span>(view.height, <span class="number">10</span>);
@@ -563,13 +617,13 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>view_to_string() {
-        <span class="kw">let </span>view = View::new(File::from_string(<span class="string">&quot;Hello, World !\n&quot;</span>), <span class="number">1</span>, <span class="number">10</span>);
+        <span class="kw">let </span>view = View::new(File::from_string(<span class="string">&quot;Hello, World !\n&quot;</span>, <span class="string">&quot;txt&quot;</span>), <span class="number">1</span>, <span class="number">10</span>);
         <span class="macro">assert_eq!</span>(view.to_string(), <span class="string">&quot;Hello, Wor&quot;</span>);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>view_resize() {
-        <span class="kw">let </span><span class="kw-2">mut </span>view = View::new(File::new(), <span class="number">10</span>, <span class="number">10</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>view = View::new(File::new(<span class="string">&quot;txt&quot;</span>), <span class="number">10</span>, <span class="number">10</span>);
         view.resize(<span class="number">20</span>, <span class="number">20</span>);
         <span class="macro">assert_eq!</span>(view.height, <span class="number">20</span>);
         <span class="macro">assert_eq!</span>(view.width, <span class="number">20</span>);
@@ -577,14 +631,14 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>view_get_line() {
-        <span class="kw">let </span>view = View::new(File::from_string(<span class="string">&quot;Hello, World !\n&quot;</span>), <span class="number">1</span>, <span class="number">10</span>);
-        <span class="macro">assert_eq!</span>(view.get_line(<span class="number">0</span>), <span class="string">&quot;Hello, Wor&quot;</span>);
+        <span class="kw">let </span>view = View::new(File::from_string(<span class="string">&quot;Hello, World !\n&quot;</span>, <span class="string">&quot;txt&quot;</span>), <span class="number">1</span>, <span class="number">10</span>);
+        <span class="macro">assert_eq!</span>(view.get_line(<span class="number">0</span>), default_color(<span class="string">&quot;Hello, Wor&quot;</span>));
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>view_navigate() {
         <span class="kw">let </span><span class="kw-2">mut </span>view = View::new(
-            File::from_string(<span class="string">&quot;Hello, World !\nWelcome to the moon!&quot;</span>),
+            File::from_string(<span class="string">&quot;Hello, World !\nWelcome to the moon!&quot;</span>, <span class="string">&quot;txt&quot;</span>),
             <span class="number">2</span>,
             <span class="number">10</span>,
         );
@@ -597,7 +651,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>view_navigate_go_to_eol() {
         <span class="kw">let </span><span class="kw-2">mut </span>view = View::new(
-            File::from_string(<span class="string">&quot;Hello, World !\nWelcome to the moon!&quot;</span>),
+            File::from_string(<span class="string">&quot;Hello, World !\nWelcome to the moon!&quot;</span>, <span class="string">&quot;txt&quot;</span>),
             <span class="number">2</span>,
             <span class="number">100</span>,
         );
@@ -608,7 +662,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>view_navigate_go_to_eof() {
         <span class="kw">let </span><span class="kw-2">mut </span>view = View::new(
-            File::from_string(<span class="string">&quot;Hello, World !\nWelcome to the moon!&quot;</span>),
+            File::from_string(<span class="string">&quot;Hello, World !\nWelcome to the moon!&quot;</span>, <span class="string">&quot;txt&quot;</span>),
             <span class="number">3</span>,
             <span class="number">100</span>,
         );
@@ -619,7 +673,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>view_navigate_scroll_y() {
         <span class="kw">let </span><span class="kw-2">mut </span>view = View::new(
-            File::from_string(<span class="string">&quot;Hello, World !\nWelcome to the moon!&quot;</span>),
+            File::from_string(<span class="string">&quot;Hello, World !\nWelcome to the moon!&quot;</span>, <span class="string">&quot;txt&quot;</span>),
             <span class="number">1</span>,
             <span class="number">100</span>,
         );
@@ -640,7 +694,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>view_navigate_scroll_x() {
         <span class="kw">let </span><span class="kw-2">mut </span>view = View::new(
-            File::from_string(<span class="string">&quot;Hello, World !\nWelcome to the moon!&quot;</span>),
+            File::from_string(<span class="string">&quot;Hello, World !\nWelcome to the moon!&quot;</span>, <span class="string">&quot;txt&quot;</span>),
             <span class="number">1</span>,
             <span class="number">10</span>,
         );
@@ -651,7 +705,7 @@
         <span class="macro">assert_eq!</span>(view.cursor, (<span class="number">9</span>, <span class="number">0</span>));
         <span class="macro">assert_eq!</span>(view.start_col, <span class="number">1</span>);
         view.navigate(<span class="number">20</span>, <span class="number">0</span>);
-        <span class="macro">assert_eq!</span>(view.get_line(<span class="number">0</span>), <span class="string">&quot;, World !&quot;</span>);
+        <span class="macro">assert_eq!</span>(view.get_line(<span class="number">0</span>), default_color(<span class="string">&quot;, World !&quot;</span>));
         <span class="macro">assert_eq!</span>(view.cursor, (<span class="number">9</span>, <span class="number">0</span>));
         <span class="macro">assert_eq!</span>(view.start_col, <span class="number">5</span>);
         view.navigate(-<span class="number">20</span>, <span class="number">0</span>);
@@ -661,7 +715,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>view_insert() {
-        <span class="kw">let </span><span class="kw-2">mut </span>view = View::new(File::from_string(<span class="string">&quot;Hello, World !\n&quot;</span>), <span class="number">1</span>, <span class="number">10</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>view = View::new(File::from_string(<span class="string">&quot;Hello, World !\n&quot;</span>, <span class="string">&quot;txt&quot;</span>), <span class="number">1</span>, <span class="number">10</span>);
         view.insert(<span class="string">&#39;a&#39;</span>);
         <span class="macro">assert_eq!</span>(view.to_string(), <span class="string">&quot;aHello, Wo&quot;</span>);
         <span class="macro">assert_eq!</span>(view.cursor, (<span class="number">1</span>, <span class="number">0</span>));
@@ -669,7 +723,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>view_insert_non_ascii() {
-        <span class="kw">let </span><span class="kw-2">mut </span>view = View::new(File::from_string(<span class="string">&quot;Hello, World !\n&quot;</span>), <span class="number">1</span>, <span class="number">10</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>view = View::new(File::from_string(<span class="string">&quot;Hello, World !\n&quot;</span>, <span class="string">&quot;txt&quot;</span>), <span class="number">1</span>, <span class="number">10</span>);
         view.insert(<span class="string">&#39;é&#39;</span>);
         <span class="macro">assert_eq!</span>(view.to_string(), <span class="string">&quot;éHello, Wo&quot;</span>);
         <span class="macro">assert_eq!</span>(view.cursor, (<span class="number">1</span>, <span class="number">0</span>));
@@ -677,7 +731,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>view_insert_new_line() {
-        <span class="kw">let </span><span class="kw-2">mut </span>view = View::new(File::from_string(<span class="string">&quot;Hello, World !\n&quot;</span>), <span class="number">10</span>, <span class="number">10</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>view = View::new(File::from_string(<span class="string">&quot;Hello, World !\n&quot;</span>, <span class="string">&quot;txt&quot;</span>), <span class="number">10</span>, <span class="number">10</span>);
         view.navigate(<span class="number">7</span>, <span class="number">0</span>);
         view.insert_new_line();
         <span class="macro">assert_eq!</span>(view.dump_file(), <span class="string">&quot;Hello, \nWorld !\n&quot;</span>);
@@ -686,7 +740,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>view_delete() {
-        <span class="kw">let </span><span class="kw-2">mut </span>view = View::new(File::from_string(<span class="string">&quot;Hello, World !\n&quot;</span>), <span class="number">1</span>, <span class="number">10</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>view = View::new(File::from_string(<span class="string">&quot;Hello, World !\n&quot;</span>, <span class="string">&quot;txt&quot;</span>), <span class="number">1</span>, <span class="number">10</span>);
         view.navigate(<span class="number">1</span>, <span class="number">0</span>);
         view.delete();
         <span class="macro">assert_eq!</span>(view.to_string(), <span class="string">&quot;ello, Worl&quot;</span>);

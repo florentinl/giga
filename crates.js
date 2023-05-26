@@ -1,1 +1,1 @@
-window.ALL_CRATES = ["giga","libc","numtoa","termion"];
+window.ALL_CRATES = ["adler","base64","bincode","bitflags","cfg_if","crc32fast","flate2","fnv","giga","hashbrown","indexmap","itoa","lazy_static","libc","line_wrap","linked_hash_map","memchr","miniz_oxide","numtoa","once_cell","onig","onig_sys","plist","proc_macro2","quick_xml","quote","regex_syntax","ryu","safemem","same_file","serde","serde_derive","serde_json","syn","syntect","termion","thiserror","thiserror_impl","time","time_core","unicode_ident","walkdir","yaml_rust"];

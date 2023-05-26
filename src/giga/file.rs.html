@@ -215,40 +215,63 @@
 <a href="#215" id="215">215</a>
 <a href="#216" id="216">216</a>
 <a href="#217" id="217">217</a>
-</pre><pre class="rust"><code><span class="doccomment">/// The File structure is the in-memory representation of the full file being edited.
-/// It is a vector of lines, each line being a vector of bytes.
-</span><span class="kw">pub struct </span>File {
-    content: Vec&lt;Vec&lt;char&gt;&gt;,
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+</pre><pre class="rust"><code><span class="doccomment">//! The File structure is the in-memory representation of the full file being edited.
+//! It is a vector of lines, each line being a vector of ColorChar (a char and its associated color).
+
+</span><span class="kw">use </span><span class="kw">crate</span>::color::{ColorChar, Colorizer};
+
+<span class="kw">pub struct </span>File {
+    <span class="doccomment">/// The content of the file
+    </span>content: Vec&lt;Vec&lt;ColorChar&gt;&gt;,
+    <span class="doccomment">/// The colorizer used to colorize the file
+    </span>colorizer: Colorizer,
 }
 
 <span class="kw">impl </span>File {
-    <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>new(extension: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             content: <span class="macro">vec!</span>[<span class="macro">vec!</span>[]],
+            colorizer: Colorizer::new(extension),
         }
     }
 
     <span class="doccomment">/// Create a File abstraction from a string
-    </span><span class="kw">pub fn </span>from_string(str: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>content: Vec&lt;Vec&lt;char&gt;&gt; =
-            str.split(<span class="string">&#39;\n&#39;</span>).map(|line| line.chars().collect()).collect();
-        <span class="kw">for </span>line <span class="kw">in </span>content.iter_mut() {
-            <span class="kw">let </span><span class="kw-2">mut </span>range: Vec&lt;usize&gt; = Vec::new();
-            <span class="kw">for </span>(i, c) <span class="kw">in </span>line.iter_mut().enumerate() {
-                <span class="kw">if </span><span class="kw-2">*</span>c == <span class="string">&#39;\t&#39; </span>{
-                    range.push(i);
-                }
-            }
-            <span class="kw">for </span>i <span class="kw">in </span>range {
-                line.splice(i..i, <span class="string">&quot;    &quot;</span>.chars()); <span class="comment">// insert 4 spaces
-                </span>line.remove(i + <span class="number">4</span>); <span class="comment">// remove the remaining &#39;\t&#39;
-            </span>}
-        }
-        <span class="self">Self </span>{ content }
+    </span><span class="kw">pub fn </span>from_string(str: <span class="kw-2">&amp;</span>str, extension: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
+        <span class="comment">// Replace tabs with 4 spaces
+        </span><span class="kw">let </span>str = str.replace(<span class="string">&#39;\t&#39;</span>, <span class="string">&quot;    &quot;</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>colorizer = Colorizer::new(extension);
+        <span class="kw">let </span>content: Vec&lt;Vec&lt;ColorChar&gt;&gt; = colorizer.colorize_string(<span class="kw-2">&amp;</span>str);
+        <span class="self">Self </span>{ content, colorizer }
+    }
+
+    <span class="doccomment">/// Recolorize the file
+    </span><span class="kw">pub fn </span>recolorize(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">let </span>content_as_string = <span class="self">self</span>.to_string();
+        <span class="self">self</span>.content = <span class="self">self</span>.colorizer.colorize_string(<span class="kw-2">&amp;</span>content_as_string);
     }
 
     <span class="doccomment">/// Get the nth line of the file
-    </span><span class="kw">pub fn </span>get_line(<span class="kw-2">&amp;</span><span class="self">self</span>, index: usize) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;char&gt;&gt; {
+    </span><span class="kw">pub fn </span>get_line(<span class="kw-2">&amp;</span><span class="self">self</span>, index: usize) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;ColorChar&gt;&gt; {
         <span class="self">self</span>.content.get(index).cloned()
     }
 
@@ -267,7 +290,12 @@
                 <span class="kw">if </span>col &gt; line.len() {
                     <span class="kw">return</span>;
                 }
-                line.insert(col, c);
+                <span class="kw">let </span>cc = ColorChar {
+                    char: c,
+                    color: termion::color::Rgb(<span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>),
+                };
+                line.insert(col, cc);
+                <span class="self">self</span>.recolorize();
             }
         }
     }
@@ -287,10 +315,12 @@
                 <span class="kw">let </span>prev_line = <span class="self">self</span>.content.remove(line);
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(line) = <span class="self">self</span>.content.get_mut(line - <span class="number">1</span>) {
                     line.extend(prev_line);
+                    <span class="self">self</span>.recolorize();
                 }
             }
         } <span class="kw">else if </span>col &lt;= line_len {
             <span class="self">self</span>.content[line].remove(col - <span class="number">1</span>);
+            <span class="self">self</span>.recolorize();
         }
     }
 
@@ -307,6 +337,7 @@
                 }
                 <span class="kw">let </span>new_line = vec.split_off(col);
                 <span class="self">self</span>.content.insert(line + <span class="number">1</span>, new_line);
+                <span class="self">self</span>.recolorize();
             }
         }
     }
@@ -317,7 +348,7 @@
     <span class="kw">fn </span>to_string(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
         <span class="self">self</span>.content
             .iter()
-            .map(|line| line.iter().collect::&lt;String&gt;())
+            .map(|line| line.iter().map(|c| c.char).collect::&lt;String&gt;())
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
             .join(<span class="string">&quot;\n&quot;</span>)
     }
@@ -327,45 +358,54 @@
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
+    <span class="kw">fn </span>string_to_colorchars(str: <span class="kw-2">&amp;</span>str) -&gt; Vec&lt;ColorChar&gt; {
+        str.chars()
+            .map(|c| ColorChar {
+                char: c,
+                color: termion::color::Rgb(<span class="number">192</span>, <span class="number">197</span>, <span class="number">206</span>),
+            })
+            .collect()
+    }
+
     <span class="attr">#[test]
     </span><span class="kw">fn </span>file_new_empty() {
-        <span class="kw">let </span>file = File::new();
+        <span class="kw">let </span>file = File::new(<span class="string">&quot;txt&quot;</span>);
         <span class="macro">assert_eq!</span>(file.content.len(), <span class="number">1</span>);
     }
 
     <span class="attr">#[test]
-    </span><span class="kw">fn </span>file_from_bytes() {
-        <span class="kw">let </span>file = File::from_string(<span class="string">&quot;Hello, World !&quot;</span>);
+    </span><span class="kw">fn </span>file_from_string() {
+        <span class="kw">let </span>file = File::from_string(<span class="string">&quot;Hello, World !&quot;</span>, <span class="string">&quot;txt&quot;</span>);
         <span class="macro">assert_eq!</span>(file.content.len(), <span class="number">1</span>);
-        <span class="macro">assert_eq!</span>(
-            file.content[<span class="number">0</span>],
-            <span class="string">&quot;Hello, World !&quot;</span>.chars().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-        );
+        <span class="macro">assert_eq!</span>(file.content[<span class="number">0</span>], string_to_colorchars(<span class="string">&quot;Hello, World !&quot;</span>));
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>file_to_string() {
-        <span class="kw">let </span>file = File::from_string(<span class="string">&quot;Hello, World !&quot;</span>);
+        <span class="kw">let </span>file = File::from_string(<span class="string">&quot;Hello, World !&quot;</span>, <span class="string">&quot;txt&quot;</span>);
         <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;Hello, World !&quot;</span>);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>file_get_line() {
-        <span class="kw">let </span>file = File::from_string(<span class="string">&quot;Hello, World !\n&quot;</span>);
-        <span class="macro">assert_eq!</span>(file.get_line(<span class="number">0</span>), <span class="prelude-val">Some</span>(<span class="string">&quot;Hello, World !&quot;</span>.chars().collect()));
-        <span class="macro">assert_eq!</span>(file.get_line(<span class="number">1</span>), <span class="prelude-val">Some</span>(<span class="string">&quot;&quot;</span>.chars().collect()));
+        <span class="kw">let </span>file = File::from_string(<span class="string">&quot;Hello, World !\n&quot;</span>, <span class="string">&quot;txt&quot;</span>);
+        <span class="macro">assert_eq!</span>(
+            file.get_line(<span class="number">0</span>),
+            <span class="prelude-val">Some</span>(string_to_colorchars(<span class="string">&quot;Hello, World !&quot;</span>))
+        );
+        <span class="macro">assert_eq!</span>(file.get_line(<span class="number">1</span>), <span class="prelude-val">Some</span>(string_to_colorchars(<span class="string">&quot;&quot;</span>)));
         <span class="macro">assert_eq!</span>(file.get_line(<span class="number">2</span>), <span class="prelude-val">None</span>);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>file_get_len() {
-        <span class="kw">let </span>file = File::from_string(<span class="string">&quot;Hello, World !\n&quot;</span>);
+        <span class="kw">let </span>file = File::from_string(<span class="string">&quot;Hello, World !\n&quot;</span>, <span class="string">&quot;txt&quot;</span>);
         <span class="macro">assert_eq!</span>(file.len(), <span class="number">2</span>);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>file_insert() {
-        <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_string(<span class="string">&quot;Hello, World !\n&quot;</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_string(<span class="string">&quot;Hello, World !\n&quot;</span>, <span class="string">&quot;txt&quot;</span>);
         file.insert(<span class="number">0</span>, <span class="number">0</span>, <span class="string">&#39;!&#39;</span>);
         <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;!Hello, World !\n&quot;</span>);
         file.insert(<span class="number">1</span>, <span class="number">0</span>, <span class="string">&#39;!&#39;</span>);
@@ -384,7 +424,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>file_delete() {
-        <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_string(<span class="string">&quot;HW\n&quot;</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_string(<span class="string">&quot;HW\n&quot;</span>, <span class="string">&quot;txt&quot;</span>);
         file.delete(<span class="number">0</span>, <span class="number">1</span>);
         <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;W\n&quot;</span>);
         file.delete(<span class="number">0</span>, <span class="number">1</span>);
@@ -393,42 +433,42 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>file_delete_out_of_bounds() {
-        <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_string(<span class="string">&quot;HW\n&quot;</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_string(<span class="string">&quot;HW\n&quot;</span>, <span class="string">&quot;txt&quot;</span>);
         file.delete(<span class="number">1</span>, <span class="number">1</span>);
         <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;HW\n&quot;</span>);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>file_delete_beginning_of_line() {
-        <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_string(<span class="string">&quot;HW\nGuys !&quot;</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_string(<span class="string">&quot;HW\nGuys !&quot;</span>, <span class="string">&quot;txt&quot;</span>);
         file.delete(<span class="number">1</span>, <span class="number">0</span>);
         <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;HWGuys !&quot;</span>);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>file_split_line() {
-        <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_string(<span class="string">&quot;Hello, World !&quot;</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_string(<span class="string">&quot;Hello, World !&quot;</span>, <span class="string">&quot;txt&quot;</span>);
         file.split_line(<span class="number">0</span>, <span class="number">5</span>);
         <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;Hello\n, World !&quot;</span>);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>file_split_line_out_of_bounds_line() {
-        <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_string(<span class="string">&quot;Hello, World !&quot;</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_string(<span class="string">&quot;Hello, World !&quot;</span>, <span class="string">&quot;txt&quot;</span>);
         file.split_line(<span class="number">1</span>, <span class="number">5</span>);
         <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;Hello, World !&quot;</span>);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>file_split_line_out_of_bounds_lcol() {
-        <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_string(<span class="string">&quot;Hello, World !&quot;</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>file = File::from_string(<span class="string">&quot;Hello, World !&quot;</span>, <span class="string">&quot;txt&quot;</span>);
         file.split_line(<span class="number">0</span>, <span class="number">20</span>);
         <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;Hello, World !&quot;</span>);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>file_from_sting_with_tabs() {
-        <span class="kw">let </span>file = File::from_string(<span class="string">&quot;Hello,\tWorld !&quot;</span>);
+        <span class="kw">let </span>file = File::from_string(<span class="string">&quot;Hello,\tWorld !&quot;</span>, <span class="string">&quot;txt&quot;</span>);
         <span class="macro">assert_eq!</span>(file.to_string(), <span class="string">&quot;Hello,    World !&quot;</span>);
     }
 }
