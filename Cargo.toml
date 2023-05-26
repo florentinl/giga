@@ -10,3 +10,4 @@ strip = "symbols"
 
 [dependencies]
 termion = "2.0"
+libc = "0.2"
