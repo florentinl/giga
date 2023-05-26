@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["init_resize_listener","resize_handler"],"static":["TX"]};
