@@ -217,7 +217,7 @@ impl ToString for View {
 
 #[cfg(test)]
 mod tests {
-    use termion::color::{Rgb, Fg};
+    use termion::color::{Fg, Rgb};
 
     use super::*;
 

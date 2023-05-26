@@ -1,3 +1,6 @@
+//! Colorizes a string using the syntect library and export it in the format used
+//! by the editor: a File struct containing a Vec<Vec<ColorChar>>.
+
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::SyntaxSet;
@@ -41,7 +44,7 @@ impl Colorizer {
             lines.push(styled_line);
         }
         // If the last char is a newline, add an empty line
-        if str.chars().last().unwrap() == '\n' {
+        if str.ends_with('\n') {
             lines.push(Vec::new());
         }
         lines
