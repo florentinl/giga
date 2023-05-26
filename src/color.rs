@@ -40,6 +40,10 @@ impl Colorizer {
             }
             lines.push(styled_line);
         }
+        // If the last char is a newline, add an empty line
+        if str.chars().last().unwrap() == '\n' {
+            lines.push(Vec::new());
+        }
         lines
     }
 
