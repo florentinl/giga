@@ -1,37 +1,48 @@
 /// The File structure is the in-memory representation of the full file being edited.
 /// It is a vector of lines, each line being a vector of bytes.
+use crate::color::{ColorChar, Colorizer};
+
 pub struct File {
-    content: Vec<Vec<char>>,
+    content: Vec<Vec<ColorChar>>,
+    colorizer: Colorizer,
 }
 
 impl File {
     pub fn new() -> Self {
         Self {
             content: vec![vec![]],
+            colorizer: Colorizer::new(),
         }
     }
 
     /// Create a File abstraction from a string
     pub fn from_string(str: &str) -> Self {
-        let mut content: Vec<Vec<char>> =
-            str.split('\n').map(|line| line.chars().collect()).collect();
+        let mut colorizer = Colorizer::new();
+        let mut content: Vec<Vec<ColorChar>> = colorizer.colorize_string(str);
         for line in content.iter_mut() {
             let mut range: Vec<usize> = Vec::new();
             for (i, c) in line.iter_mut().enumerate() {
-                if *c == '\t' {
+                if c.char == '\t' {
                     range.push(i);
                 }
             }
             for i in range {
-                line.splice(i..i, "    ".chars()); // insert 4 spaces
+                let spaces = vec![
+                    ColorChar {
+                        char: ' ',
+                        color: termion::color::Rgb(0, 0, 0),
+                    };
+                    4
+                ];
+                line.splice(i..i, spaces); // insert 4 spaces
                 line.remove(i + 4); // remove the remaining '\t'
             }
         }
-        Self { content }
+        Self { content, colorizer }
     }
 
     /// Get the nth line of the file
-    pub fn get_line(&self, index: usize) -> Option<Vec<char>> {
+    pub fn get_line(&self, index: usize) -> Option<Vec<ColorChar>> {
         self.content.get(index).cloned()
     }
 
@@ -50,7 +61,11 @@ impl File {
                 if col > line.len() {
                     return;
                 }
-                line.insert(col, c);
+                let cc = ColorChar {
+                    char: c,
+                    color: termion::color::Rgb(0, 0, 0),
+                };
+                line.insert(col, cc);
             }
         }
     }
@@ -100,7 +115,7 @@ impl ToString for File {
     fn to_string(&self) -> String {
         self.content
             .iter()
-            .map(|line| line.iter().collect::<String>())
+            .map(|line| line.iter().map(|c| c.char).collect::<String>())
             .collect::<Vec<_>>()
             .join("\n")
     }
@@ -109,6 +124,15 @@ impl ToString for File {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn string_to_colorchars(str: &str) -> Vec<ColorChar> {
+        str.chars()
+            .map(|c| ColorChar {
+                char: c,
+                color: termion::color::Rgb(0, 0, 0),
+            })
+            .collect()
+    }
 
     #[test]
     fn file_new_empty() {
@@ -120,10 +144,7 @@ mod tests {
     fn file_from_bytes() {
         let file = File::from_string("Hello, World !");
         assert_eq!(file.content.len(), 1);
-        assert_eq!(
-            file.content[0],
-            "Hello, World !".chars().collect::<Vec<_>>()
-        );
+        assert_eq!(file.content[0], string_to_colorchars("Hello, World !"));
     }
 
     #[test]
@@ -135,8 +156,11 @@ mod tests {
     #[test]
     fn file_get_line() {
         let file = File::from_string("Hello, World !\n");
-        assert_eq!(file.get_line(0), Some("Hello, World !".chars().collect()));
-        assert_eq!(file.get_line(1), Some("".chars().collect()));
+        assert_eq!(
+            file.get_line(0),
+            Some(string_to_colorchars("Hello, World !"))
+        );
+        assert_eq!(file.get_line(1), Some(string_to_colorchars("")));
         assert_eq!(file.get_line(2), None);
     }
 

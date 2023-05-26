@@ -5,6 +5,7 @@ mod git;
 mod signal;
 mod terminal;
 mod view;
+mod color;
 
 fn main() {
     let args = std::env::args().collect::<Vec<String>>();
