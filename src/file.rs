@@ -66,6 +66,8 @@ impl File {
                     color: termion::color::Rgb(0, 0, 0),
                 };
                 line.insert(col, cc);
+                let content_as_string = self.to_string();
+                self.content = self.colorizer.colorize_string(&content_as_string);
             }
         }
     }
