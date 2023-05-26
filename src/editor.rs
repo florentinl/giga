@@ -107,8 +107,6 @@ impl Editor {
         let content = File::from_string(&content, &ext);
         let view = Arc::new(Mutex::new(View::new(content, 0, 0)));
 
-        
-
         let git_ref = arc_mutex!(get_ref_name(&file_path));
 
         Ok(Self {
@@ -129,9 +127,17 @@ impl Editor {
             file_path = ".";
         }
         let file_name = path.file_name().unwrap().to_str().unwrap_or_default();
-        let file_ext = path.extension().unwrap_or_default().to_str().unwrap_or_default();
+        let file_ext = path
+            .extension()
+            .unwrap_or_default()
+            .to_str()
+            .unwrap_or_default();
 
-        (String::from(file_path) + "/", String::from(file_name), String::from(file_ext))
+        (
+            String::from(file_path) + "/",
+            String::from(file_name),
+            String::from(file_ext),
+        )
     }
 
     /// Save the current file

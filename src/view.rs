@@ -43,7 +43,12 @@ impl View {
             .unwrap_or_default();
         let start = self.start_col.min(line.len());
         let end = (self.start_col + self.width).min(line.len());
-        String::from(&line[start..end].iter().map(|c| format!("{}{}", termion::color::Fg(c.color), c.char)).collect::<String>())
+        String::from(
+            &line[start..end]
+                .iter()
+                .map(|c| format!("{}{}", termion::color::Fg(c.color), c.char))
+                .collect::<String>(),
+        )
     }
 
     /// Navigate the cursor by a given amount and eventually scroll the view
