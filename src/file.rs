@@ -1,9 +1,12 @@
-/// The File structure is the in-memory representation of the full file being edited.
-/// It is a vector of lines, each line being a vector of bytes.
+//! The File structure is the in-memory representation of the full file being edited.
+//! It is a vector of lines, each line being a vector of ColorChar (a char and its associated color).
+
 use crate::color::{ColorChar, Colorizer};
 
 pub struct File {
+    /// The content of the file
     content: Vec<Vec<ColorChar>>,
+    /// The colorizer used to colorize the file
     colorizer: Colorizer,
 }
 
@@ -17,28 +20,17 @@ impl File {
 
     /// Create a File abstraction from a string
     pub fn from_string(str: &str, extension: &str) -> Self {
+        // Replace tabs with 4 spaces
+        let str = str.replace('\t', "    ");
         let mut colorizer = Colorizer::new(extension);
-        let mut content: Vec<Vec<ColorChar>> = colorizer.colorize_string(str);
-        for line in content.iter_mut() {
-            let mut range: Vec<usize> = Vec::new();
-            for (i, c) in line.iter_mut().enumerate() {
-                if c.char == '\t' {
-                    range.push(i);
-                }
-            }
-            for i in range {
-                let spaces = vec![
-                    ColorChar {
-                        char: ' ',
-                        color: termion::color::Rgb(0, 0, 0),
-                    };
-                    4
-                ];
-                line.splice(i..i, spaces); // insert 4 spaces
-                line.remove(i + 4); // remove the remaining '\t'
-            }
-        }
+        let content: Vec<Vec<ColorChar>> = colorizer.colorize_string(&str);
         Self { content, colorizer }
+    }
+
+    /// Recolorize the file
+    pub fn recolorize(&mut self) {
+        let content_as_string = self.to_string();
+        self.content = self.colorizer.colorize_string(&content_as_string);
     }
 
     /// Get the nth line of the file
@@ -66,8 +58,7 @@ impl File {
                     color: termion::color::Rgb(0, 0, 0),
                 };
                 line.insert(col, cc);
-                let content_as_string = self.to_string();
-                self.content = self.colorizer.colorize_string(&content_as_string);
+                self.recolorize();
             }
         }
     }
@@ -87,14 +78,12 @@ impl File {
                 let prev_line = self.content.remove(line);
                 if let Some(line) = self.content.get_mut(line - 1) {
                     line.extend(prev_line);
-                    let content_as_string = self.to_string();
-                    self.content = self.colorizer.colorize_string(&content_as_string);
+                    self.recolorize();
                 }
             }
         } else if col <= line_len {
             self.content[line].remove(col - 1);
-            let content_as_string = self.to_string();
-            self.content = self.colorizer.colorize_string(&content_as_string);
+            self.recolorize();
         }
     }
 
@@ -111,8 +100,7 @@ impl File {
                 }
                 let new_line = vec.split_off(col);
                 self.content.insert(line + 1, new_line);
-                let content_as_string = self.to_string();
-                self.content = self.colorizer.colorize_string(&content_as_string);
+                self.recolorize();
             }
         }
     }
