@@ -204,7 +204,7 @@ mod tests {
 
     #[test]
     fn view_new() {
-        let view = View::new(File::new(), 10, 10);
+        let view = View::new(File::new("txt"), 10, 10);
         assert_eq!(view.start_line, 0);
         assert_eq!(view.start_col, 0);
         assert_eq!(view.height, 10);
@@ -213,13 +213,13 @@ mod tests {
 
     #[test]
     fn view_to_string() {
-        let view = View::new(File::from_string("Hello, World !\n"), 1, 10);
+        let view = View::new(File::from_string("Hello, World !\n", "txt"), 1, 10);
         assert_eq!(view.to_string(), "Hello, Wor");
     }
 
     #[test]
     fn view_resize() {
-        let mut view = View::new(File::new(), 10, 10);
+        let mut view = View::new(File::new("txt"), 10, 10);
         view.resize(20, 20);
         assert_eq!(view.height, 20);
         assert_eq!(view.width, 20);
@@ -227,14 +227,14 @@ mod tests {
 
     #[test]
     fn view_get_line() {
-        let view = View::new(File::from_string("Hello, World !\n"), 1, 10);
+        let view = View::new(File::from_string("Hello, World !\n", "txt"), 1, 10);
         assert_eq!(view.get_line(0), "Hello, Wor");
     }
 
     #[test]
     fn view_navigate() {
         let mut view = View::new(
-            File::from_string("Hello, World !\nWelcome to the moon!"),
+            File::from_string("Hello, World !\nWelcome to the moon!", "txt"),
             2,
             10,
         );
@@ -247,7 +247,7 @@ mod tests {
     #[test]
     fn view_navigate_go_to_eol() {
         let mut view = View::new(
-            File::from_string("Hello, World !\nWelcome to the moon!"),
+            File::from_string("Hello, World !\nWelcome to the moon!", "txt"),
             2,
             100,
         );
@@ -258,7 +258,7 @@ mod tests {
     #[test]
     fn view_navigate_go_to_eof() {
         let mut view = View::new(
-            File::from_string("Hello, World !\nWelcome to the moon!"),
+            File::from_string("Hello, World !\nWelcome to the moon!", "txt"),
             3,
             100,
         );
@@ -269,7 +269,7 @@ mod tests {
     #[test]
     fn view_navigate_scroll_y() {
         let mut view = View::new(
-            File::from_string("Hello, World !\nWelcome to the moon!"),
+            File::from_string("Hello, World !\nWelcome to the moon!", "txt"),
             1,
             100,
         );
@@ -290,7 +290,7 @@ mod tests {
     #[test]
     fn view_navigate_scroll_x() {
         let mut view = View::new(
-            File::from_string("Hello, World !\nWelcome to the moon!"),
+            File::from_string("Hello, World !\nWelcome to the moon!", "txt"),
             1,
             10,
         );
@@ -311,7 +311,7 @@ mod tests {
 
     #[test]
     fn view_insert() {
-        let mut view = View::new(File::from_string("Hello, World !\n"), 1, 10);
+        let mut view = View::new(File::from_string("Hello, World !\n", "txt"), 1, 10);
         view.insert('a');
         assert_eq!(view.to_string(), "aHello, Wo");
         assert_eq!(view.cursor, (1, 0));
@@ -319,7 +319,7 @@ mod tests {
 
     #[test]
     fn view_insert_non_ascii() {
-        let mut view = View::new(File::from_string("Hello, World !\n"), 1, 10);
+        let mut view = View::new(File::from_string("Hello, World !\n", "txt"), 1, 10);
         view.insert('é');
         assert_eq!(view.to_string(), "éHello, Wo");
         assert_eq!(view.cursor, (1, 0));
@@ -327,7 +327,7 @@ mod tests {
 
     #[test]
     fn view_insert_new_line() {
-        let mut view = View::new(File::from_string("Hello, World !\n"), 10, 10);
+        let mut view = View::new(File::from_string("Hello, World !\n", "txt"), 10, 10);
         view.navigate(7, 0);
         view.insert_new_line();
         assert_eq!(view.dump_file(), "Hello, \nWorld !\n");
@@ -336,7 +336,7 @@ mod tests {
 
     #[test]
     fn view_delete() {
-        let mut view = View::new(File::from_string("Hello, World !\n"), 1, 10);
+        let mut view = View::new(File::from_string("Hello, World !\n", "txt"), 1, 10);
         view.navigate(1, 0);
         view.delete();
         assert_eq!(view.to_string(), "ello, Worl");

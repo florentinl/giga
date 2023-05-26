@@ -20,7 +20,7 @@
                 }
             },
             "args": [
-                "src/editor.rs"
+                "./tests/test_py.py"
             ],
             "cwd": "${workspaceFolder}"
         },

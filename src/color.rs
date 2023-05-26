@@ -11,17 +11,23 @@ pub struct ColorChar {
 pub struct Colorizer {
     ps: SyntaxSet,
     ts: ThemeSet,
+    extension: String,
 }
+
 impl Colorizer {
-    pub fn new() -> Self {
+    pub fn new(extension: &str) -> Self {
         Self {
             ps: SyntaxSet::load_defaults_newlines(),
             ts: ThemeSet::load_defaults(),
+            extension: String::from(extension),
         }
     }
 
     fn str_to_styled_lines(&mut self, str: &str) -> Vec<Vec<(Style, String)>> {
-        let syntax = self.ps.find_syntax_by_extension("rs").unwrap();
+        let syntax = self
+            .ps
+            .find_syntax_by_extension(&self.extension)
+            .unwrap_or(self.ps.find_syntax_plain_text());
         let mut h = HighlightLines::new(syntax, &self.ts.themes["base16-ocean.dark"]);
         let mut lines = Vec::new();
         for line in str.split('\n') {
