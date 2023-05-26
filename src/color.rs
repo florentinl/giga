@@ -1,6 +1,7 @@
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::SyntaxSet;
+use syntect::util::LinesWithEndings;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct ColorChar {
@@ -30,7 +31,7 @@ impl Colorizer {
             .unwrap_or(self.ps.find_syntax_plain_text());
         let mut h = HighlightLines::new(syntax, &self.ts.themes["base16-ocean.dark"]);
         let mut lines = Vec::new();
-        for line in str.split('\n') {
+        for line in LinesWithEndings::from(str) {
             let mut styled_line = Vec::new();
             let mut start = 0;
             for (style, substr) in h.highlight_line(line, &self.ps).unwrap() {
