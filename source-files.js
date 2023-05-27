@@ -7,7 +7,7 @@ var sourcesIndex = JSON.parse('{\
 "crc32fast":["",[["specialized",[],["mod.rs","pclmulqdq.rs"]]],["baseline.rs","combine.rs","lib.rs","table.rs"]],\
 "flate2":["",[["deflate",[],["bufread.rs","mod.rs","read.rs","write.rs"]],["ffi",[],["mod.rs","rust.rs"]],["gz",[],["bufread.rs","mod.rs","read.rs","write.rs"]],["zlib",[],["bufread.rs","mod.rs","read.rs","write.rs"]]],["bufreader.rs","crc.rs","lib.rs","mem.rs","zio.rs"]],\
 "fnv":["",[],["lib.rs"]],\
-"giga":["",[["terminal",[],["mod.rs","termion.rs"]]],["color.rs","command.rs","editor.rs","file.rs","git.rs","main.rs","signal.rs","view.rs"]],\
+"giga":["",[["editor",[["terminal",[],["mod.rs","termion.rs"]],["view",[["file",[],["color.rs","mod.rs"]]],["mod.rs"]]],["command.rs","git.rs","mod.rs","signal.rs"]]],["main.rs"]],\
 "hashbrown":["",[["external_trait_impls",[],["mod.rs"]],["raw",[],["alloc.rs","bitmask.rs","mod.rs","sse2.rs"]]],["lib.rs","macros.rs","map.rs","scopeguard.rs","set.rs"]],\
 "indexmap":["",[["map",[["core",[],["raw.rs"]]],["core.rs"]]],["arbitrary.rs","equivalent.rs","lib.rs","macros.rs","map.rs","mutable_keys.rs","set.rs","util.rs"]],\
 "itoa":["",[],["lib.rs","udiv128.rs"]],\
