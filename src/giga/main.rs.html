@@ -23,28 +23,14 @@
 <a href="#23" id="23">23</a>
 <a href="#24" id="24">24</a>
 <a href="#25" id="25">25</a>
-<a href="#26" id="26">26</a>
-<a href="#27" id="27">27</a>
-<a href="#28" id="28">28</a>
-<a href="#29" id="29">29</a>
-<a href="#30" id="30">30</a>
-<a href="#31" id="31">31</a>
-<a href="#32" id="32">32</a>
-<a href="#33" id="33">33</a>
-</pre><pre class="rust"><code><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="macro">concat!</span>(<span class="macro">env!</span>(<span class="string">&quot;CARGO_MANIFEST_DIR&quot;</span>), <span class="string">&quot;/README.md&quot;</span>))]
-
-</span><span class="doccomment">//! ## Internals
-//!
-//! Open the documentation for the `editor` module to see how the editor works.
-//! ```
-//! cargo doc --open
-//! ```
-//!
-//! The doc is also available as a [Github page](https://florentinl.github.io/giga/).
-
-</span><span class="kw">mod </span>editor;
-
-<span class="kw">use </span>editor::Editor;
+</pre><pre class="rust"><code><span class="kw">mod </span>color;
+<span class="kw">mod </span>command;
+<span class="kw">mod </span>editor;
+<span class="kw">mod </span>file;
+<span class="kw">mod </span>git;
+<span class="kw">mod </span>signal;
+<span class="kw">mod </span>terminal;
+<span class="kw">mod </span>view;
 
 <span class="kw">fn </span>main() {
     <span class="kw">let </span>args = std::env::args().collect::&lt;Vec&lt;String&gt;&gt;();
@@ -57,10 +43,8 @@
     </span><span class="kw">let </span>file: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; = args.get(<span class="number">1</span>).map(|s| s.as_str());
 
     <span class="kw">let </span><span class="kw-2">mut </span>editor = <span class="kw">match </span>file {
-        <span class="comment">// Try to open the file, if it doesn&#39;t exist, create a new one
-        </span><span class="prelude-val">Some</span>(path) =&gt; Editor::open(path).unwrap_or(Editor::new(path)),
-        <span class="comment">// If no file is provided, create a new one with a default name
-        </span><span class="prelude-val">None </span>=&gt; Editor::new(<span class="string">&quot;Newfile&quot;</span>),
+        <span class="prelude-val">Some</span>(path) =&gt; editor::Editor::open(path).unwrap_or(editor::Editor::new(path)),
+        <span class="prelude-val">None </span>=&gt; editor::Editor::new(<span class="string">&quot;Newfile&quot;</span>),
     };
     editor.run();
 }
