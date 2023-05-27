@@ -1,3 +1,9 @@
+//! # Provide git integration for the editor
+//!
+//! This module is used to perform all the git operations. For now there are only two:
+//! - querying the current branch
+//! - querying the diff between the current commit and the current file
+
 use std::{
     error::Error,
     io::Write,
@@ -103,42 +109,32 @@ fn parse_diff_result(diff: &str) -> Result<Diff, Box<dyn Error>> {
     for line in diff.lines() {
         // We only care for lines starting with a digit (the line number)
         if line.starts_with(char::is_numeric) {
-            // Add patch
-            if line.contains('a') {
-                let parts = line.split('a').collect::<Vec<_>>();
-                let mut added = parts[1].split(',');
-                let start = added.next().unwrap_or_default().parse::<usize>()? - 1;
-                let count = added
-                    .next()
-                    .map(|s| s.parse::<usize>().unwrap() - start)
-                    .unwrap_or(1);
-                result.push(Patch {
-                    start,
-                    count,
-                    patch_type: PatchType::Added,
-                });
+            // Only keep the part after the 'a'/'d'/'c' character since we want to know
+            // the position of the line in the current file.
+            let (_, rhs) = line.split_once(char::is_alphabetic).unwrap_or_default();
+            let mut rhs = rhs.split(',');
+            // Diff is 1-based and we want 0-based
+            let start = rhs
+                .next()
+                .unwrap_or_default()
+                .parse::<usize>()?
+                .saturating_sub(1);
+            let count = rhs
+                .next()
+                .map(|s| s.parse::<usize>().unwrap_or_default().saturating_sub(start))
+                .unwrap_or(1);
+            let patch_type = if line.contains('a') {
+                PatchType::Added
             } else if line.contains('d') {
-                let parts = line.split('d').collect::<Vec<_>>();
-                let start = parts[1].parse::<usize>()? - 1;
-                result.push(Patch {
-                    start,
-                    count: 1,
-                    patch_type: PatchType::Deleted,
-                });
-            } else if line.contains('c') {
-                let parts = line.split('c').collect::<Vec<_>>();
-                let mut changed = parts[1].split(',');
-                let start = changed.next().unwrap_or_default().parse::<usize>()? - 1;
-                let count = changed
-                    .next()
-                    .map(|s| s.parse::<usize>().unwrap() - start)
-                    .unwrap_or(1);
-                result.push(Patch {
-                    start,
-                    count,
-                    patch_type: PatchType::Changed,
-                });
-            }
+                PatchType::Deleted
+            } else {
+                PatchType::Changed
+            };
+            result.push(Patch {
+                start,
+                count,
+                patch_type,
+            });
         }
     }
     Ok(result)
@@ -155,7 +151,7 @@ pub fn get_ref_name(path: &str) -> Option<String> {
         .output()
         .ok()?;
     if output.status.success() {
-        let branch = String::from_utf8(output.stdout).unwrap();
+        let branch = String::from_utf8(output.stdout).ok()?;
         Some(branch.trim().to_string())
     } else {
         None
@@ -205,7 +201,7 @@ mod tests {
     #[test]
     fn test_long_parse_diff_result() {
         // The diff is in the file `tests/long_diff.txt`
-        let diff = include_str!("../tests/long_diff.txt");
+        let diff = include_str!("../../tests/long_diff.txt");
 
         let parsed = parse_diff_result(diff);
         assert!(parsed.is_ok());

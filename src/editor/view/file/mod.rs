@@ -1,12 +1,19 @@
-//! The File structure is the in-memory representation of the full file being edited.
-//! It is a vector of lines, each line being a vector of ColorChar (a char and its associated color).
+//! # In-memory representation of the file being edited
+//!
+//! The File structure is the in-memory representation of the full file being edited with syntax highlighting.
+//! It is a vector of lines, each line being a vector of ColorChar (a char and its associated color). There are
+//! two types of operations on the File:
+//! - Read operations: they are used to display the file on the screen
+//! - Write operations: they are used to modify the file -> Trigger a recolorization of the file
+mod color;
 
-use crate::color::{ColorChar, Colorizer};
+use color::{ColorChar, Colorizer};
 
+/// In-memory representation of a syntax-highlighted file
 pub struct File {
     /// The content of the file
     content: Vec<Vec<ColorChar>>,
-    /// The colorizer used to colorize the file
+    /// The colorizer used to perform syntax highlighting on the file
     colorizer: Colorizer,
 }
 

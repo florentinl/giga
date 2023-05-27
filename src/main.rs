@@ -1,11 +1,17 @@
-mod color;
-mod command;
+#![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md"))]
+
+//! ## Internals
+//!
+//! Open the documentation for the `editor` module to see how the editor works.
+//! ```
+//! cargo doc --open
+//! ```
+//!
+//! The doc is also available as a [Github page](https://florentinl.github.io/giga/).
+
 mod editor;
-mod file;
-mod git;
-mod signal;
-mod terminal;
-mod view;
+
+use editor::Editor;
 
 fn main() {
     let args = std::env::args().collect::<Vec<String>>();
@@ -18,8 +24,10 @@ fn main() {
     let file: Option<&str> = args.get(1).map(|s| s.as_str());
 
     let mut editor = match file {
-        Some(path) => editor::Editor::open(path).unwrap_or(editor::Editor::new(path)),
-        None => editor::Editor::new("Newfile"),
+        // Try to open the file, if it doesn't exist, create a new one
+        Some(path) => Editor::open(path).unwrap_or(Editor::new(path)),
+        // If no file is provided, create a new one with a default name
+        None => Editor::new("Newfile"),
     };
     editor.run();
 }

@@ -1,8 +1,14 @@
-use std::collections::HashSet;
-
-use crate::{editor::Mode, git::Diff, view::View};
+//! # Provides the terminal drawing logic
+//!
+//! The terminal drawing logic is abstracted the `TerminalDrawer` trait and
+//! implemented for the termion crate using the `TermionTerminalDrawer` struct
+//! in the `termion` module.
 
 pub mod termion;
+
+use crate::editor::{git::Diff, view::View, Mode};
+use std::collections::HashSet;
+
 /// A TerminalDrawer instance is responsible for drawing the editor on the terminal
 pub trait TerminalDrawer {
     /// Terminate the TerminalDrawer instance (potentially cleanup the terminal)
