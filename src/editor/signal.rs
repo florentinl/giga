@@ -1,5 +1,13 @@
+//! # Intercepting terminal resize events
+//!
+//! To intercept terminal resize events, we need to register a channel to listen to the SIGWINCH.
+//! To do so, we use the libc crate to register a C function as a signal handler.
+//!
+//! This is a bit hacky but it works. It is the only part of the code which is `unsafe`.
+
 use std::sync::mpsc::Sender;
 
+// We have to use a global variable because the signal handler has to be a C function
 static mut TX: Option<Sender<()>> = None;
 
 // Using libc spawn a thread to intercept the SIGWINCH signal and send it through a channel

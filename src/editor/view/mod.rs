@@ -1,4 +1,12 @@
-use crate::file::File;
+//! # Portion of the file being displayed
+//!
+//! The view module represents the portion of the file being displayed on the screen. It
+//! depends on the size of the terminal. And contains the cursor and scrolling logic. It
+//! provides a cropped view of the file.
+
+pub mod file;
+
+use file::File;
 
 /// The View struct represents the actual portion of the File being displayed.
 pub struct View {

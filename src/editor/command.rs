@@ -1,3 +1,16 @@
+//! # Parse user input into editor commands
+//!
+//! This module contains the `Command` enum and the logic for parsing
+//! a `termion::event::Key` into a `Command` depending on the current mode
+//! (see `editor::Mode`).
+//!
+//! ## CommandBlock
+//!
+//! To allow for complex operations, a single `Key` can be parsed into
+//! multiple `Command`s. This is done using the `CommandBlock` variant.
+//! It allows for composite commands such as 'I' (go to the beginning of the line
+//! and enter insert mode) or 'A' (go to the end of the line and enter insert mode).
+
 use termion::event::Key;
 
 use crate::editor::Mode;
@@ -7,7 +20,7 @@ use crate::editor::Mode;
 pub enum Command {
     /// Quit the editor
     Quit,
-    /// Move the cursor
+    /// Move the cursor by dx, dy
     Move(isize, isize),
     /// Save the file
     Save,

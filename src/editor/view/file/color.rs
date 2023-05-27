@@ -1,5 +1,10 @@
+//! # Colorize a File using the syntect library
+//!
 //! Colorizes a string using the syntect library and export it in the format used
-//! by the editor: a File struct containing a Vec<Vec<ColorChar>>.
+//! by the editor: a File struct containing a `Vec<Vec<ColorChar>>`.
+//!
+//! The public interface that allows to do this is the `Colorizer::colorize_string`
+//! method.
 
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Style, ThemeSet};
@@ -27,6 +32,8 @@ impl Colorizer {
         }
     }
 
+    /// Colorize a string using the `Syntect` crate and produce a `Vec<Vec<ColorChar>>`
+    /// (a list of lines, each line being a list of styled words)
     fn str_to_styled_lines(&mut self, str: &str) -> Vec<Vec<(Style, String)>> {
         let syntax = self
             .ps
@@ -50,6 +57,7 @@ impl Colorizer {
         lines
     }
 
+    /// Parse the output of Syntect and produce a `file.content`: a `Vec<Vec<ColorChar>>`
     fn styled_lines_to_colorchars(
         &mut self,
         styled_lines: Vec<Vec<(Style, String)>>,
@@ -68,6 +76,8 @@ impl Colorizer {
         }
         colorchars
     }
+
+    /// Colorize a string and produce a `Vec<Vec<ColorChar>>`
     pub fn colorize_string(&mut self, s: &str) -> Vec<Vec<ColorChar>> {
         let styled_lines = self.str_to_styled_lines(s);
         self.styled_lines_to_colorchars(styled_lines)
