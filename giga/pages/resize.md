@@ -2,7 +2,7 @@
 layout: center
 ---
 
-# Les signaux en Rust
+## Les signaux en Rust
 
 Lorsque l'utilisateur redimensionne la fenêtre, le programme reçoit un signal
 <kbd style="font-size: 1.5em">SIGWINCH</kbd>.
@@ -33,7 +33,7 @@ unsafe extern "C" fn resize_handler(_: libc::c_int) {
 layout: center
 ---
 
-# Intégration dans Giga
+## Intégration dans Giga
 
 ```mermaid
 stateDiagram
@@ -49,7 +49,7 @@ Git --> Git : RecomputeDiff
 layout: center
 ---
 
-# Encore une démo
+## Encore une démo
 
 ```sh
 giga README.md

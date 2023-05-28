@@ -2,7 +2,7 @@
 layout: center
 ---
 
-# Multithreading dans Giga
+## Multithreading dans Giga
 
 ```mermaid
 stateDiagram
@@ -17,7 +17,7 @@ Git --> Git : RecomputeDiff
 layout: center
 ---
 
-# Calculer le diff Git
+## Calculer le diff Git
 
 ```sh
 echo $content | diff <(git show HEAD:$file) -
@@ -35,7 +35,7 @@ echo $content | diff <(git show HEAD:$file) -
 layout: center
 ---
 
-# Et une démo de plus
+## Et une démo de plus
 
 ```sh
 giga README.md
