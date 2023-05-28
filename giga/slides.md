@@ -12,6 +12,15 @@ src: ./RefreshOrder.md
 ---
 
 ---
+src: ./pages/asynchronous_git.md
+---
+
+---
+src: ./pages/resize.md
+---
+
+
+---
 src: ./SyntaxH.md
 ---
 
