@@ -20,21 +20,24 @@ layout: center
 
 ## On modifie un petit peu la structure
 
-```text {11}
+```text {14}
 $ tree
+
 .
 ├── editor
 │   ├── command.rs
+│   ├── git.rs
 │   ├── mod.rs
+│   ├── signal.rs
 │   ├── terminal
-│   │   ├── mod.rs       
+│   │   ├── mod.rs
 │   │   └── termion.rs
 │   └── view
 │       ├── file
-│       │   ├── colors.rs ← Initialise le parseur (Syntect) et gère les courleurs
-│       │   └── mod.rs   
-│       └── mod.rs      
-└── main.rs              
+│       │   ├── color.rs ← Initialise le parseur (Syntect) et gère les courleurs
+│       │   └── mod.rs
+│       └── mod.rs
+└── main.rs           
 ```
 
 ---
