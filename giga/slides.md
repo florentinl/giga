@@ -1,29 +1,13 @@
 # Giga
 
-## A simple editor written in rust
-All code of our editor is available on [github](https://github.com/florentinl/giga)
-
----
-
-# Why Rust ?
-
-![cargo](https://upload.wikimedia.org/wikipedia/commons/d/d5/Rust_programming_language_black_logo.svg)
-
-Rust is safe, fast and a modern system-programming language.
-
-More, with cargo it's easy to :
-
-- Build
-- Test
-- Run
-- Publish
-- Create Documentation
+## un editeur de texte écrit en Rust
+Tout le code est disponible sur GitHub à https://github.com/florentinl/giga
 
 ---
 layout: center
 ---
 
-# Let's run a demo
+# Avant toute chose, une démonstration
 
 ```sh
 giga README.md
@@ -50,7 +34,7 @@ NORMAL --> [*] : q
 layout: center
 ---
 
-# Structure (simplified)
+# La structure de l'éditeur (simplifiée)
 
 ```mermaid
 flowchart
