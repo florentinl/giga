@@ -15,7 +15,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Make docs
-      run: cargo doc --verbose
+      run: cargo doc --verbose --no-deps
     - name: Add index.html stub
       run: echo "<meta http-equiv=refresh content=0;url=giga/index.html>" > ./target/doc/index.html
     - name: Deploy docs
