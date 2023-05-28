@@ -6,7 +6,7 @@ A HeavyWeight text editor written in Rust
 
 ## User Interface
 
-![Giga](./img/video.gif)
+![Giga](https://raw.githubusercontent.com/florentinl/giga/main/img/video.gif)
 
 ## Installation
 
