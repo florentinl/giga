@@ -17,6 +17,28 @@ giga README.md
 layout: center
 ---
 
+# Structure du programme
+
+```sh
+$ tree
+.
+├── editor
+│   ├── command.rs
+│   ├── mod.rs           ← Instancie les modules et gère les commandes
+│   ├── terminal
+│   │   ├── mod.rs       ← Gère l'interaction avec le terminal
+│   │   └── termion.rs
+│   └── view
+│       ├── file
+│       │   └── mod.rs   ← Représente en mémoire le fichier édité
+│       └── mod.rs       ← Calcule ce qui est affiché
+└── main.rs              ← Initialise giga
+```
+
+---
+layout: center
+---
+
 # Modes
 
 ```mermaid
@@ -34,7 +56,7 @@ NORMAL --> [*] : q
 layout: center
 ---
 
-# La structure de l'éditeur (simplifiée)
+# Comment représenter une fenêtre ?
 
 ```mermaid
 flowchart
@@ -51,6 +73,6 @@ direction LR
         navigate --> draw_tui
     end
   end
-  KeyEvent --> navigate
-  KeyEvent --> content
+  Command --> navigate
+  Command --> content
 ```
