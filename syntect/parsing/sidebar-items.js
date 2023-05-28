@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["ATOM_LEN_BITS"],"enum":["BasicScopeStackOp","ClearAmount","ParseScopeError","ParseSyntaxError","ParsingError","ScopeError","ScopeStackOp"],"mod":["metadata","syntax_definition"],"struct":["MatchPower","ParseState","Regex","Region","SCOPE_REPO","Scope","ScopeRepository","ScopeStack","SyntaxReference","SyntaxSet","SyntaxSetBuilder"]};
