@@ -1,14 +1,8 @@
 ---
-layout: center
+layout: full
 ---
 
-# Optimiser le rafraichissement
-
----
-layout: center
----
-
-au lieu d'appeler `draw_tui()` à chaque fois, on peut appeler lui passer un enum
+# Ne pas tout redessiner à chaque fois
 
 ```rust
 pub enum RefreshOrder {
@@ -27,13 +21,11 @@ pub enum RefreshOrder {
 }
 ```
 
-On affiche donc seulement ce qui a changé
-
 ---
-layout: center
+layout: full
 ---
 
-## Encore plus précisemment
+# Encore plus précisemment
 
 On peut réduire le nombre de caractères à afficher
 
@@ -43,8 +35,4 @@ On peut réduire le nombre de caractères à afficher
 ---
 layout: center
 ---
-## Une autre démonstration
-
-```sh
-giga README.md
-```
+# Une autre démonstration

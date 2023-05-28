@@ -1,0 +1,53 @@
+<!-- Small rectangle that scrolls vertically on bigger rectangle -->
+
+<div id="big-rectangle" class="rectangle">
+
+    <!-- Small rectangle -->
+    <div id="small-rectangle" class="rectangle"></div>
+
+</div>
+
+<style>
+    #big-rectangle {
+        width: 400px;
+        height: 600px;
+        background-color: darkgray;
+        position: relative;
+        border-radius: 25px;
+    }
+
+    #small-rectangle {
+        width: 250px;
+        height: 120px;
+        background-color: darkslategray;
+        position: absolute;
+        top: 50px;
+        left: 50px;
+        border-radius: 10px;
+        animation-name: scroll;
+        animation-duration: 20s;
+        animation-iteration-count: infinite;
+        animation-timing-function: linear;
+    }
+
+    @keyframes scroll {
+        0% {
+            top: 50px;
+        }
+        25% {
+            top: 300px;
+            left: 50px;
+        }
+        50% {
+            top: 300px;
+            left: 100px;
+        }
+        75% {
+            top: 300px;
+            left: 50px;
+        }
+        100% {
+            top: 50px;
+        }
+    }
+</style>

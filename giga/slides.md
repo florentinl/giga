@@ -1,14 +1,29 @@
+---
+theme: seriph
+themeConfig:
+  primary: '#cb9909'
+title: Giga
+layout: cover
+---
+
 # Giga
 
-## Un editeur de texte en TUI écrit en Rust
-Tout le code est disponible sur GitHub à https://github.com/florentinl/giga
+Éditeur de texte en Rust
+
+
+<div class="abs-br m-6 flex gap-2">
+  <a href="https://github.com/florentinl/giga" target="_blank" alt="GitHub"
+    class="text-xl slidev-icon-btn opacity-50 !border-none !hover:text-white">
+    github.com/florentinl/giga
+  </a>
+</div>
 
 ---
-src: ./ViewFile.md
+src: ./pages/structure.md
 ---
 
 ---
-src: ./RefreshOrder.md
+src: ./pages/command_refresh_loop.md
 ---
 
 ---
@@ -21,7 +36,7 @@ src: ./pages/resize.md
 
 
 ---
-src: ./SyntaxH.md
+src: ./pages/SyntaxH.md
 ---
 
 ---
