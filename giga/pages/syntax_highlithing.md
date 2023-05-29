@@ -1,11 +1,11 @@
 ---
-layout: full
+layout: center
 ---
 
 # Coloration Syntaxique
 
 ---
-layout: full
+layout: center
 ---
 
 # Qu'est ce qu'un parseur syntaxique ?
@@ -15,7 +15,7 @@ Un parseur syntaxique est un programme qui analyse un texte et le transforme en 
 On utilise [Syntect](https://github.com/trishume/syntect) qui integre un parseur syntaxique pour plus de 100 langages.
 
 ---
-layout: full
+layout: center
 ---
 
 # On modifie un petit peu la structure
@@ -41,7 +41,7 @@ $ tree
 ```
 
 ---
-layout: full
+layout: center
 ---
 
 # Une dernière démonstration
@@ -51,7 +51,7 @@ giga src/main.rs
 ```
 
 ---
-layout: full
+layout: center
 ---
 
 # Optimisations ?

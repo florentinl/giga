@@ -1,5 +1,5 @@
 ---
-layout: full
+layout: center
 ---
 
 # Ne pas tout redessiner à chaque fois
@@ -22,7 +22,7 @@ pub enum RefreshOrder {
 ```
 
 ---
-layout: full
+layout: center
 ---
 
 # Encore plus précisemment

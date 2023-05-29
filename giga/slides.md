@@ -36,7 +36,7 @@ src: ./pages/resize.md
 
 
 ---
-src: ./pages/SyntaxH.md
+src: ./pages/syntax_highlighting.md
 ---
 
 ---
