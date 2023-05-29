@@ -2,6 +2,7 @@
 theme: seriph
 themeConfig:
   primary: '#cb9909'
+colorSchema: dark
 title: Giga
 layout: cover
 ---
