@@ -5,22 +5,20 @@ image: ./images/right_editor.png
 # Refaire Vim en Rust !
 
 Le pattern MVC
-<transform :scale=1.5>
+<transform :scale=1.5
+  style="margin-top: 6; margin-left: 15%"
+>
 ```mermaid {themeVariables: {nodeBorder: '#885921'}}
-graph TD
-  U[User]
-  M[View]
-  V[Tui]
-  C[Editor]
-  U --> C
-  C --> M
-  C --> V
-  M --> C
-  V --> C
-  V --> U
+stateDiagram
+direction TB
+  User --> Editor
+  Editor --> View
+  Editor --> Tui
+  View --> Editor
+  Tui --> Editor
+  Tui --> User
 ```
 </transform>
-
 ---
 layout: full
 ---

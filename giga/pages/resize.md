@@ -10,7 +10,7 @@ Lorsque l'utilisateur redimensionne la fenêtre, le programme reçoit un signal
 J'ai pas trouvé... → du coup on fait du C.
 
 
-```rust {all|6-9|15-17|all}
+```rust {all|6-9|14-17|all}
 static mut TX: Option<Sender<()>> = None;
 
 pub fn init_resize_listener(tx: Sender<()>) {
@@ -35,7 +35,18 @@ layout: full
 
 # Intégration dans Giga
 
-```mermaid
+
+<div style="
+    width: 100%;
+    margin-top: 10%;
+    margin-left: 6%;
+    ">
+
+<Transform
+    :scale=1.3
+    >
+
+```mermaid {themeVariables: {nodeBorder: '#885921'}}
 stateDiagram
 direction TB
 Main/Input --> Tui/Drawing : RefreshOrder
@@ -45,12 +56,12 @@ Git --> Tui/Drawing : DiffChanged
 Git --> Git : RecomputeDiff
 ```
 
+</Transform>
+
+</div>
+
 ---
-layout: full
+layout: center
 ---
 
 # Encore une démo
-
-```sh
-giga README.md
-```
