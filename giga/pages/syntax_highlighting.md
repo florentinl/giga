@@ -44,6 +44,58 @@ $ tree
 layout: center
 ---
 
+# On ajoute une structure pour stocker les couleurs
+
+```rust
+pub struct File {
+    /// The content of the file
+    content: Vec<Vec<ColorChar>>,
+    /// The colorizer used to perform syntax highlighting on the file
+    colorizer: Colorizer,
+}
+```
+
+```rust
+pub struct ColorChar {
+    pub char: char,
+    pub color: termion::color::Rgb,
+}
+
+pub struct Colorizer {
+    ps: SyntaxSet, // Parser from syntect
+    ts: ThemeSet,  // ThemeSet from syntect
+    extension: String,
+}
+```
+---
+layout: center
+---
+
+# À chaque changement de fichier on parse
+Exemple avec insert
+```rust{13}
+    pub fn insert(&mut self, line: usize, col: usize, c: char) {
+        match self.content.get_mut(line) {
+            None => {}
+            Some(line) => {
+                if col > line.len() {
+                    return;
+                }
+                let cc = ColorChar {
+                    char: c,
+                    color: termion::color::Rgb(0, 0, 0),
+                };
+                line.insert(col, cc);
+                self.recolorize();
+            }
+        }
+    }
+```
+
+---
+layout: center
+---
+
 # Une dernière démonstration
 
 ```sh

@@ -112,3 +112,7 @@ layout: center
 ---
 
 # Et une démo de plus
+
+```sh
+giga README.md
+```
