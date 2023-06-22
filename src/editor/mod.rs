@@ -315,6 +315,11 @@ impl Editor {
                     }
                 })
             }
+            Command::DeleteLine => {
+                let mut view = self.view.lock().unwrap();
+                view.delete_line();
+                RefreshOrder::AllLines
+            }
         }
     }
 
