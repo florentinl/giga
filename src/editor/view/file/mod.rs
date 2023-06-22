@@ -111,6 +111,19 @@ impl File {
             }
         }
     }
+
+    pub fn delete_line(&mut self, line: usize) {
+        if line >= self.content.len() {
+            return;
+        }
+        if line == 0 && self.content.len() == 1 {
+            self.content[0].clear();
+            return;
+        } else {
+            self.content.remove(line);
+        }
+        self.recolorize();
+    }
 }
 
 /// Implement the ToString trait for File (used for saving the file)

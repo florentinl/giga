@@ -38,6 +38,8 @@ pub enum Command {
     InsertNewLine,
     /// CommandBlock
     CommandBlock(Vec<Command>),
+    /// Delete a line
+    DeleteLine,
 }
 
 impl Command {
@@ -91,6 +93,8 @@ impl Command {
             Key::Char('w') => Ok(Command::Save),
             // Rename
             Key::Char('R') => Ok(Command::ToggleRename),
+            // DeleteLine
+            Key::Char('d') => Ok(Command::DeleteLine),
             _ => Err("Invalid command"),
         }
     }

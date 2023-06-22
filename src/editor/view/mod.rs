@@ -204,6 +204,18 @@ impl View {
         }
     }
 
+    pub fn delete_line(&mut self) -> bool {
+        let (rel_x, rel_y) = self.cursor;
+        // Calculate the absolute position of the cursor in the file
+        let (x, y) = (rel_x + self.start_col, rel_y + self.start_line);
+
+        // Delete the line at the cursor
+        self.file.delete_line(y);
+
+        // Navigate the cursor
+        self.navigate(-(x as isize), 0)
+    }
+
     /// Dump the content of the file to save it to disk
     pub fn dump_file(&self) -> String {
         self.file.to_string()
