@@ -7,12 +7,14 @@
 
 use std::sync::mpsc::Sender;
 
+use super::RefreshOrder;
+
 // We have to use a global variable because the signal handler has to be a C function
-static mut TX: Option<Sender<()>> = None;
+static mut TX: Option<Sender<RefreshOrder>> = None;
 
 // Using libc spawn a thread to intercept the SIGWINCH signal and send it through a channel
 // given in parameter to the function.
-pub fn init_resize_listener(tx: Sender<()>) {
+pub fn init_resize_listener(tx: Sender<RefreshOrder>) {
     unsafe {
         TX = Some(tx);
     }
@@ -26,5 +28,5 @@ unsafe extern "C" fn resize_handler(_: libc::c_int) {
     // Send the signal through the channel
     // Note: the send() function will fail if the receiver is not listening anymore
     //       (the receiver is the terminal drawer)
-    let _ = TX.as_ref().unwrap().send(());
+    let _ = TX.as_ref().unwrap().send(RefreshOrder::Resize);
 }
