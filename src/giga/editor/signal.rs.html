@@ -29,6 +29,8 @@
 <a href="#28" id="28">28</a>
 <a href="#29" id="29">29</a>
 <a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Intercepting terminal resize events
 //!
 //! To intercept terminal resize events, we need to register a channel to listen to the SIGWINCH.
@@ -38,12 +40,14 @@
 
 </span><span class="kw">use </span>std::sync::mpsc::Sender;
 
+<span class="kw">use </span><span class="kw">super</span>::RefreshOrder;
+
 <span class="comment">// We have to use a global variable because the signal handler has to be a C function
-</span><span class="kw">static </span><span class="kw-2">mut </span>TX: <span class="prelude-ty">Option</span>&lt;Sender&lt;()&gt;&gt; = <span class="prelude-val">None</span>;
+</span><span class="kw">static </span><span class="kw-2">mut </span>TX: <span class="prelude-ty">Option</span>&lt;Sender&lt;RefreshOrder&gt;&gt; = <span class="prelude-val">None</span>;
 
 <span class="comment">// Using libc spawn a thread to intercept the SIGWINCH signal and send it through a channel
 // given in parameter to the function.
-</span><span class="kw">pub fn </span>init_resize_listener(tx: Sender&lt;()&gt;) {
+</span><span class="kw">pub fn </span>init_resize_listener(tx: Sender&lt;RefreshOrder&gt;) {
     <span class="kw">unsafe </span>{
         TX = <span class="prelude-val">Some</span>(tx);
     }
@@ -57,6 +61,6 @@
     <span class="comment">// Send the signal through the channel
     // Note: the send() function will fail if the receiver is not listening anymore
     //       (the receiver is the terminal drawer)
-    </span><span class="kw">let _ </span>= TX.as_ref().unwrap().send(());
+    </span><span class="kw">let _ </span>= TX.as_ref().unwrap().send(RefreshOrder::Resize);
 }
 </code></pre></div></section></main></body></html>
