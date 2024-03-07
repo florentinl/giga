@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/editor/command.rs`."><title>command.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ba5701c5741a7b69.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="giga" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0 (90c541806 2023-05-31)" data-search-js="search-e077946657036a58.js" data-settings-js="settings-298e1ea74db45b39.js" data-settings-css="settings-7bfb4c59cc6bc502.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ></div><script src="../../../static.files/storage-62ce34ea385b278a.js"></script><script defer src="../../../static.files/source-script-905937fbbdc8e9ea.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-f61008743c98d196.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../giga/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/editor/command.rs`."><title>command.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="giga" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -283,8 +284,8 @@
 //!
 //! To allow for complex operations, a single `Key` can be parsed into
 //! multiple `Command`s. This is done using the `CommandBlock` variant.
-//! It allows for composite commands such as &#39;I&#39; (go to the beginning of the line
-//! and enter insert mode) or &#39;A&#39; (go to the end of the line and enter insert mode).
+//! It allows for composite commands such as 'I' (go to the beginning of the line
+//! and enter insert mode) or 'A' (go to the end of the line and enter insert mode).
 
 </span><span class="kw">use </span>termion::event::Key;
 
@@ -319,7 +320,7 @@
 
 <span class="kw">impl </span>Command {
     <span class="doccomment">/// Parse a command from a termion::event::Key object
-    </span><span class="kw">pub fn </span>parse(key: Key, mode: <span class="kw-2">&amp;</span>Mode) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str&gt; {
+    </span><span class="kw">pub fn </span>parse(key: Key, mode: <span class="kw-2">&amp;</span>Mode) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str&gt; {
         <span class="kw">match </span>mode {
             Mode::Normal =&gt; <span class="self">Self</span>::parse_normal_mode(key),
             Mode::Insert =&gt; <span class="self">Self</span>::parse_insert_mode(key),
@@ -328,54 +329,54 @@
     }
 
     <span class="doccomment">/// Parse a command in normal mode from a termion::event::Key object
-    </span><span class="kw">fn </span>parse_normal_mode(key: Key) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str&gt; {
+    </span><span class="kw">fn </span>parse_normal_mode(key: Key) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str&gt; {
         <span class="kw">match </span>key {
             <span class="comment">// Go to insert mode
-            </span>Key::Char(<span class="string">&#39;i&#39;</span>) =&gt; <span class="prelude-val">Ok</span>(Command::ToggleMode),
-            Key::Char(<span class="string">&#39;I&#39;</span>) =&gt; <span class="prelude-val">Ok</span>(Command::CommandBlock(<span class="macro">vec!</span>[
+            </span>Key::Char(<span class="string">'i'</span>) =&gt; <span class="prelude-val">Ok</span>(Command::ToggleMode),
+            Key::Char(<span class="string">'I'</span>) =&gt; <span class="prelude-val">Ok</span>(Command::CommandBlock(<span class="macro">vec!</span>[
                 Command::Move(-isize::MAX, <span class="number">0</span>),
                 Command::ToggleMode,
             ])),
-            Key::Char(<span class="string">&#39;a&#39;</span>) =&gt; <span class="prelude-val">Ok</span>(Command::CommandBlock(<span class="macro">vec!</span>[
+            Key::Char(<span class="string">'a'</span>) =&gt; <span class="prelude-val">Ok</span>(Command::CommandBlock(<span class="macro">vec!</span>[
                 Command::Move(<span class="number">1</span>, <span class="number">0</span>),
                 Command::ToggleMode,
             ])),
-            Key::Char(<span class="string">&#39;A&#39;</span>) =&gt; <span class="prelude-val">Ok</span>(Command::CommandBlock(<span class="macro">vec!</span>[
+            Key::Char(<span class="string">'A'</span>) =&gt; <span class="prelude-val">Ok</span>(Command::CommandBlock(<span class="macro">vec!</span>[
                 Command::Move(isize::MAX, <span class="number">0</span>),
                 Command::ToggleMode,
             ])),
-            Key::Char(<span class="string">&#39;o&#39;</span>) =&gt; <span class="prelude-val">Ok</span>(Command::CommandBlock(<span class="macro">vec!</span>[
+            Key::Char(<span class="string">'o'</span>) =&gt; <span class="prelude-val">Ok</span>(Command::CommandBlock(<span class="macro">vec!</span>[
                 Command::Move(isize::MAX, <span class="number">0</span>),
                 Command::InsertNewLine,
                 Command::ToggleMode,
             ])),
-            Key::Char(<span class="string">&#39;O&#39;</span>) =&gt; <span class="prelude-val">Ok</span>(Command::CommandBlock(<span class="macro">vec!</span>[
+            Key::Char(<span class="string">'O'</span>) =&gt; <span class="prelude-val">Ok</span>(Command::CommandBlock(<span class="macro">vec!</span>[
                 Command::Move(-isize::MAX, <span class="number">0</span>),
                 Command::InsertNewLine,
                 Command::Move(<span class="number">0</span>, -<span class="number">1</span>),
                 Command::ToggleMode,
             ])),
             <span class="comment">// Quit
-            </span>Key::Char(<span class="string">&#39;q&#39;</span>) =&gt; <span class="prelude-val">Ok</span>(Command::Quit),
+            </span>Key::Char(<span class="string">'q'</span>) =&gt; <span class="prelude-val">Ok</span>(Command::Quit),
             <span class="comment">// Move
-            </span>Key::Char(<span class="string">&#39;j&#39;</span>) | Key::Down =&gt; <span class="prelude-val">Ok</span>(Command::Move(<span class="number">0</span>, <span class="number">1</span>)),
-            Key::Char(<span class="string">&#39;k&#39;</span>) | Key::Up =&gt; <span class="prelude-val">Ok</span>(Command::Move(<span class="number">0</span>, -<span class="number">1</span>)),
-            Key::Char(<span class="string">&#39;h&#39;</span>) | Key::Left =&gt; <span class="prelude-val">Ok</span>(Command::Move(-<span class="number">1</span>, <span class="number">0</span>)),
-            Key::Char(<span class="string">&#39;l&#39;</span>) | Key::Right =&gt; <span class="prelude-val">Ok</span>(Command::Move(<span class="number">1</span>, <span class="number">0</span>)),
-            Key::Char(<span class="string">&#39;$&#39;</span>) =&gt; <span class="prelude-val">Ok</span>(Command::Move(isize::MAX, <span class="number">0</span>)),
-            Key::Char(<span class="string">&#39;0&#39;</span>) =&gt; <span class="prelude-val">Ok</span>(Command::Move(-isize::MAX, <span class="number">0</span>)),
+            </span>Key::Char(<span class="string">'j'</span>) | Key::Down =&gt; <span class="prelude-val">Ok</span>(Command::Move(<span class="number">0</span>, <span class="number">1</span>)),
+            Key::Char(<span class="string">'k'</span>) | Key::Up =&gt; <span class="prelude-val">Ok</span>(Command::Move(<span class="number">0</span>, -<span class="number">1</span>)),
+            Key::Char(<span class="string">'h'</span>) | Key::Left =&gt; <span class="prelude-val">Ok</span>(Command::Move(-<span class="number">1</span>, <span class="number">0</span>)),
+            Key::Char(<span class="string">'l'</span>) | Key::Right =&gt; <span class="prelude-val">Ok</span>(Command::Move(<span class="number">1</span>, <span class="number">0</span>)),
+            Key::Char(<span class="string">'$'</span>) =&gt; <span class="prelude-val">Ok</span>(Command::Move(isize::MAX, <span class="number">0</span>)),
+            Key::Char(<span class="string">'0'</span>) =&gt; <span class="prelude-val">Ok</span>(Command::Move(-isize::MAX, <span class="number">0</span>)),
             <span class="comment">// Save
-            </span>Key::Char(<span class="string">&#39;w&#39;</span>) =&gt; <span class="prelude-val">Ok</span>(Command::Save),
+            </span>Key::Char(<span class="string">'w'</span>) =&gt; <span class="prelude-val">Ok</span>(Command::Save),
             <span class="comment">// Rename
-            </span>Key::Char(<span class="string">&#39;R&#39;</span>) =&gt; <span class="prelude-val">Ok</span>(Command::ToggleRename),
+            </span>Key::Char(<span class="string">'R'</span>) =&gt; <span class="prelude-val">Ok</span>(Command::ToggleRename),
             <span class="comment">// DeleteLine
-            </span>Key::Char(<span class="string">&#39;d&#39;</span>) =&gt; <span class="prelude-val">Ok</span>(Command::DeleteLine),
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<span class="string">&quot;Invalid command&quot;</span>),
+            </span>Key::Char(<span class="string">'d'</span>) =&gt; <span class="prelude-val">Ok</span>(Command::DeleteLine),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<span class="string">"Invalid command"</span>),
         }
     }
 
     <span class="doccomment">/// Parse a command in insert mode from a termion::event::Key object
-    </span><span class="kw">fn </span>parse_insert_mode(key: Key) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str&gt; {
+    </span><span class="kw">fn </span>parse_insert_mode(key: Key) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str&gt; {
         <span class="kw">match </span>key {
             <span class="comment">// Go to normal mode
             </span>Key::Esc =&gt; <span class="prelude-val">Ok</span>(Command::ToggleMode),
@@ -388,30 +389,30 @@
             Key::Left =&gt; <span class="prelude-val">Ok</span>(Command::Move(-<span class="number">1</span>, <span class="number">0</span>)),
             Key::Up =&gt; <span class="prelude-val">Ok</span>(Command::Move(<span class="number">0</span>, -<span class="number">1</span>)),
             Key::Down =&gt; <span class="prelude-val">Ok</span>(Command::Move(<span class="number">0</span>, <span class="number">1</span>)),
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<span class="string">&quot;Invalid command&quot;</span>),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<span class="string">"Invalid command"</span>),
         }
     }
 
-    <span class="kw">fn </span>parse_rename_mode(key: Key) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str&gt; {
+    <span class="kw">fn </span>parse_rename_mode(key: Key) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str&gt; {
         <span class="kw">match </span>key {
             Key::Backspace =&gt; <span class="prelude-val">Ok</span>(Command::Rename(<span class="prelude-val">None</span>)),
-            Key::Char(<span class="string">&#39;\n&#39;</span>) =&gt; <span class="prelude-val">Ok</span>(Command::ToggleMode),
+            Key::Char(<span class="string">'\n'</span>) =&gt; <span class="prelude-val">Ok</span>(Command::ToggleMode),
             Key::Char(c) =&gt; <span class="prelude-val">Ok</span>(Command::Rename(<span class="prelude-val">Some</span>(c))),
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<span class="string">&quot;Invalid command&quot;</span>),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<span class="string">"Invalid command"</span>),
         }
     }
 
     <span class="doccomment">/// Parse a character in insert mode
-    </span><span class="kw">fn </span>parse_insert_mode_char(c: char) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str&gt; {
+    </span><span class="kw">fn </span>parse_insert_mode_char(c: char) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str&gt; {
         <span class="kw">match </span>c {
             <span class="comment">// Insert new line
-            </span><span class="string">&#39;\n&#39; </span>=&gt; <span class="prelude-val">Ok</span>(<span class="self">Self</span>::InsertNewLine),
+            </span><span class="string">'\n' </span>=&gt; <span class="prelude-val">Ok</span>(<span class="self">Self</span>::InsertNewLine),
             <span class="comment">// Insert a tab (4 spaces for now)
-            </span><span class="string">&#39;\t&#39; </span>=&gt; <span class="prelude-val">Ok</span>(Command::CommandBlock(<span class="macro">vec!</span>[
-                Command::Insert(<span class="string">&#39; &#39;</span>),
-                Command::Insert(<span class="string">&#39; &#39;</span>),
-                Command::Insert(<span class="string">&#39; &#39;</span>),
-                Command::Insert(<span class="string">&#39; &#39;</span>),
+            </span><span class="string">'\t' </span>=&gt; <span class="prelude-val">Ok</span>(Command::CommandBlock(<span class="macro">vec!</span>[
+                Command::Insert(<span class="string">' '</span>),
+                Command::Insert(<span class="string">' '</span>),
+                Command::Insert(<span class="string">' '</span>),
+                Command::Insert(<span class="string">' '</span>),
             ])),
             <span class="comment">// Insert another character
             </span><span class="kw">_ </span>=&gt; <span class="prelude-val">Ok</span>(Command::Insert(c)),
@@ -426,11 +427,11 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>parse_normal_mode() {
         <span class="macro">assert_eq!</span>(
-            Command::parse(Key::Char(<span class="string">&#39;q&#39;</span>), <span class="kw-2">&amp;</span>Mode::Normal),
+            Command::parse(Key::Char(<span class="string">'q'</span>), <span class="kw-2">&amp;</span>Mode::Normal),
             <span class="prelude-val">Ok</span>(Command::Quit)
         );
         <span class="macro">assert_eq!</span>(
-            Command::parse(Key::Char(<span class="string">&#39;j&#39;</span>), <span class="kw-2">&amp;</span>Mode::Normal),
+            Command::parse(Key::Char(<span class="string">'j'</span>), <span class="kw-2">&amp;</span>Mode::Normal),
             <span class="prelude-val">Ok</span>(Command::Move(<span class="number">0</span>, <span class="number">1</span>))
         );
         <span class="macro">assert_eq!</span>(
@@ -438,7 +439,7 @@
             <span class="prelude-val">Ok</span>(Command::Move(<span class="number">0</span>, <span class="number">1</span>))
         );
         <span class="macro">assert_eq!</span>(
-            Command::parse(Key::Char(<span class="string">&#39;k&#39;</span>), <span class="kw-2">&amp;</span>Mode::Normal),
+            Command::parse(Key::Char(<span class="string">'k'</span>), <span class="kw-2">&amp;</span>Mode::Normal),
             <span class="prelude-val">Ok</span>(Command::Move(<span class="number">0</span>, -<span class="number">1</span>))
         );
         <span class="macro">assert_eq!</span>(
@@ -446,7 +447,7 @@
             <span class="prelude-val">Ok</span>(Command::Move(<span class="number">0</span>, -<span class="number">1</span>))
         );
         <span class="macro">assert_eq!</span>(
-            Command::parse(Key::Char(<span class="string">&#39;h&#39;</span>), <span class="kw-2">&amp;</span>Mode::Normal),
+            Command::parse(Key::Char(<span class="string">'h'</span>), <span class="kw-2">&amp;</span>Mode::Normal),
             <span class="prelude-val">Ok</span>(Command::Move(-<span class="number">1</span>, <span class="number">0</span>))
         );
         <span class="macro">assert_eq!</span>(
@@ -454,7 +455,7 @@
             <span class="prelude-val">Ok</span>(Command::Move(-<span class="number">1</span>, <span class="number">0</span>))
         );
         <span class="macro">assert_eq!</span>(
-            Command::parse(Key::Char(<span class="string">&#39;l&#39;</span>), <span class="kw-2">&amp;</span>Mode::Normal),
+            Command::parse(Key::Char(<span class="string">'l'</span>), <span class="kw-2">&amp;</span>Mode::Normal),
             <span class="prelude-val">Ok</span>(Command::Move(<span class="number">1</span>, <span class="number">0</span>))
         );
         <span class="macro">assert_eq!</span>(
@@ -462,11 +463,11 @@
             <span class="prelude-val">Ok</span>(Command::Move(<span class="number">1</span>, <span class="number">0</span>))
         );
         <span class="macro">assert_eq!</span>(
-            Command::parse(Key::Char(<span class="string">&#39;w&#39;</span>), <span class="kw-2">&amp;</span>Mode::Normal),
+            Command::parse(Key::Char(<span class="string">'w'</span>), <span class="kw-2">&amp;</span>Mode::Normal),
             <span class="prelude-val">Ok</span>(Command::Save)
         );
         <span class="macro">assert_eq!</span>(
-            Command::parse(Key::Char(<span class="string">&#39;i&#39;</span>), <span class="kw-2">&amp;</span>Mode::Normal),
+            Command::parse(Key::Char(<span class="string">'i'</span>), <span class="kw-2">&amp;</span>Mode::Normal),
             <span class="prelude-val">Ok</span>(Command::ToggleMode)
         );
     }
@@ -478,16 +479,16 @@
             <span class="prelude-val">Ok</span>(Command::ToggleMode)
         );
         <span class="macro">assert_eq!</span>(
-            Command::parse(Key::Char(<span class="string">&#39;j&#39;</span>), <span class="kw-2">&amp;</span>Mode::Insert),
-            <span class="prelude-val">Ok</span>(Command::Insert(<span class="string">&#39;j&#39;</span>))
+            Command::parse(Key::Char(<span class="string">'j'</span>), <span class="kw-2">&amp;</span>Mode::Insert),
+            <span class="prelude-val">Ok</span>(Command::Insert(<span class="string">'j'</span>))
         );
         <span class="macro">assert_eq!</span>(
-            Command::parse(Key::Char(<span class="string">&#39;k&#39;</span>), <span class="kw-2">&amp;</span>Mode::Insert),
-            <span class="prelude-val">Ok</span>(Command::Insert(<span class="string">&#39;k&#39;</span>))
+            Command::parse(Key::Char(<span class="string">'k'</span>), <span class="kw-2">&amp;</span>Mode::Insert),
+            <span class="prelude-val">Ok</span>(Command::Insert(<span class="string">'k'</span>))
         );
         <span class="macro">assert_eq!</span>(
-            Command::parse(Key::Char(<span class="string">&#39;q&#39;</span>), <span class="kw-2">&amp;</span>Mode::Insert),
-            <span class="prelude-val">Ok</span>(Command::Insert(<span class="string">&#39;q&#39;</span>))
+            Command::parse(Key::Char(<span class="string">'q'</span>), <span class="kw-2">&amp;</span>Mode::Insert),
+            <span class="prelude-val">Ok</span>(Command::Insert(<span class="string">'q'</span>))
         );
         <span class="macro">assert_eq!</span>(
             Command::parse(Key::Backspace, <span class="kw-2">&amp;</span>Mode::Insert),
@@ -514,37 +515,37 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>parse_invalid_command() {
         <span class="macro">assert_eq!</span>(
-            Command::parse(Key::Char(<span class="string">&#39;✨&#39;</span>), <span class="kw-2">&amp;</span>Mode::Normal),
-            <span class="prelude-val">Err</span>(<span class="string">&quot;Invalid command&quot;</span>)
+            Command::parse(Key::Char(<span class="string">'✨'</span>), <span class="kw-2">&amp;</span>Mode::Normal),
+            <span class="prelude-val">Err</span>(<span class="string">"Invalid command"</span>)
         );
         <span class="macro">assert_eq!</span>(
             Command::parse(Key::Null, <span class="kw-2">&amp;</span>Mode::Insert),
-            <span class="prelude-val">Err</span>(<span class="string">&quot;Invalid command&quot;</span>)
+            <span class="prelude-val">Err</span>(<span class="string">"Invalid command"</span>)
         );
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>parse_insert_mode_char() {
         <span class="macro">assert_eq!</span>(
-            Command::parse_insert_mode_char(<span class="string">&#39;\n&#39;</span>),
+            Command::parse_insert_mode_char(<span class="string">'\n'</span>),
             <span class="prelude-val">Ok</span>(Command::InsertNewLine)
         );
         <span class="macro">assert_eq!</span>(
-            Command::parse_insert_mode_char(<span class="string">&#39;\t&#39;</span>),
+            Command::parse_insert_mode_char(<span class="string">'\t'</span>),
             <span class="prelude-val">Ok</span>(Command::CommandBlock(<span class="macro">vec!</span>[
-                Command::Insert(<span class="string">&#39; &#39;</span>),
-                Command::Insert(<span class="string">&#39; &#39;</span>),
-                Command::Insert(<span class="string">&#39; &#39;</span>),
-                Command::Insert(<span class="string">&#39; &#39;</span>),
+                Command::Insert(<span class="string">' '</span>),
+                Command::Insert(<span class="string">' '</span>),
+                Command::Insert(<span class="string">' '</span>),
+                Command::Insert(<span class="string">' '</span>),
             ]))
         );
         <span class="macro">assert_eq!</span>(
-            Command::parse_insert_mode_char(<span class="string">&#39;a&#39;</span>),
-            <span class="prelude-val">Ok</span>(Command::Insert(<span class="string">&#39;a&#39;</span>))
+            Command::parse_insert_mode_char(<span class="string">'a'</span>),
+            <span class="prelude-val">Ok</span>(Command::Insert(<span class="string">'a'</span>))
         );
         <span class="macro">assert_eq!</span>(
-            Command::parse_insert_mode_char(<span class="string">&#39;à&#39;</span>),
-            <span class="prelude-val">Ok</span>(Command::Insert(<span class="string">&#39;à&#39;</span>))
+            Command::parse_insert_mode_char(<span class="string">'à'</span>),
+            <span class="prelude-val">Ok</span>(Command::Insert(<span class="string">'à'</span>))
         );
     }
 }
