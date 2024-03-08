@@ -66,13 +66,13 @@ mod view;
 
 use std::{
     collections::HashSet,
-    fmt::Display,
+    fmt::{Display, Error},
     io,
     ops::DerefMut,
     path,
     process::exit,
     sync::{
-        mpsc::{self, Receiver, Sender},
+        mpsc::{self, Receiver, SendError, Sender},
         Arc, Mutex,
     },
     thread,
@@ -461,24 +461,20 @@ impl Editor {
         let file_name = self.file_name.clone();
         let git_ref = self.git_ref.clone();
         thread::spawn({
-            move || {
-                loop {
-                    if let Ok(refresh_order) = refresh_receiver.recv() {
-                        let mut locked_view = view.lock().unwrap();
-                        let status_bar_infos =
-                            Self::get_status_bar_infos(&mode, &file_name, &git_ref);
+            move || loop {
+                if let Ok(refresh_order) = refresh_receiver.recv() {
+                    let mut locked_view = view.lock().unwrap();
+                    let status_bar_infos = Self::get_status_bar_infos(&mode, &file_name, &git_ref);
 
-                        Self::refresh_tui(
-                            &mut tui,
-                            locked_view.deref_mut(),
-                            &diff,
-                            &status_bar_infos,
-                            refresh_order,
-                        );
-                    }
-
-                    // Sleep for 1000/120 ms to avoid hogging the CPU
-                    thread::sleep(Duration::from_millis(1000 / 120));
+                    Self::refresh_tui(
+                        &mut tui,
+                        locked_view.deref_mut(),
+                        &diff,
+                        &status_bar_infos,
+                        refresh_order,
+                    );
+                } else {
+                    break;
                 }
             }
         });
@@ -509,7 +505,9 @@ impl Editor {
                 let refresh_order = self.execute(cmd);
 
                 // Send the refresh order to the TUI
-                refresh_sender.send(refresh_order).unwrap();
+                if let Err(SendError(_)) = refresh_sender.send(refresh_order) {
+                    break;
+                }
             }
         }
     }
