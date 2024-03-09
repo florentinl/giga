@@ -66,7 +66,7 @@ mod view;
 
 use std::{
     collections::HashSet,
-    fmt::{Display, Error},
+    fmt::Display,
     io,
     ops::DerefMut,
     path,
@@ -81,7 +81,10 @@ use std::{
 
 use termion::input::TermRead;
 
-use self::git::Patch;
+use self::{
+    git::Patch,
+    view::{file::EditorFile, FileView},
+};
 
 use {
     command::Command,
@@ -160,12 +163,12 @@ pub enum RefreshOrder {
 impl Editor {
     /// Create a new editor
     pub fn new(file_path: &str) -> Self {
-        let (file_path, file_name, extension) = Self::split_path_name(file_path);
+        let (file_path, file_name, _) = Self::split_path_name(file_path);
         let ref_name = get_ref_name(&file_path);
         Self {
             file_path,
             file_name: arc_mutex!(file_name),
-            view: arc_mutex!(View::new(File::new(&extension), 0, 0)),
+            view: arc_mutex!(View::new(File::new(), 0, 0)),
             mode: arc_mutex!(Mode::Normal),
             git_ref: arc_mutex!(ref_name),
             diff: Arc::new(Mutex::new(None)),
@@ -174,10 +177,10 @@ impl Editor {
 
     /// Open a file in the editor
     pub fn open(path: &str) -> Result<Self, std::io::Error> {
-        let (file_path, file_name, ext) = Self::split_path_name(path);
+        let (file_path, file_name, _) = Self::split_path_name(path);
 
         let content = std::fs::read_to_string(path)?;
-        let content = File::from_string(&content, &ext);
+        let content = File::from_string(&content);
         let view = Arc::new(Mutex::new(View::new(content, 0, 0)));
 
         let git_ref = arc_mutex!(get_ref_name(&file_path));
@@ -427,7 +430,10 @@ impl Editor {
             }
             RefreshOrder::Resize => {
                 let (width, height) = tui.get_term_size();
-                view.resize(height, width);
+
+                view.width = width;
+                view.height = height;
+
                 Self::refresh_tui(tui, view, diff, status_bar_infos, RefreshOrder::AllLines);
             }
         }
@@ -445,7 +451,10 @@ impl Editor {
         // Get the terminal size and initialize the view
         let (width, height) = tui.get_term_size();
         let mut locked_view = self.view.lock().unwrap();
-        locked_view.resize(height, width);
+
+        // Resize the view
+        locked_view.height = height;
+        locked_view.width = width;
 
         // Get the initial status bar infos
         let status_bar_infos =
