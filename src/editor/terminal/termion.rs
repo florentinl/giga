@@ -10,7 +10,7 @@ use termion::{
 
 use crate::editor::{
     git::{Diff, Patch, PatchType},
-    view::View,
+    view::{FileView, View},
 };
 
 use super::{StatusBarInfos, TerminalDrawer};
