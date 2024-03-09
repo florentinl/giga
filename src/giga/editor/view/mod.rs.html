@@ -375,27 +375,6 @@
 <a href="#374" id="374">374</a>
 <a href="#375" id="375">375</a>
 <a href="#376" id="376">376</a>
-<a href="#377" id="377">377</a>
-<a href="#378" id="378">378</a>
-<a href="#379" id="379">379</a>
-<a href="#380" id="380">380</a>
-<a href="#381" id="381">381</a>
-<a href="#382" id="382">382</a>
-<a href="#383" id="383">383</a>
-<a href="#384" id="384">384</a>
-<a href="#385" id="385">385</a>
-<a href="#386" id="386">386</a>
-<a href="#387" id="387">387</a>
-<a href="#388" id="388">388</a>
-<a href="#389" id="389">389</a>
-<a href="#390" id="390">390</a>
-<a href="#391" id="391">391</a>
-<a href="#392" id="392">392</a>
-<a href="#393" id="393">393</a>
-<a href="#394" id="394">394</a>
-<a href="#395" id="395">395</a>
-<a href="#396" id="396">396</a>
-<a href="#397" id="397">397</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Portion of the file being displayed
 //!
 //! The view module represents the portion of the file being displayed on the screen. It
@@ -406,6 +385,8 @@
 
 <span class="kw">use </span>file::File;
 
+<span class="kw">use </span><span class="self">self</span>::file::EditorFile;
+
 <span class="doccomment">/// The View struct represents the actual portion of the File being displayed.
 </span><span class="kw">pub struct </span>View {
     <span class="doccomment">/// The file being displayed
@@ -413,7 +394,7 @@
     <span class="doccomment">/// The line number of the first line being displayed
     </span><span class="kw">pub </span>start_line: usize,
     <span class="doccomment">/// The column number of the first column being displayed
-    </span>start_col: usize,
+    </span><span class="kw">pub </span>start_col: usize,
     <span class="doccomment">/// The number of lines being displayed
     </span><span class="kw">pub </span>height: usize,
     <span class="doccomment">/// The number of columns being displayed
@@ -422,56 +403,58 @@
     </span><span class="kw">pub </span>cursor: (usize, usize),
 }
 
-<span class="kw">impl </span>View {
-    <span class="doccomment">/// Create a new View
-    </span><span class="kw">pub fn </span>new(file: File, height: usize, width: usize) -&gt; <span class="self">Self </span>{
+<span class="kw">pub trait </span>FileView {
+    <span class="kw">fn </span>get_line(<span class="kw-2">&amp;</span><span class="self">self</span>, index: usize) -&gt; String;
+    <span class="kw">fn </span>navigate(<span class="kw-2">&amp;mut </span><span class="self">self</span>, dx: isize, dy: isize) -&gt; bool;
+    <span class="kw">fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, c: char) -&gt; bool;
+    <span class="kw">fn </span>insert_new_line(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool;
+    <span class="kw">fn </span>delete(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool;
+    <span class="kw">fn </span>delete_line(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool;
+    <span class="kw">fn </span>dump_file(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String;
+}
+
+<span class="kw">impl </span>Default <span class="kw">for </span>View {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            file,
+            file: File::new(),
             start_line: <span class="number">0</span>,
             start_col: <span class="number">0</span>,
-            height,
-            width,
+            height: <span class="number">0</span>,
+            width: <span class="number">0</span>,
             cursor: (<span class="number">0</span>, <span class="number">0</span>),
         }
     }
+}
 
-    <span class="doccomment">/// Resize the view
-    </span><span class="kw">pub fn </span>resize(<span class="kw-2">&amp;mut </span><span class="self">self</span>, height: usize, width: usize) {
-        <span class="self">self</span>.height = height;
-        <span class="self">self</span>.width = width;
+<span class="kw">impl </span>From&lt;String&gt; <span class="kw">for </span>View {
+    <span class="kw">fn </span>from(value: String) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            file: File::from_string(<span class="kw-2">&amp;</span>value),
+            start_line: <span class="number">0</span>,
+            start_col: <span class="number">0</span>,
+            height: <span class="number">0</span>,
+            width: <span class="number">0</span>,
+            cursor: (<span class="number">0</span>, <span class="number">0</span>),
+        }
     }
+}
 
+<span class="kw">impl </span>FileView <span class="kw">for </span>View {
     <span class="doccomment">/// Get the line at the given index in the view
-    </span><span class="kw">pub fn </span>get_line(<span class="kw-2">&amp;</span><span class="self">self</span>, index: usize) -&gt; String {
-        <span class="kw">let </span>line = <span class="self">self
-            </span>.file
-            .get_line(index + <span class="self">self</span>.start_line)
-            .unwrap_or_default();
-        <span class="kw">let </span>start = <span class="self">self</span>.start_col.min(line.len());
-        <span class="kw">let </span>end = (<span class="self">self</span>.start_col + <span class="self">self</span>.width).min(line.len());
-        String::from(
-            <span class="kw-2">&amp;</span>line[start..end]
-                .iter()
-                .map(|c| <span class="macro">format!</span>(<span class="string">"{}{}"</span>, termion::color::Fg(c.color), c.char))
-                .collect::&lt;String&gt;(),
-        )
-    }
-
-    <span class="doccomment">/// Get the line without the color information
-    </span><span class="kw">fn </span>get_line_without_color(<span class="kw-2">&amp;</span><span class="self">self</span>, index: usize) -&gt; String {
-        <span class="kw">let </span>line = <span class="self">self
-            </span>.file
-            .get_line(index + <span class="self">self</span>.start_line)
-            .unwrap_or_default();
-        <span class="kw">let </span>start = <span class="self">self</span>.start_col.min(line.len());
-        <span class="kw">let </span>end = (<span class="self">self</span>.start_col + <span class="self">self</span>.width).min(line.len());
-        String::from(<span class="kw-2">&amp;</span>line[start..end].iter().map(|c| c.char).collect::&lt;String&gt;())
+    </span><span class="kw">fn </span>get_line(<span class="kw-2">&amp;</span><span class="self">self</span>, index: usize) -&gt; String {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(line) = <span class="self">self</span>.file.get_line(index + <span class="self">self</span>.start_line) {
+            <span class="kw">let </span>start = <span class="self">self</span>.start_col;
+            <span class="kw">let </span>end = (start + <span class="self">self</span>.width).min(line.len());
+            line[start..end].iter().collect()
+        } <span class="kw">else </span>{
+            String::new()
+        }
     }
 
     <span class="doccomment">/// Navigate the cursor by a given amount and eventually scroll the view
     /// if the cursor is out of bounds of the file, it will be moved to the
     /// closest valid position instead.
-    </span><span class="kw">pub fn </span>navigate(<span class="kw-2">&amp;mut </span><span class="self">self</span>, dx: isize, dy: isize) -&gt; bool {
+    </span><span class="kw">fn </span>navigate(<span class="kw-2">&amp;mut </span><span class="self">self</span>, dx: isize, dy: isize) -&gt; bool {
         <span class="comment">// We move onto the new line
         </span><span class="kw">let </span>has_scrolled_on_y = <span class="self">self</span>.navigate_y(dy);
 
@@ -480,6 +463,83 @@
 
         has_scrolled_on_x || has_scrolled_on_y
     }
+    <span class="doccomment">/// # Insert a character at the cursor position
+    /// This function will insert a character at the cursor position and move
+    /// the cursor to the right.
+    </span><span class="kw">fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, c: char) -&gt; bool {
+        <span class="kw">let </span>(rel_x, rel_y) = <span class="self">self</span>.cursor;
+        <span class="comment">// Calculate the absolute position of the cursor in the file
+        </span><span class="kw">let </span>(x, y) = (rel_x + <span class="self">self</span>.start_col, rel_y + <span class="self">self</span>.start_line);
+        <span class="comment">// Insert the character at the cursor position
+        </span><span class="self">self</span>.file.insert(y, x, c);
+        <span class="self">self</span>.navigate(<span class="number">1</span>, <span class="number">0</span>)
+    }
+
+    <span class="doccomment">/// # Insert a new line at the cursor position
+    /// This function will split the line at the cursor position and move the
+    /// cursor to the beginning of the new line.
+    /// Example:
+    /// ```text
+    /// Hello, world!
+    ///        ^ cursor is here
+    /// ```
+    /// ```text
+    /// Hello,
+    /// world!
+    /// ^ cursor is here
+    /// ```
+    </span><span class="kw">fn </span>insert_new_line(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">let </span>(rel_x, rel_y) = <span class="self">self</span>.cursor;
+        <span class="comment">// Calculate the absolute position of the cursor in the file
+        </span><span class="kw">let </span>(x, y) = (rel_x + <span class="self">self</span>.start_col, rel_y + <span class="self">self</span>.start_line);
+        <span class="comment">// Split the line at the cursor position
+        </span><span class="self">self</span>.file.split_line(y, x);
+        <span class="comment">// Navigate the cursor
+        </span><span class="self">self</span>.navigate(-(x <span class="kw">as </span>isize), <span class="number">1</span>)
+    }
+
+    <span class="kw">fn </span>delete(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">let </span>(rel_x, rel_y) = <span class="self">self</span>.cursor;
+        <span class="comment">// Calculate the absolute position of the cursor in the file
+        </span><span class="kw">let </span>(x, y) = (rel_x + <span class="self">self</span>.start_col, rel_y + <span class="self">self</span>.start_line);
+
+        <span class="comment">// Get previous line length in case we need to go to the end of it
+        </span><span class="kw">let </span>prev_line_len = <span class="self">self
+            </span>.file
+            .get_line(y.saturating_sub(<span class="number">1</span>))
+            .unwrap_or_default()
+            .len();
+
+        <span class="comment">// Delete the character at the cursor
+        </span><span class="self">self</span>.file.delete(y, x);
+
+        <span class="comment">// Navigate the cursor
+        </span><span class="kw">if </span>x &gt; <span class="number">0 </span>{
+            <span class="self">self</span>.navigate(-<span class="number">1</span>, <span class="number">0</span>)
+        } <span class="kw">else </span>{
+            <span class="self">self</span>.navigate(prev_line_len <span class="kw">as </span>isize, -<span class="number">1</span>)
+        }
+    }
+
+    <span class="kw">fn </span>delete_line(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">let </span>(rel_x, rel_y) = <span class="self">self</span>.cursor;
+        <span class="comment">// Calculate the absolute position of the cursor in the file
+        </span><span class="kw">let </span>(x, y) = (rel_x + <span class="self">self</span>.start_col, rel_y + <span class="self">self</span>.start_line);
+
+        <span class="comment">// Delete the line at the cursor
+        </span><span class="self">self</span>.file.delete_line(y);
+
+        <span class="comment">// Navigate the cursor
+        </span><span class="self">self</span>.navigate(-(x <span class="kw">as </span>isize), <span class="number">0</span>)
+    }
+
+    <span class="doccomment">/// Dump the content of the file to save it to disk
+    </span><span class="kw">fn </span>dump_file(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+        <span class="self">self</span>.file.to_string()
+    }
+}
+
+<span class="kw">impl </span>View {
     <span class="doccomment">/// Navigate along the y axis and eventually scroll the view
     </span><span class="kw">fn </span>navigate_y(<span class="kw-2">&amp;mut </span><span class="self">self</span>, dy: isize) -&gt; bool {
         <span class="kw">let </span>(<span class="kw">_</span>, y) = <span class="self">self</span>.cursor;
@@ -543,81 +603,6 @@
             <span class="bool-val">false
         </span>}
     }
-
-    <span class="doccomment">/// # Insert a character at the cursor position
-    /// This function will insert a character at the cursor position and move
-    /// the cursor to the right.
-    </span><span class="kw">pub fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, c: char) -&gt; bool {
-        <span class="kw">let </span>(rel_x, rel_y) = <span class="self">self</span>.cursor;
-        <span class="comment">// Calculate the absolute position of the cursor in the file
-        </span><span class="kw">let </span>(x, y) = (rel_x + <span class="self">self</span>.start_col, rel_y + <span class="self">self</span>.start_line);
-        <span class="comment">// Insert the character at the cursor position
-        </span><span class="self">self</span>.file.insert(y, x, c);
-        <span class="self">self</span>.navigate(<span class="number">1</span>, <span class="number">0</span>)
-    }
-
-    <span class="doccomment">/// # Insert a new line at the cursor position
-    /// This function will split the line at the cursor position and move the
-    /// cursor to the beginning of the new line.
-    /// Example:
-    /// ```text
-    /// Hello, world!
-    ///        ^ cursor is here
-    /// ```
-    /// ```text
-    /// Hello,
-    /// world!
-    /// ^ cursor is here
-    /// ```
-    </span><span class="kw">pub fn </span>insert_new_line(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">let </span>(rel_x, rel_y) = <span class="self">self</span>.cursor;
-        <span class="comment">// Calculate the absolute position of the cursor in the file
-        </span><span class="kw">let </span>(x, y) = (rel_x + <span class="self">self</span>.start_col, rel_y + <span class="self">self</span>.start_line);
-        <span class="comment">// Split the line at the cursor position
-        </span><span class="self">self</span>.file.split_line(y, x);
-        <span class="comment">// Navigate the cursor
-        </span><span class="self">self</span>.navigate(-(x <span class="kw">as </span>isize), <span class="number">1</span>)
-    }
-
-    <span class="kw">pub fn </span>delete(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">let </span>(rel_x, rel_y) = <span class="self">self</span>.cursor;
-        <span class="comment">// Calculate the absolute position of the cursor in the file
-        </span><span class="kw">let </span>(x, y) = (rel_x + <span class="self">self</span>.start_col, rel_y + <span class="self">self</span>.start_line);
-
-        <span class="comment">// Get previous line length in case we need to go to the end of it
-        </span><span class="kw">let </span>prev_line_len = <span class="self">self
-            </span>.file
-            .get_line(y.saturating_sub(<span class="number">1</span>))
-            .unwrap_or_default()
-            .len();
-
-        <span class="comment">// Delete the character at the cursor
-        </span><span class="self">self</span>.file.delete(y, x);
-
-        <span class="comment">// Navigate the cursor
-        </span><span class="kw">if </span>x &gt; <span class="number">0 </span>{
-            <span class="self">self</span>.navigate(-<span class="number">1</span>, <span class="number">0</span>)
-        } <span class="kw">else </span>{
-            <span class="self">self</span>.navigate(prev_line_len <span class="kw">as </span>isize, -<span class="number">1</span>)
-        }
-    }
-
-    <span class="kw">pub fn </span>delete_line(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">let </span>(rel_x, rel_y) = <span class="self">self</span>.cursor;
-        <span class="comment">// Calculate the absolute position of the cursor in the file
-        </span><span class="kw">let </span>(x, y) = (rel_x + <span class="self">self</span>.start_col, rel_y + <span class="self">self</span>.start_line);
-
-        <span class="comment">// Delete the line at the cursor
-        </span><span class="self">self</span>.file.delete_line(y);
-
-        <span class="comment">// Navigate the cursor
-        </span><span class="self">self</span>.navigate(-(x <span class="kw">as </span>isize), <span class="number">0</span>)
-    }
-
-    <span class="doccomment">/// Dump the content of the file to save it to disk
-    </span><span class="kw">pub fn </span>dump_file(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
-        <span class="self">self</span>.file.to_string()
-    }
 }
 
 <span class="kw">impl </span>ToString <span class="kw">for </span>View {
@@ -627,7 +612,7 @@
             .min(<span class="self">self</span>.file.len().saturating_sub(<span class="self">self</span>.start_line));
 
         (<span class="number">0</span>..bottom)
-            .map(|i| <span class="self">self</span>.get_line_without_color(i))
+            .map(|i| <span class="self">self</span>.get_line(i))
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
             .join(<span class="string">"\n"</span>)
     }
@@ -635,54 +620,22 @@
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
-    <span class="kw">use </span>termion::color::{Fg, Rgb};
-
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-
-    <span class="kw">fn </span>default_color(str: <span class="kw-2">&amp;</span>str) -&gt; String {
-        <span class="kw">let </span><span class="kw-2">mut </span>colored = String::new();
-        <span class="kw">for </span>c <span class="kw">in </span>str.chars() {
-            colored.push_str(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{}{}"</span>, Fg(Rgb(<span class="number">192</span>, <span class="number">197</span>, <span class="number">206</span>)), c));
-        }
-        colored
-    }
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>view_new() {
-        <span class="kw">let </span>view = View::new(File::new(<span class="string">"txt"</span>), <span class="number">10</span>, <span class="number">10</span>);
-        <span class="macro">assert_eq!</span>(view.start_line, <span class="number">0</span>);
-        <span class="macro">assert_eq!</span>(view.start_col, <span class="number">0</span>);
-        <span class="macro">assert_eq!</span>(view.height, <span class="number">10</span>);
-        <span class="macro">assert_eq!</span>(view.width, <span class="number">10</span>);
-    }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>view_to_string() {
-        <span class="kw">let </span>view = View::new(File::from_string(<span class="string">"Hello, World !\n"</span>, <span class="string">"txt"</span>), <span class="number">1</span>, <span class="number">10</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>view = View::from(<span class="string">"Hello, World !\n"</span>.to_string());
+        view.height = <span class="number">1</span>;
+        view.width = <span class="number">10</span>;
         <span class="macro">assert_eq!</span>(view.to_string(), <span class="string">"Hello, Wor"</span>);
     }
 
     <span class="attr">#[test]
-    </span><span class="kw">fn </span>view_resize() {
-        <span class="kw">let </span><span class="kw-2">mut </span>view = View::new(File::new(<span class="string">"txt"</span>), <span class="number">10</span>, <span class="number">10</span>);
-        view.resize(<span class="number">20</span>, <span class="number">20</span>);
-        <span class="macro">assert_eq!</span>(view.height, <span class="number">20</span>);
-        <span class="macro">assert_eq!</span>(view.width, <span class="number">20</span>);
-    }
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>view_get_line() {
-        <span class="kw">let </span>view = View::new(File::from_string(<span class="string">"Hello, World !\n"</span>, <span class="string">"txt"</span>), <span class="number">1</span>, <span class="number">10</span>);
-        <span class="macro">assert_eq!</span>(view.get_line(<span class="number">0</span>), default_color(<span class="string">"Hello, Wor"</span>));
-    }
-
-    <span class="attr">#[test]
     </span><span class="kw">fn </span>view_navigate() {
-        <span class="kw">let </span><span class="kw-2">mut </span>view = View::new(
-            File::from_string(<span class="string">"Hello, World !\nWelcome to the moon!"</span>, <span class="string">"txt"</span>),
-            <span class="number">2</span>,
-            <span class="number">10</span>,
-        );
+        <span class="kw">let </span><span class="kw-2">mut </span>view = View::from(<span class="string">"Hello, World !\nWelcome to the moon!"</span>.to_string());
+        view.height = <span class="number">2</span>;
+        view.width = <span class="number">10</span>;
+
         view.navigate(<span class="number">1</span>, <span class="number">1</span>);
         <span class="macro">assert_eq!</span>(view.cursor, (<span class="number">1</span>, <span class="number">1</span>));
         view.navigate(-<span class="number">1</span>, -<span class="number">1</span>);
@@ -691,33 +644,30 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>view_navigate_go_to_eol() {
-        <span class="kw">let </span><span class="kw-2">mut </span>view = View::new(
-            File::from_string(<span class="string">"Hello, World !\nWelcome to the moon!"</span>, <span class="string">"txt"</span>),
-            <span class="number">2</span>,
-            <span class="number">100</span>,
-        );
+        <span class="kw">let </span><span class="kw-2">mut </span>view = View::from(<span class="string">"Hello, World !\nWelcome to the moon!"</span>.to_string());
+        view.height = <span class="number">2</span>;
+        view.width = <span class="number">100</span>;
+
         view.navigate(<span class="number">30</span>, <span class="number">0</span>);
         <span class="macro">assert_eq!</span>(view.cursor, (<span class="number">14</span>, <span class="number">0</span>));
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>view_navigate_go_to_eof() {
-        <span class="kw">let </span><span class="kw-2">mut </span>view = View::new(
-            File::from_string(<span class="string">"Hello, World !\nWelcome to the moon!"</span>, <span class="string">"txt"</span>),
-            <span class="number">3</span>,
-            <span class="number">100</span>,
-        );
+        <span class="kw">let </span><span class="kw-2">mut </span>view = View::from(<span class="string">"Hello, World !\nWelcome to the moon!"</span>.to_string());
+        view.height = <span class="number">3</span>;
+        view.width = <span class="number">100</span>;
+
         view.navigate(<span class="number">0</span>, <span class="number">30</span>);
         <span class="macro">assert_eq!</span>(view.cursor, (<span class="number">0</span>, <span class="number">1</span>));
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>view_navigate_scroll_y() {
-        <span class="kw">let </span><span class="kw-2">mut </span>view = View::new(
-            File::from_string(<span class="string">"Hello, World !\nWelcome to the moon!"</span>, <span class="string">"txt"</span>),
-            <span class="number">1</span>,
-            <span class="number">100</span>,
-        );
+        <span class="kw">let </span><span class="kw-2">mut </span>view = View::from(<span class="string">"Hello, World !\nWelcome to the moon!"</span>.to_string());
+        view.height = <span class="number">1</span>;
+        view.width = <span class="number">100</span>;
+
         view.navigate(<span class="number">0</span>, <span class="number">1</span>);
         <span class="macro">assert_eq!</span>(view.cursor, (<span class="number">0</span>, <span class="number">0</span>));
         <span class="macro">assert_eq!</span>(view.start_line, <span class="number">1</span>);
@@ -734,11 +684,10 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>view_navigate_scroll_x() {
-        <span class="kw">let </span><span class="kw-2">mut </span>view = View::new(
-            File::from_string(<span class="string">"Hello, World !\nWelcome to the moon!"</span>, <span class="string">"txt"</span>),
-            <span class="number">1</span>,
-            <span class="number">10</span>,
-        );
+        <span class="kw">let </span><span class="kw-2">mut </span>view = View::from(<span class="string">"Hello, World !\nWelcome to the moon!"</span>.to_string());
+        view.height = <span class="number">1</span>;
+        view.width = <span class="number">10</span>;
+
         view.navigate(<span class="number">9</span>, <span class="number">0</span>);
         <span class="macro">assert_eq!</span>(view.cursor, (<span class="number">9</span>, <span class="number">0</span>));
         <span class="macro">assert_eq!</span>(view.start_col, <span class="number">0</span>);
@@ -746,7 +695,7 @@
         <span class="macro">assert_eq!</span>(view.cursor, (<span class="number">9</span>, <span class="number">0</span>));
         <span class="macro">assert_eq!</span>(view.start_col, <span class="number">1</span>);
         view.navigate(<span class="number">20</span>, <span class="number">0</span>);
-        <span class="macro">assert_eq!</span>(view.get_line(<span class="number">0</span>), default_color(<span class="string">", World !"</span>));
+        <span class="macro">assert_eq!</span>(view.get_line(<span class="number">0</span>), <span class="string">", World !"</span>);
         <span class="macro">assert_eq!</span>(view.cursor, (<span class="number">9</span>, <span class="number">0</span>));
         <span class="macro">assert_eq!</span>(view.start_col, <span class="number">5</span>);
         view.navigate(-<span class="number">20</span>, <span class="number">0</span>);
@@ -756,7 +705,9 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>view_insert() {
-        <span class="kw">let </span><span class="kw-2">mut </span>view = View::new(File::from_string(<span class="string">"Hello, World !\n"</span>, <span class="string">"txt"</span>), <span class="number">1</span>, <span class="number">10</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>view = View::from(<span class="string">"Hello, World !\n"</span>.to_string());
+        view.height = <span class="number">1</span>;
+        view.width = <span class="number">10</span>;
         view.insert(<span class="string">'a'</span>);
         <span class="macro">assert_eq!</span>(view.to_string(), <span class="string">"aHello, Wo"</span>);
         <span class="macro">assert_eq!</span>(view.cursor, (<span class="number">1</span>, <span class="number">0</span>));
@@ -764,7 +715,9 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>view_insert_non_ascii() {
-        <span class="kw">let </span><span class="kw-2">mut </span>view = View::new(File::from_string(<span class="string">"Hello, World !\n"</span>, <span class="string">"txt"</span>), <span class="number">1</span>, <span class="number">10</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>view = View::from(<span class="string">"Hello, World !\n"</span>.to_string());
+        view.height = <span class="number">1</span>;
+        view.width = <span class="number">10</span>;
         view.insert(<span class="string">'é'</span>);
         <span class="macro">assert_eq!</span>(view.to_string(), <span class="string">"éHello, Wo"</span>);
         <span class="macro">assert_eq!</span>(view.cursor, (<span class="number">1</span>, <span class="number">0</span>));
@@ -772,7 +725,9 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>view_insert_new_line() {
-        <span class="kw">let </span><span class="kw-2">mut </span>view = View::new(File::from_string(<span class="string">"Hello, World !\n"</span>, <span class="string">"txt"</span>), <span class="number">10</span>, <span class="number">10</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>view = View::from(<span class="string">"Hello, World !\n"</span>.to_string());
+        view.height = <span class="number">10</span>;
+        view.width = <span class="number">10</span>;
         view.navigate(<span class="number">7</span>, <span class="number">0</span>);
         view.insert_new_line();
         <span class="macro">assert_eq!</span>(view.dump_file(), <span class="string">"Hello, \nWorld !\n"</span>);
@@ -781,7 +736,10 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>view_delete() {
-        <span class="kw">let </span><span class="kw-2">mut </span>view = View::new(File::from_string(<span class="string">"Hello, World !\n"</span>, <span class="string">"txt"</span>), <span class="number">1</span>, <span class="number">10</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>view = View::from(<span class="string">"Hello, World !\n"</span>.to_string());
+        view.height = <span class="number">1</span>;
+        view.width = <span class="number">10</span>;
+
         view.navigate(<span class="number">1</span>, <span class="number">0</span>);
         view.delete();
         <span class="macro">assert_eq!</span>(view.to_string(), <span class="string">"ello, Worl"</span>);

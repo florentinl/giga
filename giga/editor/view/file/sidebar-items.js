@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["color"],"struct":["File"]};
+window.SIDEBAR_ITEMS = {"struct":["File"],"trait":["EditorFile"]};

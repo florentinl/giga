@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["file"],"struct":["View"]};
+window.SIDEBAR_ITEMS = {"mod":["file"],"struct":["View"],"trait":["FileView"]};
