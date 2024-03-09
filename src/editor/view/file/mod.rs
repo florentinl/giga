@@ -17,7 +17,7 @@ pub struct File {
 pub trait EditorFile {
     fn new() -> Self;
     fn from_string(str: &str) -> Self;
-    fn get_line(&self, index: usize) -> Option<String>;
+    fn get_line(&self, index: usize) -> Option<Vec<char>>;
     fn len(&self) -> usize;
     fn insert(&mut self, line: usize, col: usize, c: char);
     fn delete(&mut self, line: usize, col: usize);
@@ -41,7 +41,7 @@ impl EditorFile for File {
     }
 
     /// Get the nth line of the file
-    fn get_line(&self, index: usize) -> Option<String> {
+    fn get_line(&self, index: usize) -> Option<Vec<char>> {
         if self.content.len_lines() <= index {
             None
         } else {
@@ -50,7 +50,8 @@ impl EditorFile for File {
                     .line(index)
                     .to_string()
                     .trim_end_matches('\n')
-                    .to_string(),
+                    .chars()
+                    .collect(),
             )
         }
     }
@@ -155,9 +156,13 @@ mod tests {
     #[test]
     fn file_get_line() {
         let file = File::from_string("Hello, World !\n");
-        assert_eq!(file.get_line(0), Some("Hello, World !".into()));
-        assert_eq!(file.get_line(1), Some("".into()));
-        assert_eq!(file.get_line(2), None);
+
+        assert_eq!(
+            file.get_line(0).unwrap().iter().collect::<String>(),
+            "Hello, World !"
+        );
+        assert_eq!(file.get_line(1).unwrap().iter().collect::<String>(), "");
+        assert!(matches!(file.get_line(2), None))
     }
 
     #[test]

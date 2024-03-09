@@ -81,16 +81,12 @@ use std::{
 
 use termion::input::TermRead;
 
-use self::{
-    git::Patch,
-    view::{file::EditorFile, FileView},
-};
+use self::{git::Patch, view::FileView};
 
 use {
     command::Command,
     git::{compute_diff, get_ref_name, Diff},
     terminal::{termion::TermionTerminalDrawer, StatusBarInfos, TerminalDrawer},
-    view::file::File,
     view::View,
 };
 
@@ -168,7 +164,7 @@ impl Editor {
         Self {
             file_path,
             file_name: arc_mutex!(file_name),
-            view: arc_mutex!(View::new(File::new(), 0, 0)),
+            view: arc_mutex!(View::default()),
             mode: arc_mutex!(Mode::Normal),
             git_ref: arc_mutex!(ref_name),
             diff: Arc::new(Mutex::new(None)),
@@ -180,8 +176,7 @@ impl Editor {
         let (file_path, file_name, _) = Self::split_path_name(path);
 
         let content = std::fs::read_to_string(path)?;
-        let content = File::from_string(&content);
-        let view = Arc::new(Mutex::new(View::new(content, 0, 0)));
+        let view = Arc::new(Mutex::new(View::from(content)));
 
         let git_ref = arc_mutex!(get_ref_name(&file_path));
 
