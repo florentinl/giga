@@ -34,6 +34,7 @@ pub trait FileView {
     fn delete(&mut self) -> bool;
     fn delete_line(&mut self) -> bool;
     fn dump_file(&self) -> String;
+    fn get_git_ref(&self) -> Option<String>;
 }
 
 impl Default for View {
@@ -159,6 +160,10 @@ impl FileView for View {
     /// Dump the content of the file to save it to disk
     fn dump_file(&self) -> String {
         self.file.to_string()
+    }
+
+    fn get_git_ref(&self) -> Option<String> {
+        self.file.get_git_ref()
     }
 }
 

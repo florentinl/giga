@@ -5,13 +5,19 @@
 //! two types of operations on the File:
 //! - Read operations: they are used to display the file on the screen
 //! - Write operations: they are used to modify the file -> Trigger a recolorization of the file
+mod git;
 
 use ropey::Rope;
+
+use self::git::{Git, Vcs};
 
 /// In-memory representation of a syntax-highlighted file
 pub struct File {
     /// The content of the file
     content: Rope,
+
+    /// Optional version control system
+    vcs: Option<Git>,
 }
 
 pub trait EditorFile {
@@ -23,12 +29,14 @@ pub trait EditorFile {
     fn delete(&mut self, line: usize, col: usize);
     fn split_line(&mut self, line: usize, col: usize);
     fn delete_line(&mut self, line: usize);
+    fn get_git_ref(&self) -> Option<String>;
 }
 
 impl EditorFile for File {
     fn new() -> Self {
         Self {
             content: Rope::new(),
+            vcs: Git::open(),
         }
     }
 
@@ -37,7 +45,10 @@ impl EditorFile for File {
         // Replace tabs with 4 spaces
         let str = str.replace('\t', "    ");
         let content = Rope::from_str(&str);
-        Self { content }
+        Self {
+            content,
+            vcs: Git::open(),
+        }
     }
 
     /// Get the nth line of the file
@@ -120,6 +131,13 @@ impl EditorFile for File {
         let start_line = self.content.line_to_char(line);
         let end_line = self.content.line_to_char(line + 1);
         self.content.remove(start_line..end_line);
+    }
+
+    fn get_git_ref(&self) -> Option<String> {
+        match &self.vcs {
+            Some(vcs) => Some(vcs.get_ref()),
+            None => None,
+        }
     }
 }
 

@@ -85,7 +85,7 @@ use self::{git::Patch, view::FileView};
 
 use {
     command::Command,
-    git::{compute_diff, get_ref_name, Diff},
+    git::{compute_diff, Diff},
     terminal::{termion::TermionTerminalDrawer, StatusBarInfos, TerminalDrawer},
     view::View,
 };
@@ -109,8 +109,6 @@ pub struct Editor {
     /// The mode of the editor
     mode: Arc<Mutex<Mode>>,
 
-    /// Git Branch/Commit/Tag if any
-    git_ref: Arc<Mutex<Option<String>>>,
     /// Git diff since last commit if any
     pub diff: Arc<Mutex<Option<Diff>>>,
 }
@@ -160,13 +158,11 @@ impl Editor {
     /// Create a new editor
     pub fn new(file_path: &str) -> Self {
         let (file_path, file_name, _) = Self::split_path_name(file_path);
-        let ref_name = get_ref_name(&file_path);
         Self {
             file_path,
             file_name: arc_mutex!(file_name),
             view: arc_mutex!(View::default()),
             mode: arc_mutex!(Mode::Normal),
-            git_ref: arc_mutex!(ref_name),
             diff: Arc::new(Mutex::new(None)),
         }
     }
@@ -178,14 +174,11 @@ impl Editor {
         let content = std::fs::read_to_string(path)?;
         let view = Arc::new(Mutex::new(View::from(content)));
 
-        let git_ref = arc_mutex!(get_ref_name(&file_path));
-
         Ok(Self {
             file_path,
             file_name: arc_mutex!(file_name),
             view,
             mode: arc_mutex!(Mode::Normal),
-            git_ref,
             diff: arc_mutex!(None),
         })
     }
@@ -355,6 +348,13 @@ impl Editor {
 
         // Spawn a thread to compute the diff in background
         let view = self.view.clone();
+        let locked_view = view.lock().unwrap();
+        if matches!(locked_view.get_git_ref(), None) {
+            // If we are not in a git repository, we don't need to compute the diff
+            return;
+        };
+        drop(locked_view);
+
         let diff = self.diff.clone();
         let file_path = self.file_path.clone();
         let file_name = self.file_name.clone();
@@ -381,16 +381,15 @@ impl Editor {
     fn get_status_bar_infos(
         mode: &Arc<Mutex<Mode>>,
         file_name: &Arc<Mutex<String>>,
-        git_ref: &Arc<Mutex<Option<String>>>,
+        git_ref: Option<String>,
     ) -> StatusBarInfos {
         let mode = mode.lock().unwrap();
         let file_name = file_name.lock().unwrap();
-        let git_ref = git_ref.lock().unwrap();
 
         StatusBarInfos {
             file_name: file_name.clone(),
             mode: mode.clone(),
-            ref_name: git_ref.clone(),
+            ref_name: git_ref,
         }
     }
 
@@ -453,7 +452,7 @@ impl Editor {
 
         // Get the initial status bar infos
         let status_bar_infos =
-            Self::get_status_bar_infos(&self.mode, &self.file_name, &self.git_ref);
+            Self::get_status_bar_infos(&self.mode, &self.file_name, locked_view.get_git_ref());
 
         // Draw the initial TUI
         tui.draw(&locked_view, &status_bar_infos);
@@ -463,12 +462,12 @@ impl Editor {
         let diff = self.diff.clone();
         let mode = self.mode.clone();
         let file_name = self.file_name.clone();
-        let git_ref = self.git_ref.clone();
         thread::spawn({
             move || loop {
                 if let Ok(refresh_order) = refresh_receiver.recv() {
                     let mut locked_view = view.lock().unwrap();
-                    let status_bar_infos = Self::get_status_bar_infos(&mode, &file_name, &git_ref);
+                    let status_bar_infos =
+                        Self::get_status_bar_infos(&mode, &file_name, locked_view.get_git_ref());
 
                     Self::refresh_tui(
                         &mut tui,
@@ -489,10 +488,7 @@ impl Editor {
         let (refresh_sender, refresh_receiver) = mpsc::channel::<RefreshOrder>();
 
         // Initialize git operations if needed
-        let git_ref = self.git_ref.lock().unwrap().clone();
-        if git_ref.is_some() {
-            self.init_git_thread(refresh_sender.clone())
-        }
+        self.init_git_thread(refresh_sender.clone());
 
         // Initialize the resize signal handler
         signal::init_resize_listener(refresh_sender.clone());

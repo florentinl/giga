@@ -13,3 +13,4 @@ termion = "2.0"
 libc = "0.2"
 syntect = {version = "5.0", features = ["metadata"]}
 ropey = "1.6.1"
+gix = "0.58.0"
