@@ -1,8 +1,6 @@
 # GIGA
 
-A HeavyWeight text editor written in Rust
-
-> All this README.md file is written using giga !
+A simple modal based text editor written in Rust. It has no ambition at all, it is merely a project to learn Rust and how to build a text editor.
 
 ## User Interface
 
@@ -44,7 +42,7 @@ If you enter
 giga
 ```
 
-It will create a new file called NewFile.
+It will create a new file called NewFile, duh.
 
 ## Mode
 
@@ -63,12 +61,4 @@ To toggle modes:
 
 ## TODO
 
-As giga is under development, we need to fix these:
-
-- [x] UTF-8 support
-- [x] Rename a file
-- [ ] Syntax Highlighting
-- [x] Refresh only lines changed
-- [x] Transform tabs in spaces
-- [ ] Unit Testing 100%
-- [ ] Documentation
+A never ending list of things, but who cares, it's just a project to learn Rust.
