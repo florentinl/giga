@@ -6,10 +6,11 @@
 
 pub mod file;
 
-use std::path;
+use std::{collections::HashMap, path};
 
 use file::File;
 
+use self::file::git::PatchType;
 use self::file::EditorFile;
 
 /// The View struct represents the actual portion of the File being displayed.
@@ -30,7 +31,7 @@ pub struct View {
 
 pub trait FileView {
     fn new(file_path: &str) -> Self;
-    fn get_line(&self, index: usize) -> String;
+    fn line(&self, index: usize) -> String;
     fn navigate(&mut self, dx: isize, dy: isize) -> bool;
     fn insert(&mut self, c: char) -> bool;
     fn insert_new_line(&mut self) -> bool;
@@ -38,6 +39,8 @@ pub trait FileView {
     fn delete_line(&mut self) -> bool;
     fn dump_file(&self) -> String;
     fn git_ref(&self) -> Option<String>;
+    fn refresh_diff(&mut self) -> Result<(), Box<dyn std::error::Error>>;
+    fn diff(&self) -> Option<HashMap<usize, PatchType>>;
     fn file_path(&self) -> String;
     fn file_name(&self) -> String;
     fn file_dir(&self) -> String;
@@ -87,8 +90,8 @@ impl FileView for View {
     }
 
     /// Get the line at the given index in the view
-    fn get_line(&self, index: usize) -> String {
-        if let Some(line) = self.file.get_line(index + self.start_line) {
+    fn line(&self, index: usize) -> String {
+        if let Some(line) = self.file.line(index + self.start_line) {
             let start = self.start_col;
             let end = (start + self.width).min(line.len());
             line[start..end].iter().collect()
@@ -152,7 +155,7 @@ impl FileView for View {
         // Get previous line length in case we need to go to the end of it
         let prev_line_len = self
             .file
-            .get_line(y.saturating_sub(1))
+            .line(y.saturating_sub(1))
             .unwrap_or_default()
             .len();
 
@@ -185,7 +188,7 @@ impl FileView for View {
     }
 
     fn git_ref(&self) -> Option<String> {
-        self.file.get_git_ref()
+        self.file.git_ref()
     }
 
     fn file_path(&self) -> String {
@@ -202,6 +205,14 @@ impl FileView for View {
 
     fn file_dir(&self) -> String {
         self.file.file_dir.clone()
+    }
+
+    fn diff(&self) -> Option<HashMap<usize, PatchType>> {
+        self.file.diff()
+    }
+
+    fn refresh_diff(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        self.file.refresh_diff()
     }
 }
 
@@ -242,7 +253,7 @@ impl View {
         let (x, y) = self.cursor;
         let line_len = self
             .file
-            .get_line(y + self.start_line)
+            .line(y + self.start_line)
             .unwrap_or_default()
             .len() as isize;
         let left = self.start_col as isize;
@@ -278,7 +289,7 @@ impl ToString for View {
             .min(self.file.len().saturating_sub(self.start_line));
 
         (0..bottom)
-            .map(|i| self.get_line(i))
+            .map(|i| self.line(i))
             .collect::<Vec<_>>()
             .join("\n")
     }
@@ -381,7 +392,7 @@ mod tests {
         assert_eq!(view.cursor, (9, 0));
         assert_eq!(view.start_col, 1);
         view.navigate(20, 0);
-        assert_eq!(view.get_line(0), ", World !");
+        assert_eq!(view.line(0), ", World !");
         assert_eq!(view.cursor, (9, 0));
         assert_eq!(view.start_col, 5);
         view.navigate(-20, 0);

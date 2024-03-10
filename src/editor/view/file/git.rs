@@ -25,6 +25,7 @@ pub trait Vcs {
         file_name: &str,
         content: &str,
     ) -> Result<(), Box<dyn std::error::Error>>;
+    fn diff(&self) -> Option<HashMap<usize, PatchType>>;
 }
 
 pub struct Git {
@@ -88,6 +89,10 @@ impl Vcs for Git {
         }
         self.diff = Some(marks);
         Ok(())
+    }
+
+    fn diff(&self) -> Option<HashMap<usize, PatchType>> {
+        self.diff.clone()
     }
 }
 

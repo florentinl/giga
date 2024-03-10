@@ -5,7 +5,7 @@
 //! two types of operations on the File:
 //! - Read operations: they are used to display the file on the screen
 //! - Write operations: they are used to modify the file -> Trigger a recolorization of the file
-mod git;
+pub mod git;
 
 use std::collections::HashMap;
 
@@ -31,15 +31,15 @@ pub struct File {
 pub trait EditorFile {
     fn new(file_path: &str) -> Self;
     fn from_string(content: &str, file_name: &str, file_path: &str) -> Self;
-    fn get_line(&self, index: usize) -> Option<Vec<char>>;
+    fn line(&self, index: usize) -> Option<Vec<char>>;
     fn len(&self) -> usize;
     fn insert(&mut self, line: usize, col: usize, c: char);
     fn delete(&mut self, line: usize, col: usize);
     fn split_line(&mut self, line: usize, col: usize);
     fn delete_line(&mut self, line: usize);
-    fn get_git_ref(&self) -> Option<String>;
-    fn compute_diff(&mut self) -> Result<(), Box<dyn std::error::Error>>;
-    fn get_diff_result(&self) -> Option<HashMap<usize, PatchType>>;
+    fn git_ref(&self) -> Option<String>;
+    fn refresh_diff(&mut self) -> Result<(), Box<dyn std::error::Error>>;
+    fn diff(&self) -> Option<HashMap<usize, PatchType>>;
 }
 
 impl EditorFile for File {
@@ -66,7 +66,7 @@ impl EditorFile for File {
     }
 
     /// Get the nth line of the file
-    fn get_line(&self, index: usize) -> Option<Vec<char>> {
+    fn line(&self, index: usize) -> Option<Vec<char>> {
         if self.content.len_lines() <= index {
             None
         } else {
@@ -147,14 +147,14 @@ impl EditorFile for File {
         self.content.remove(start_line..end_line);
     }
 
-    fn get_git_ref(&self) -> Option<String> {
+    fn git_ref(&self) -> Option<String> {
         match &self.vcs {
             Some(vcs) => Some(vcs.get_ref()),
             None => None,
         }
     }
 
-    fn compute_diff(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    fn refresh_diff(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         if let None = &self.vcs {
             return Ok(());
         }
@@ -163,8 +163,10 @@ impl EditorFile for File {
         vcs.compute_diff(&self.file_dir, &self.file_name, &content)
     }
 
-    fn get_diff_result(&self) -> Option<HashMap<usize, PatchType>> {
-        todo!()
+    fn diff(&self) -> Option<HashMap<usize, PatchType>> {
+        let vcs = self.vcs.as_ref()?;
+
+        vcs.diff()
     }
 }
 
@@ -203,11 +205,11 @@ mod tests {
         let file = File::from_string("Hello, World !\n", "test", "test");
 
         assert_eq!(
-            file.get_line(0).unwrap().iter().collect::<String>(),
+            file.line(0).unwrap().iter().collect::<String>(),
             "Hello, World !"
         );
-        assert_eq!(file.get_line(1).unwrap().iter().collect::<String>(), "");
-        assert!(matches!(file.get_line(2), None))
+        assert_eq!(file.line(1).unwrap().iter().collect::<String>(), "");
+        assert!(matches!(file.line(2), None))
     }
 
     #[test]
