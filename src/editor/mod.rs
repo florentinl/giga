@@ -59,7 +59,6 @@
 //! This logic is handled by the `signal` module, which is called in the (`Editor::init_resize_listener` method).
 //!
 mod command;
-mod git;
 mod signal;
 mod terminal;
 mod view;
@@ -80,11 +79,10 @@ use std::{
 
 use termion::input::TermRead;
 
-use self::{git::Patch, view::FileView};
+use self::view::FileView;
 
 use {
     command::Command,
-    git::{compute_diff, Diff},
     terminal::{termion::TermionTerminalDrawer, StatusBarInfos, TerminalDrawer},
     view::View,
 };
@@ -103,9 +101,6 @@ pub struct Editor {
     view: Arc<Mutex<View>>,
     /// The mode of the editor
     mode: Arc<Mutex<Mode>>,
-
-    /// Git diff since last commit if any
-    pub diff: Arc<Mutex<Option<Diff>>>,
 }
 
 #[derive(Clone)]
@@ -155,7 +150,6 @@ impl Editor {
         Self {
             view: arc_mutex!(View::new(path)),
             mode: arc_mutex!(Mode::Normal),
-            diff: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -297,9 +291,6 @@ impl Editor {
 
     /// Initialize git operations
     fn init_git_thread(&mut self, sender: Sender<RefreshOrder>) {
-        // Initialize the diff
-        self.diff = Arc::new(Mutex::new(None));
-
         // Spawn a thread to compute the diff in background
         let view = self.view.clone();
         let locked_view = view.lock().unwrap();
@@ -309,22 +300,16 @@ impl Editor {
         };
         drop(locked_view);
 
-        let diff = self.diff.clone();
         thread::spawn({
             move || loop {
-                let view = view.lock().unwrap();
-                let file_name = view.file_name();
-                let file_dir = view.file_dir();
-                let new_diff = compute_diff(&view.dump_file(), &file_dir, &file_name).ok();
-                let mut current_diff = diff.lock().unwrap();
+                let mut view = view.lock().unwrap();
+                let _ = view.refresh_diff();
 
-                // If the diff has changed, redraw the diff markers
-                if new_diff != *current_diff {
-                    *current_diff = new_diff;
-                    sender.send(RefreshOrder::GitIndicators).unwrap();
+                if let Err(SendError(_)) = sender.send(RefreshOrder::GitIndicators) {
+                    break;
                 }
+
                 // Drop the lock before sleeping
-                drop(current_diff);
                 drop(view);
                 thread::sleep(Duration::from_millis(250));
             }
@@ -350,7 +335,6 @@ impl Editor {
     fn refresh_tui(
         tui: &mut TermionTerminalDrawer,
         view: &mut View,
-        diff: &Arc<Mutex<Option<Vec<Patch>>>>,
         status_bar_infos: &StatusBarInfos,
         refresh_order: RefreshOrder,
     ) {
@@ -366,14 +350,16 @@ impl Editor {
                 tui.move_cursor(view.cursor)
             }
             RefreshOrder::GitIndicators => {
-                let locked_diff = diff.lock().unwrap();
-                tui.draw_diff_markers(locked_diff.as_ref().unwrap(), view);
+                if let Some(diff) = view.diff() {
+                    tui.draw_diff_markers(diff, view);
+                }
             }
             RefreshOrder::Lines(lines) => tui.draw_lines(view, lines),
             RefreshOrder::AllLines => {
                 tui.draw(view, status_bar_infos);
-                let locked_diff = diff.lock().unwrap();
-                tui.draw_diff_markers(locked_diff.as_ref().unwrap(), view);
+                if let Some(diff) = view.diff() {
+                    tui.draw_diff_markers(diff, view);
+                }
             }
             RefreshOrder::Resize => {
                 let (width, height) = tui.get_term_size();
@@ -381,7 +367,7 @@ impl Editor {
                 view.width = width;
                 view.height = height;
 
-                Self::refresh_tui(tui, view, diff, status_bar_infos, RefreshOrder::AllLines);
+                Self::refresh_tui(tui, view, status_bar_infos, RefreshOrder::AllLines);
             }
         }
     }
@@ -412,7 +398,6 @@ impl Editor {
 
         // Spawn a thread to draw the TUI in background
         let view = self.view.clone();
-        let diff = self.diff.clone();
         let mode = self.mode.clone();
         thread::spawn({
             move || loop {
@@ -427,7 +412,6 @@ impl Editor {
                     Self::refresh_tui(
                         &mut tui,
                         locked_view.deref_mut(),
-                        &diff,
                         &status_bar_infos,
                         refresh_order,
                     );

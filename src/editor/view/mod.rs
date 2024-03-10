@@ -6,10 +6,11 @@
 
 pub mod file;
 
-use std::path;
+use std::{collections::HashMap, path};
 
 use file::File;
 
+use self::file::git::PatchType;
 use self::file::EditorFile;
 
 /// The View struct represents the actual portion of the File being displayed.
@@ -38,6 +39,8 @@ pub trait FileView {
     fn delete_line(&mut self) -> bool;
     fn dump_file(&self) -> String;
     fn git_ref(&self) -> Option<String>;
+    fn refresh_diff(&mut self) -> Result<(), Box<dyn std::error::Error>>;
+    fn diff(&self) -> Option<HashMap<usize, PatchType>>;
     fn file_path(&self) -> String;
     fn file_name(&self) -> String;
     fn file_dir(&self) -> String;
@@ -202,6 +205,14 @@ impl FileView for View {
 
     fn file_dir(&self) -> String {
         self.file.file_dir.clone()
+    }
+
+    fn diff(&self) -> Option<HashMap<usize, PatchType>> {
+        self.file.diff()
+    }
+
+    fn refresh_diff(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        self.file.refresh_diff()
     }
 }
 

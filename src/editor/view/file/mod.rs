@@ -5,7 +5,7 @@
 //! two types of operations on the File:
 //! - Read operations: they are used to display the file on the screen
 //! - Write operations: they are used to modify the file -> Trigger a recolorization of the file
-mod git;
+pub mod git;
 
 use std::collections::HashMap;
 
@@ -38,8 +38,8 @@ pub trait EditorFile {
     fn split_line(&mut self, line: usize, col: usize);
     fn delete_line(&mut self, line: usize);
     fn get_git_ref(&self) -> Option<String>;
-    fn compute_diff(&mut self) -> Result<(), Box<dyn std::error::Error>>;
-    fn get_diff_result(&self) -> Option<HashMap<usize, PatchType>>;
+    fn refresh_diff(&mut self) -> Result<(), Box<dyn std::error::Error>>;
+    fn diff(&self) -> Option<HashMap<usize, PatchType>>;
 }
 
 impl EditorFile for File {
@@ -154,7 +154,7 @@ impl EditorFile for File {
         }
     }
 
-    fn compute_diff(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    fn refresh_diff(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         if let None = &self.vcs {
             return Ok(());
         }
@@ -163,8 +163,10 @@ impl EditorFile for File {
         vcs.compute_diff(&self.file_dir, &self.file_name, &content)
     }
 
-    fn get_diff_result(&self) -> Option<HashMap<usize, PatchType>> {
-        todo!()
+    fn diff(&self) -> Option<HashMap<usize, PatchType>> {
+        let vcs = self.vcs.as_ref()?;
+
+        vcs.diff()
     }
 }
 

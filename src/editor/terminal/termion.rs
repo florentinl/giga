@@ -1,5 +1,5 @@
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     io::{Stdout, Write},
 };
 
@@ -8,10 +8,7 @@ use termion::{
     raw::{IntoRawMode, RawTerminal},
 };
 
-use crate::editor::{
-    git::{Diff, Patch, PatchType},
-    view::{FileView, View},
-};
+use crate::editor::view::{file::git::PatchType, FileView, View};
 
 use super::{StatusBarInfos, TerminalDrawer};
 
@@ -166,57 +163,32 @@ impl TerminalDrawer for TermionTerminalDrawer {
     /// - '▗' (red) for removed lines
     /// - '▐' (yellow) for modified lines
     /// - ' ' (default) for unchanged lines
-    fn draw_diff_markers(&mut self, diff: &Diff, view: &View) {
-        let mut patches = diff.iter();
-        let mut patch = patches.next();
-        let mut view_line = 0;
-
-        while view_line < view.height {
-            let line = view_line + view.start_line;
+    fn draw_diff_markers(&mut self, diff: HashMap<usize, PatchType>, view: &View) {
+        for line in 0..view.height {
             // Go to the beginning of the line
             print!(
                 self.stdout,
-                cursor::Goto(LINE_NUMBER_WIDTH + 1, view_line as u16 + 1)
+                cursor::Goto(LINE_NUMBER_WIDTH + 1, line as u16 + 1)
             );
-            match patch {
-                None => {
-                    print!(self.stdout, " ");
-                    view_line += 1;
+            // Print the diff marker
+            match diff.get(&(line + view.start_line)) {
+                Some(PatchType::Added) => {
+                    print!(self.stdout, color::Fg(color::Green));
+                    print!(self.stdout, "▐");
                 }
-                Some(Patch {
-                    start,
-                    count,
-                    patch_type,
-                }) => match line {
-                    l if l < *start => {
-                        print!(self.stdout, " ");
-                        view_line += 1;
-                    }
-                    l if l >= *start && l < start + count => {
-                        match patch_type {
-                            PatchType::Added => {
-                                print!(self.stdout, color::Fg(color::Green));
-                                print!(self.stdout, "▐");
-                            }
-                            PatchType::Deleted => {
-                                print!(self.stdout, color::Fg(color::Red));
-                                print!(self.stdout, "▗");
-                            }
-                            PatchType::Changed => {
-                                print!(self.stdout, color::Fg(color::Yellow));
-                                print!(self.stdout, "▐");
-                            }
-                        }
-                        view_line += 1;
-                    }
-                    _ => {
-                        patch = patches.next();
-                    }
-                },
+                Some(PatchType::Deleted) => {
+                    print!(self.stdout, color::Fg(color::Red));
+                    print!(self.stdout, "▗");
+                }
+                Some(PatchType::Changed) => {
+                    print!(self.stdout, color::Fg(color::Yellow));
+                    print!(self.stdout, "▐");
+                }
+                _ => {
+                    print!(self.stdout, " ");
+                }
             }
         }
-
-        // Go back to the cursor position
         self.move_cursor(view.cursor);
     }
 }
