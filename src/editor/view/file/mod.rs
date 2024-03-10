@@ -53,13 +53,13 @@ impl EditorFile for File {
     }
 
     /// Create a File abstraction from a string
-    fn from_string(content: &str, file_name: &str, file_path: &str) -> Self {
+    fn from_string(content: &str, file_name: &str, file_dir: &str) -> Self {
         // Replace tabs with 4 spaces
         let content = content.replace('\t', "    ");
         let content = Rope::from_str(&content);
         Self {
+            file_dir: file_dir.into(),
             file_name: file_name.into(),
-            file_dir: file_path.into(),
             content,
             vcs: Git::open(),
         }
