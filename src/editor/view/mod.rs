@@ -6,6 +6,8 @@
 
 pub mod file;
 
+use std::path;
+
 use file::File;
 
 use self::file::EditorFile;
@@ -27,6 +29,7 @@ pub struct View {
 }
 
 pub trait FileView {
+    fn new(file_path: &str) -> Self;
     fn get_line(&self, index: usize) -> String;
     fn navigate(&mut self, dx: isize, dy: isize) -> bool;
     fn insert(&mut self, c: char) -> bool;
@@ -34,13 +37,17 @@ pub trait FileView {
     fn delete(&mut self) -> bool;
     fn delete_line(&mut self) -> bool;
     fn dump_file(&self) -> String;
-    fn get_git_ref(&self) -> Option<String>;
+    fn git_ref(&self) -> Option<String>;
+    fn file_path(&self) -> String;
+    fn file_name(&self) -> String;
+    fn file_dir(&self) -> String;
+    fn set_file_name(&mut self, file_name: String);
 }
 
 impl Default for View {
     fn default() -> Self {
         Self {
-            file: File::new(),
+            file: File::new("."),
             start_line: 0,
             start_col: 0,
             height: 0,
@@ -53,7 +60,7 @@ impl Default for View {
 impl From<String> for View {
     fn from(value: String) -> Self {
         Self {
-            file: File::from_string(&value),
+            file: File::from_string(&value, "New file", "."),
             start_line: 0,
             start_col: 0,
             height: 0,
@@ -64,6 +71,21 @@ impl From<String> for View {
 }
 
 impl FileView for View {
+    fn new(file_path: &str) -> Self {
+        let (file_dir, file_name, _) = split_path_name(file_path);
+        let content = std::fs::read_to_string(file_path).unwrap_or_default();
+        let file = File::from_string(&content, &file_name, &file_dir);
+
+        Self {
+            file,
+            start_line: 0,
+            start_col: 0,
+            height: 0,
+            width: 0,
+            cursor: (0, 0),
+        }
+    }
+
     /// Get the line at the given index in the view
     fn get_line(&self, index: usize) -> String {
         if let Some(line) = self.file.get_line(index + self.start_line) {
@@ -162,8 +184,24 @@ impl FileView for View {
         self.file.to_string()
     }
 
-    fn get_git_ref(&self) -> Option<String> {
+    fn git_ref(&self) -> Option<String> {
         self.file.get_git_ref()
+    }
+
+    fn file_path(&self) -> String {
+        self.file.file_dir.clone() + &self.file.file_name
+    }
+
+    fn set_file_name(&mut self, file_name: String) {
+        self.file.file_name = file_name;
+    }
+
+    fn file_name(&self) -> String {
+        self.file.file_name.clone()
+    }
+
+    fn file_dir(&self) -> String {
+        self.file.file_dir.clone()
     }
 }
 
@@ -244,6 +282,26 @@ impl ToString for View {
             .collect::<Vec<_>>()
             .join("\n")
     }
+}
+
+fn split_path_name(path: &str) -> (String, String, String) {
+    let path = path::Path::new(path);
+    let mut file_path = path.parent().unwrap().to_str().unwrap_or_default();
+    if file_path.is_empty() {
+        file_path = ".";
+    }
+    let file_name = path.file_name().unwrap().to_str().unwrap_or_default();
+    let file_ext = path
+        .extension()
+        .unwrap_or_default()
+        .to_str()
+        .unwrap_or_default();
+
+    (
+        String::from(file_path) + "/",
+        String::from(file_name),
+        String::from(file_ext),
+    )
 }
 
 #[cfg(test)]

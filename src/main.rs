@@ -25,9 +25,9 @@ fn main() {
 
     let mut editor = match file {
         // Try to open the file, if it doesn't exist, create a new one
-        Some(path) => Editor::open(path).unwrap_or(Editor::new(path)),
+        Some(path) => Editor::open(path),
         // If no file is provided, create a new one with a default name
-        None => Editor::new("Newfile"),
+        None => Editor::open("./Newfile"),
     };
     editor.run();
 }

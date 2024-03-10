@@ -19,6 +19,7 @@
         derivation = pkgs.rustPlatform.buildRustPackage rec {
           buildInputs = with pkgs; [
             git
+            lldb
           ];
           name = "giga";
           pname = name;

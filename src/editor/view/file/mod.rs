@@ -7,12 +7,20 @@
 //! - Write operations: they are used to modify the file -> Trigger a recolorization of the file
 mod git;
 
+use std::collections::HashMap;
+
 use ropey::Rope;
 
-use self::git::{Git, Vcs};
+use self::git::{Git, PatchType, Vcs};
 
 /// In-memory representation of a syntax-highlighted file
 pub struct File {
+    /// File path
+    pub file_dir: String,
+
+    /// File name
+    pub file_name: String,
+
     /// The content of the file
     content: Rope,
 
@@ -21,8 +29,8 @@ pub struct File {
 }
 
 pub trait EditorFile {
-    fn new() -> Self;
-    fn from_string(str: &str) -> Self;
+    fn new(file_path: &str) -> Self;
+    fn from_string(content: &str, file_name: &str, file_path: &str) -> Self;
     fn get_line(&self, index: usize) -> Option<Vec<char>>;
     fn len(&self) -> usize;
     fn insert(&mut self, line: usize, col: usize, c: char);
@@ -30,22 +38,28 @@ pub trait EditorFile {
     fn split_line(&mut self, line: usize, col: usize);
     fn delete_line(&mut self, line: usize);
     fn get_git_ref(&self) -> Option<String>;
+    fn compute_diff(&mut self) -> Result<(), Box<dyn std::error::Error>>;
+    fn get_diff_result(&self) -> Option<HashMap<usize, PatchType>>;
 }
 
 impl EditorFile for File {
-    fn new() -> Self {
+    fn new(file_path: &str) -> Self {
         Self {
+            file_dir: file_path.into(),
+            file_name: "New file".to_string(),
             content: Rope::new(),
             vcs: Git::open(),
         }
     }
 
     /// Create a File abstraction from a string
-    fn from_string(str: &str) -> Self {
+    fn from_string(content: &str, file_name: &str, file_path: &str) -> Self {
         // Replace tabs with 4 spaces
-        let str = str.replace('\t', "    ");
-        let content = Rope::from_str(&str);
+        let content = content.replace('\t', "    ");
+        let content = Rope::from_str(&content);
         Self {
+            file_name: file_name.into(),
+            file_dir: file_path.into(),
             content,
             vcs: Git::open(),
         }
@@ -139,6 +153,19 @@ impl EditorFile for File {
             None => None,
         }
     }
+
+    fn compute_diff(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        if let None = &self.vcs {
+            return Ok(());
+        }
+        let content = self.to_string();
+        let vcs = self.vcs.as_mut().unwrap();
+        vcs.compute_diff(&self.file_dir, &self.file_name, &content)
+    }
+
+    fn get_diff_result(&self) -> Option<HashMap<usize, PatchType>> {
+        todo!()
+    }
 }
 
 /// Implement the ToString trait for File (used for saving the file)
@@ -154,26 +181,26 @@ mod tests {
 
     #[test]
     fn file_new_empty() {
-        let file = File::new();
+        let file = File::new(".");
         assert_eq!(file.content.len_lines(), 1);
     }
 
     #[test]
     fn file_from_string() {
-        let file = File::from_string("Hello, World !");
+        let file = File::from_string("Hello, World !", "test", "test");
         assert_eq!(file.content.len_lines(), 1);
         assert_eq!(file.content.line(0), "Hello, World !");
     }
 
     #[test]
     fn file_to_string() {
-        let file = File::from_string("Hello, World !");
+        let file = File::from_string("Hello, World !", "test", "test");
         assert_eq!(file.to_string(), "Hello, World !");
     }
 
     #[test]
     fn file_get_line() {
-        let file = File::from_string("Hello, World !\n");
+        let file = File::from_string("Hello, World !\n", "test", "test");
 
         assert_eq!(
             file.get_line(0).unwrap().iter().collect::<String>(),
@@ -185,13 +212,13 @@ mod tests {
 
     #[test]
     fn file_get_len() {
-        let file = File::from_string("Hello, World !\n");
+        let file = File::from_string("Hello, World !\n", "test", "test");
         assert_eq!(file.len(), 2);
     }
 
     #[test]
     fn file_insert() {
-        let mut file = File::from_string("Hello, World !\n");
+        let mut file = File::from_string("Hello, World !\n", "test", "test");
         file.insert(0, 0, '!');
         assert_eq!(file.to_string(), "!Hello, World !\n");
         file.insert(1, 0, '!');
@@ -210,7 +237,7 @@ mod tests {
 
     #[test]
     fn file_delete() {
-        let mut file = File::from_string("HW\n");
+        let mut file = File::from_string("HW\n", "test", "test");
         file.delete(0, 1);
         assert_eq!(file.to_string(), "W\n");
         file.delete(0, 1);
@@ -219,42 +246,42 @@ mod tests {
 
     #[test]
     fn file_delete_out_of_bounds() {
-        let mut file = File::from_string("HW\n");
+        let mut file = File::from_string("HW\n", "test", "test");
         file.delete(1, 1);
         assert_eq!(file.to_string(), "HW\n");
     }
 
     #[test]
     fn file_delete_beginning_of_line() {
-        let mut file = File::from_string("HW\nGuys !");
+        let mut file = File::from_string("HW\nGuys !", "test", "test");
         file.delete(1, 0);
         assert_eq!(file.to_string(), "HWGuys !");
     }
 
     #[test]
     fn file_split_line() {
-        let mut file = File::from_string("Hello, World !");
+        let mut file = File::from_string("Hello, World !", "test", "test");
         file.split_line(0, 5);
         assert_eq!(file.to_string(), "Hello\n, World !");
     }
 
     #[test]
     fn file_split_line_out_of_bounds_line() {
-        let mut file = File::from_string("Hello, World !");
+        let mut file = File::from_string("Hello, World !", "test", "test");
         file.split_line(1, 5);
         assert_eq!(file.to_string(), "Hello, World !");
     }
 
     #[test]
     fn file_split_line_out_of_bounds_lcol() {
-        let mut file = File::from_string("Hello, World !");
+        let mut file = File::from_string("Hello, World !", "test", "test");
         file.split_line(0, 20);
         assert_eq!(file.to_string(), "Hello, World !");
     }
 
     #[test]
     fn file_from_sting_with_tabs() {
-        let file = File::from_string("Hello,\tWorld !");
+        let file = File::from_string("Hello,\tWorld !", "test", "test");
         assert_eq!(file.to_string(), "Hello,    World !");
     }
 }

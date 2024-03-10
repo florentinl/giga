@@ -69,7 +69,6 @@ use std::{
     fmt::Display,
     io,
     ops::DerefMut,
-    path,
     process::exit,
     sync::{
         mpsc::{self, Receiver, SendError, Sender},
@@ -100,10 +99,6 @@ macro_rules! arc_mutex {
 /// Editor structure
 /// represents the state of the program
 pub struct Editor {
-    /// The path of the file being edited
-    file_path: String,
-    /// The name of the file being edited
-    file_name: Arc<Mutex<String>>,
     /// The current view of the file
     view: Arc<Mutex<View>>,
     /// The mode of the editor
@@ -155,79 +150,38 @@ pub enum RefreshOrder {
 }
 
 impl Editor {
-    /// Create a new editor
-    pub fn new(file_path: &str) -> Self {
-        let (file_path, file_name, _) = Self::split_path_name(file_path);
+    /// Open a file in the editor
+    pub fn open(path: &str) -> Self {
         Self {
-            file_path,
-            file_name: arc_mutex!(file_name),
-            view: arc_mutex!(View::default()),
+            view: arc_mutex!(View::new(path)),
             mode: arc_mutex!(Mode::Normal),
             diff: Arc::new(Mutex::new(None)),
         }
     }
 
-    /// Open a file in the editor
-    pub fn open(path: &str) -> Result<Self, std::io::Error> {
-        let (file_path, file_name, _) = Self::split_path_name(path);
-
-        let content = std::fs::read_to_string(path)?;
-        let view = Arc::new(Mutex::new(View::from(content)));
-
-        Ok(Self {
-            file_path,
-            file_name: arc_mutex!(file_name),
-            view,
-            mode: arc_mutex!(Mode::Normal),
-            diff: arc_mutex!(None),
-        })
-    }
-
-    /// Split a file path into a relative path and a name
-    fn split_path_name(path: &str) -> (String, String, String) {
-        let path = path::Path::new(path);
-        let mut file_path = path.parent().unwrap().to_str().unwrap_or_default();
-        if file_path.is_empty() {
-            file_path = ".";
-        }
-        let file_name = path.file_name().unwrap().to_str().unwrap_or_default();
-        let file_ext = path
-            .extension()
-            .unwrap_or_default()
-            .to_str()
-            .unwrap_or_default();
-
-        (
-            String::from(file_path) + "/",
-            String::from(file_name),
-            String::from(file_ext),
-        )
-    }
-
     /// Save the current file
     fn save(&self) {
-        let file_name = self.file_name.lock().unwrap();
-        if file_name.is_empty() {
-            return;
-        }
-        let path = String::from(&self.file_path) + &file_name;
-        let content = self.view.lock().unwrap().dump_file();
-        std::fs::write(path.clone() + ".tmp", content).unwrap_or_default();
-        std::fs::rename(path.clone() + ".tmp", path).unwrap_or_default();
+        let view = self.view.lock().unwrap();
+        let file_path = view.file_path();
+        let content = view.dump_file();
+
+        std::fs::write(file_path.clone() + ".tmp", content).unwrap_or_default();
+        std::fs::rename(file_path.clone() + ".tmp", file_path).unwrap_or_default();
     }
 
     /// Rename the current file
     fn rename(&mut self, c: Option<char>) {
-        let mut file_name = self.file_name.lock().unwrap();
+        let mut view = self.view.lock().unwrap();
+        let mut file_name = view.file_name();
         match c {
             None => {
-                // delete a char
                 file_name.pop();
+                view.set_file_name(file_name);
             }
-            Some(c) => match c {
-                ' ' | '\'' => *file_name = file_name.clone() + "_",
-                _ => *file_name = file_name.clone() + &c.to_string(),
-            },
+            Some(c) => {
+                file_name.push(c);
+                view.set_file_name(file_name);
+            }
         }
     }
 
@@ -349,20 +303,19 @@ impl Editor {
         // Spawn a thread to compute the diff in background
         let view = self.view.clone();
         let locked_view = view.lock().unwrap();
-        if matches!(locked_view.get_git_ref(), None) {
+        if matches!(locked_view.git_ref(), None) {
             // If we are not in a git repository, we don't need to compute the diff
             return;
         };
         drop(locked_view);
 
         let diff = self.diff.clone();
-        let file_path = self.file_path.clone();
-        let file_name = self.file_name.clone();
         thread::spawn({
             move || loop {
-                let file_name = file_name.lock().unwrap().clone();
-                let new_diff =
-                    compute_diff(&view.lock().unwrap().dump_file(), &file_path, &file_name).ok();
+                let view = view.lock().unwrap();
+                let file_name = view.file_name();
+                let file_dir = view.file_dir();
+                let new_diff = compute_diff(&view.dump_file(), &file_dir, &file_name).ok();
                 let mut current_diff = diff.lock().unwrap();
 
                 // If the diff has changed, redraw the diff markers
@@ -372,6 +325,7 @@ impl Editor {
                 }
                 // Drop the lock before sleeping
                 drop(current_diff);
+                drop(view);
                 thread::sleep(Duration::from_millis(250));
             }
         });
@@ -380,16 +334,15 @@ impl Editor {
     /// Get the status bar infos
     fn get_status_bar_infos(
         mode: &Arc<Mutex<Mode>>,
-        file_name: &Arc<Mutex<String>>,
-        git_ref: Option<String>,
+        file_name: &str,
+        ref_name: Option<String>,
     ) -> StatusBarInfos {
         let mode = mode.lock().unwrap();
-        let file_name = file_name.lock().unwrap();
 
         StatusBarInfos {
-            file_name: file_name.clone(),
+            file_name: file_name.into(),
             mode: mode.clone(),
-            ref_name: git_ref,
+            ref_name,
         }
     }
 
@@ -452,7 +405,7 @@ impl Editor {
 
         // Get the initial status bar infos
         let status_bar_infos =
-            Self::get_status_bar_infos(&self.mode, &self.file_name, locked_view.get_git_ref());
+            Self::get_status_bar_infos(&self.mode, &locked_view.file_name(), locked_view.git_ref());
 
         // Draw the initial TUI
         tui.draw(&locked_view, &status_bar_infos);
@@ -461,13 +414,15 @@ impl Editor {
         let view = self.view.clone();
         let diff = self.diff.clone();
         let mode = self.mode.clone();
-        let file_name = self.file_name.clone();
         thread::spawn({
             move || loop {
                 if let Ok(refresh_order) = refresh_receiver.recv() {
                     let mut locked_view = view.lock().unwrap();
-                    let status_bar_infos =
-                        Self::get_status_bar_infos(&mode, &file_name, locked_view.get_git_ref());
+                    let status_bar_infos = Self::get_status_bar_infos(
+                        &mode,
+                        &locked_view.file_name(),
+                        locked_view.git_ref(),
+                    );
 
                     Self::refresh_tui(
                         &mut tui,
