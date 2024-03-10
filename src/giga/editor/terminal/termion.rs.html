@@ -325,7 +325,7 @@
             <span class="comment">// Leave one space for git diff markers
             </span><span class="macro">print!</span>(<span class="self">self</span>.stdout, cursor::Right(<span class="number">1</span>));
             <span class="comment">// Print the line content
-            </span><span class="macro">print!</span>(<span class="self">self</span>.stdout, view.get_line(line));
+            </span><span class="macro">print!</span>(<span class="self">self</span>.stdout, view.line(line));
             <span class="comment">// Clear the rest of the line
             </span><span class="macro">print!</span>(<span class="self">self</span>.stdout, clear::UntilNewline);
         }

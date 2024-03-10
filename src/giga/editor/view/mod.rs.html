@@ -482,7 +482,7 @@
 
 <span class="kw">pub trait </span>FileView {
     <span class="kw">fn </span>new(file_path: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self</span>;
-    <span class="kw">fn </span>get_line(<span class="kw-2">&amp;</span><span class="self">self</span>, index: usize) -&gt; String;
+    <span class="kw">fn </span>line(<span class="kw-2">&amp;</span><span class="self">self</span>, index: usize) -&gt; String;
     <span class="kw">fn </span>navigate(<span class="kw-2">&amp;mut </span><span class="self">self</span>, dx: isize, dy: isize) -&gt; bool;
     <span class="kw">fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, c: char) -&gt; bool;
     <span class="kw">fn </span>insert_new_line(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool;
@@ -541,8 +541,8 @@
     }
 
     <span class="doccomment">/// Get the line at the given index in the view
-    </span><span class="kw">fn </span>get_line(<span class="kw-2">&amp;</span><span class="self">self</span>, index: usize) -&gt; String {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(line) = <span class="self">self</span>.file.get_line(index + <span class="self">self</span>.start_line) {
+    </span><span class="kw">fn </span>line(<span class="kw-2">&amp;</span><span class="self">self</span>, index: usize) -&gt; String {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(line) = <span class="self">self</span>.file.line(index + <span class="self">self</span>.start_line) {
             <span class="kw">let </span>start = <span class="self">self</span>.start_col;
             <span class="kw">let </span>end = (start + <span class="self">self</span>.width).min(line.len());
             line[start..end].iter().collect()
@@ -606,7 +606,7 @@
         <span class="comment">// Get previous line length in case we need to go to the end of it
         </span><span class="kw">let </span>prev_line_len = <span class="self">self
             </span>.file
-            .get_line(y.saturating_sub(<span class="number">1</span>))
+            .line(y.saturating_sub(<span class="number">1</span>))
             .unwrap_or_default()
             .len();
 
@@ -639,7 +639,7 @@
     }
 
     <span class="kw">fn </span>git_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
-        <span class="self">self</span>.file.get_git_ref()
+        <span class="self">self</span>.file.git_ref()
     }
 
     <span class="kw">fn </span>file_path(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
@@ -704,7 +704,7 @@
         <span class="kw">let </span>(x, y) = <span class="self">self</span>.cursor;
         <span class="kw">let </span>line_len = <span class="self">self
             </span>.file
-            .get_line(y + <span class="self">self</span>.start_line)
+            .line(y + <span class="self">self</span>.start_line)
             .unwrap_or_default()
             .len() <span class="kw">as </span>isize;
         <span class="kw">let </span>left = <span class="self">self</span>.start_col <span class="kw">as </span>isize;
@@ -740,7 +740,7 @@
             .min(<span class="self">self</span>.file.len().saturating_sub(<span class="self">self</span>.start_line));
 
         (<span class="number">0</span>..bottom)
-            .map(|i| <span class="self">self</span>.get_line(i))
+            .map(|i| <span class="self">self</span>.line(i))
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
             .join(<span class="string">"\n"</span>)
     }
@@ -843,7 +843,7 @@
         <span class="macro">assert_eq!</span>(view.cursor, (<span class="number">9</span>, <span class="number">0</span>));
         <span class="macro">assert_eq!</span>(view.start_col, <span class="number">1</span>);
         view.navigate(<span class="number">20</span>, <span class="number">0</span>);
-        <span class="macro">assert_eq!</span>(view.get_line(<span class="number">0</span>), <span class="string">", World !"</span>);
+        <span class="macro">assert_eq!</span>(view.line(<span class="number">0</span>), <span class="string">", World !"</span>);
         <span class="macro">assert_eq!</span>(view.cursor, (<span class="number">9</span>, <span class="number">0</span>));
         <span class="macro">assert_eq!</span>(view.start_col, <span class="number">5</span>);
         view.navigate(-<span class="number">20</span>, <span class="number">0</span>);

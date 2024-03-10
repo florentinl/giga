@@ -321,13 +321,13 @@
 <span class="kw">pub trait </span>EditorFile {
     <span class="kw">fn </span>new(file_path: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self</span>;
     <span class="kw">fn </span>from_string(content: <span class="kw-2">&amp;</span>str, file_name: <span class="kw-2">&amp;</span>str, file_path: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self</span>;
-    <span class="kw">fn </span>get_line(<span class="kw-2">&amp;</span><span class="self">self</span>, index: usize) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;char&gt;&gt;;
+    <span class="kw">fn </span>line(<span class="kw-2">&amp;</span><span class="self">self</span>, index: usize) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;char&gt;&gt;;
     <span class="kw">fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
     <span class="kw">fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, line: usize, col: usize, c: char);
     <span class="kw">fn </span>delete(<span class="kw-2">&amp;mut </span><span class="self">self</span>, line: usize, col: usize);
     <span class="kw">fn </span>split_line(<span class="kw-2">&amp;mut </span><span class="self">self</span>, line: usize, col: usize);
     <span class="kw">fn </span>delete_line(<span class="kw-2">&amp;mut </span><span class="self">self</span>, line: usize);
-    <span class="kw">fn </span>get_git_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;;
+    <span class="kw">fn </span>git_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;;
     <span class="kw">fn </span>refresh_diff(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt;;
     <span class="kw">fn </span>diff(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;HashMap&lt;usize, PatchType&gt;&gt;;
 }
@@ -356,7 +356,7 @@
     }
 
     <span class="doccomment">/// Get the nth line of the file
-    </span><span class="kw">fn </span>get_line(<span class="kw-2">&amp;</span><span class="self">self</span>, index: usize) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;char&gt;&gt; {
+    </span><span class="kw">fn </span>line(<span class="kw-2">&amp;</span><span class="self">self</span>, index: usize) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;char&gt;&gt; {
         <span class="kw">if </span><span class="self">self</span>.content.len_lines() &lt;= index {
             <span class="prelude-val">None
         </span>} <span class="kw">else </span>{
@@ -437,7 +437,7 @@
         <span class="self">self</span>.content.remove(start_line..end_line);
     }
 
-    <span class="kw">fn </span>get_git_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+    <span class="kw">fn </span>git_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
         <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.vcs {
             <span class="prelude-val">Some</span>(vcs) =&gt; <span class="prelude-val">Some</span>(vcs.get_ref()),
             <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
@@ -495,11 +495,11 @@
         <span class="kw">let </span>file = File::from_string(<span class="string">"Hello, World !\n"</span>, <span class="string">"test"</span>, <span class="string">"test"</span>);
 
         <span class="macro">assert_eq!</span>(
-            file.get_line(<span class="number">0</span>).unwrap().iter().collect::&lt;String&gt;(),
+            file.line(<span class="number">0</span>).unwrap().iter().collect::&lt;String&gt;(),
             <span class="string">"Hello, World !"
         </span>);
-        <span class="macro">assert_eq!</span>(file.get_line(<span class="number">1</span>).unwrap().iter().collect::&lt;String&gt;(), <span class="string">""</span>);
-        <span class="macro">assert!</span>(<span class="macro">matches!</span>(file.get_line(<span class="number">2</span>), <span class="prelude-val">None</span>))
+        <span class="macro">assert_eq!</span>(file.line(<span class="number">1</span>).unwrap().iter().collect::&lt;String&gt;(), <span class="string">""</span>);
+        <span class="macro">assert!</span>(<span class="macro">matches!</span>(file.line(<span class="number">2</span>), <span class="prelude-val">None</span>))
     }
 
     <span class="attr">#[test]
