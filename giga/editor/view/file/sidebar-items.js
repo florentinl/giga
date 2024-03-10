@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["File"],"trait":["EditorFile"]};
+window.SIDEBAR_ITEMS = {"mod":["git"],"struct":["File"],"trait":["EditorFile"]};

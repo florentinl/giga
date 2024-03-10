@@ -220,36 +220,8 @@
 <a href="#219" id="219">219</a>
 <a href="#220" id="220">220</a>
 <a href="#221" id="221">221</a>
-<a href="#222" id="222">222</a>
-<a href="#223" id="223">223</a>
-<a href="#224" id="224">224</a>
-<a href="#225" id="225">225</a>
-<a href="#226" id="226">226</a>
-<a href="#227" id="227">227</a>
-<a href="#228" id="228">228</a>
-<a href="#229" id="229">229</a>
-<a href="#230" id="230">230</a>
-<a href="#231" id="231">231</a>
-<a href="#232" id="232">232</a>
-<a href="#233" id="233">233</a>
-<a href="#234" id="234">234</a>
-<a href="#235" id="235">235</a>
-<a href="#236" id="236">236</a>
-<a href="#237" id="237">237</a>
-<a href="#238" id="238">238</a>
-<a href="#239" id="239">239</a>
-<a href="#240" id="240">240</a>
-<a href="#241" id="241">241</a>
-<a href="#242" id="242">242</a>
-<a href="#243" id="243">243</a>
-<a href="#244" id="244">244</a>
-<a href="#245" id="245">245</a>
-<a href="#246" id="246">246</a>
-<a href="#247" id="247">247</a>
-<a href="#248" id="248">248</a>
-<a href="#249" id="249">249</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     io::{Stdout, Write},
 };
 
@@ -258,10 +230,7 @@
     raw::{IntoRawMode, RawTerminal},
 };
 
-<span class="kw">use </span><span class="kw">crate</span>::editor::{
-    git::{Diff, Patch, PatchType},
-    view::{FileView, View},
-};
+<span class="kw">use </span><span class="kw">crate</span>::editor::view::{file::git::PatchType, FileView, View};
 
 <span class="kw">use super</span>::{StatusBarInfos, TerminalDrawer};
 
@@ -416,58 +385,33 @@
     /// - '▗' (red) for removed lines
     /// - '▐' (yellow) for modified lines
     /// - ' ' (default) for unchanged lines
-    </span><span class="kw">fn </span>draw_diff_markers(<span class="kw-2">&amp;mut </span><span class="self">self</span>, diff: <span class="kw-2">&amp;</span>Diff, view: <span class="kw-2">&amp;</span>View) {
-        <span class="kw">let </span><span class="kw-2">mut </span>patches = diff.iter();
-        <span class="kw">let </span><span class="kw-2">mut </span>patch = patches.next();
-        <span class="kw">let </span><span class="kw-2">mut </span>view_line = <span class="number">0</span>;
-
-        <span class="kw">while </span>view_line &lt; view.height {
-            <span class="kw">let </span>line = view_line + view.start_line;
+    </span><span class="kw">fn </span>draw_diff_markers(<span class="kw-2">&amp;mut </span><span class="self">self</span>, diff: HashMap&lt;usize, PatchType&gt;, view: <span class="kw-2">&amp;</span>View) {
+        <span class="kw">for </span>line <span class="kw">in </span><span class="number">0</span>..view.height {
             <span class="comment">// Go to the beginning of the line
             </span><span class="macro">print!</span>(
                 <span class="self">self</span>.stdout,
-                cursor::Goto(LINE_NUMBER_WIDTH + <span class="number">1</span>, view_line <span class="kw">as </span>u16 + <span class="number">1</span>)
+                cursor::Goto(LINE_NUMBER_WIDTH + <span class="number">1</span>, line <span class="kw">as </span>u16 + <span class="number">1</span>)
             );
-            <span class="kw">match </span>patch {
-                <span class="prelude-val">None </span>=&gt; {
-                    <span class="macro">print!</span>(<span class="self">self</span>.stdout, <span class="string">" "</span>);
-                    view_line += <span class="number">1</span>;
+            <span class="comment">// Print the diff marker
+            </span><span class="kw">match </span>diff.get(<span class="kw-2">&amp;</span>(line + view.start_line)) {
+                <span class="prelude-val">Some</span>(PatchType::Added) =&gt; {
+                    <span class="macro">print!</span>(<span class="self">self</span>.stdout, color::Fg(color::Green));
+                    <span class="macro">print!</span>(<span class="self">self</span>.stdout, <span class="string">"▐"</span>);
                 }
-                <span class="prelude-val">Some</span>(Patch {
-                    start,
-                    count,
-                    patch_type,
-                }) =&gt; <span class="kw">match </span>line {
-                    l <span class="kw">if </span>l &lt; <span class="kw-2">*</span>start =&gt; {
-                        <span class="macro">print!</span>(<span class="self">self</span>.stdout, <span class="string">" "</span>);
-                        view_line += <span class="number">1</span>;
-                    }
-                    l <span class="kw">if </span>l &gt;= <span class="kw-2">*</span>start &amp;&amp; l &lt; start + count =&gt; {
-                        <span class="kw">match </span>patch_type {
-                            PatchType::Added =&gt; {
-                                <span class="macro">print!</span>(<span class="self">self</span>.stdout, color::Fg(color::Green));
-                                <span class="macro">print!</span>(<span class="self">self</span>.stdout, <span class="string">"▐"</span>);
-                            }
-                            PatchType::Deleted =&gt; {
-                                <span class="macro">print!</span>(<span class="self">self</span>.stdout, color::Fg(color::Red));
-                                <span class="macro">print!</span>(<span class="self">self</span>.stdout, <span class="string">"▗"</span>);
-                            }
-                            PatchType::Changed =&gt; {
-                                <span class="macro">print!</span>(<span class="self">self</span>.stdout, color::Fg(color::Yellow));
-                                <span class="macro">print!</span>(<span class="self">self</span>.stdout, <span class="string">"▐"</span>);
-                            }
-                        }
-                        view_line += <span class="number">1</span>;
-                    }
-                    <span class="kw">_ </span>=&gt; {
-                        patch = patches.next();
-                    }
-                },
+                <span class="prelude-val">Some</span>(PatchType::Deleted) =&gt; {
+                    <span class="macro">print!</span>(<span class="self">self</span>.stdout, color::Fg(color::Red));
+                    <span class="macro">print!</span>(<span class="self">self</span>.stdout, <span class="string">"▗"</span>);
+                }
+                <span class="prelude-val">Some</span>(PatchType::Changed) =&gt; {
+                    <span class="macro">print!</span>(<span class="self">self</span>.stdout, color::Fg(color::Yellow));
+                    <span class="macro">print!</span>(<span class="self">self</span>.stdout, <span class="string">"▐"</span>);
+                }
+                <span class="kw">_ </span>=&gt; {
+                    <span class="macro">print!</span>(<span class="self">self</span>.stdout, <span class="string">" "</span>);
+                }
             }
         }
-
-        <span class="comment">// Go back to the cursor position
-        </span><span class="self">self</span>.move_cursor(view.cursor);
+        <span class="self">self</span>.move_cursor(view.cursor);
     }
 }
 

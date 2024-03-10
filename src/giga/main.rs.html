@@ -59,9 +59,9 @@
 
     <span class="kw">let </span><span class="kw-2">mut </span>editor = <span class="kw">match </span>file {
         <span class="comment">// Try to open the file, if it doesn't exist, create a new one
-        </span><span class="prelude-val">Some</span>(path) =&gt; Editor::open(path).unwrap_or(Editor::new(path)),
+        </span><span class="prelude-val">Some</span>(path) =&gt; Editor::open(path),
         <span class="comment">// If no file is provided, create a new one with a default name
-        </span><span class="prelude-val">None </span>=&gt; Editor::new(<span class="string">"Newfile"</span>),
+        </span><span class="prelude-val">None </span>=&gt; Editor::open(<span class="string">"./Newfile"</span>),
     };
     editor.run();
 }

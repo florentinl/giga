@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["file"],"struct":["View"],"trait":["FileView"]};
+window.SIDEBAR_ITEMS = {"fn":["split_path_name"],"mod":["file"],"struct":["View"],"trait":["FileView"]};

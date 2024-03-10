@@ -36,6 +36,8 @@
 <a href="#35" id="35">35</a>
 <a href="#36" id="36">36</a>
 <a href="#37" id="37">37</a>
+<a href="#38" id="38">38</a>
+<a href="#39" id="39">39</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Provides the terminal drawing logic
 //!
 //! The terminal drawing logic is abstracted the `TerminalDrawer` trait and
@@ -44,8 +46,10 @@
 
 </span><span class="kw">pub mod </span>termion;
 
-<span class="kw">use </span><span class="kw">crate</span>::editor::{git::Diff, view::View, Mode};
-<span class="kw">use </span>std::collections::HashSet;
+<span class="kw">use </span><span class="kw">crate</span>::editor::{view::View, Mode};
+<span class="kw">use </span>std::collections::{HashMap, HashSet};
+
+<span class="kw">use </span><span class="kw">super</span>::view::file::git::PatchType;
 
 <span class="doccomment">/// A TerminalDrawer instance is responsible for drawing the editor on the terminal
 </span><span class="kw">pub trait </span>TerminalDrawer {
@@ -64,7 +68,7 @@
     <span class="doccomment">/// (Re)Draw the status bar
     </span><span class="kw">fn </span>draw_status_bar(<span class="kw-2">&amp;mut </span><span class="self">self</span>, status_bar_infos: <span class="kw-2">&amp;</span>StatusBarInfos);
     <span class="doccomment">/// (Re)Draw the diff markers on the left of the editor
-    </span><span class="kw">fn </span>draw_diff_markers(<span class="kw-2">&amp;mut </span><span class="self">self</span>, diff: <span class="kw-2">&amp;</span>Diff, view: <span class="kw-2">&amp;</span>View);
+    </span><span class="kw">fn </span>draw_diff_markers(<span class="kw-2">&amp;mut </span><span class="self">self</span>, diff: HashMap&lt;usize, PatchType&gt;, view: <span class="kw-2">&amp;</span>View);
 }
 
 <span class="doccomment">/// Information that go in the status bar

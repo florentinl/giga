@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Mode","RefreshOrder"],"macro":["arc_mutex"],"mod":["command","git","signal","terminal","view"],"struct":["Editor"]};
+window.SIDEBAR_ITEMS = {"enum":["Mode","RefreshOrder"],"macro":["arc_mutex"],"mod":["command","signal","terminal","view"],"struct":["Editor"]};

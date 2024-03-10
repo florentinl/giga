@@ -452,71 +452,6 @@
 <a href="#451" id="451">451</a>
 <a href="#452" id="452">452</a>
 <a href="#453" id="453">453</a>
-<a href="#454" id="454">454</a>
-<a href="#455" id="455">455</a>
-<a href="#456" id="456">456</a>
-<a href="#457" id="457">457</a>
-<a href="#458" id="458">458</a>
-<a href="#459" id="459">459</a>
-<a href="#460" id="460">460</a>
-<a href="#461" id="461">461</a>
-<a href="#462" id="462">462</a>
-<a href="#463" id="463">463</a>
-<a href="#464" id="464">464</a>
-<a href="#465" id="465">465</a>
-<a href="#466" id="466">466</a>
-<a href="#467" id="467">467</a>
-<a href="#468" id="468">468</a>
-<a href="#469" id="469">469</a>
-<a href="#470" id="470">470</a>
-<a href="#471" id="471">471</a>
-<a href="#472" id="472">472</a>
-<a href="#473" id="473">473</a>
-<a href="#474" id="474">474</a>
-<a href="#475" id="475">475</a>
-<a href="#476" id="476">476</a>
-<a href="#477" id="477">477</a>
-<a href="#478" id="478">478</a>
-<a href="#479" id="479">479</a>
-<a href="#480" id="480">480</a>
-<a href="#481" id="481">481</a>
-<a href="#482" id="482">482</a>
-<a href="#483" id="483">483</a>
-<a href="#484" id="484">484</a>
-<a href="#485" id="485">485</a>
-<a href="#486" id="486">486</a>
-<a href="#487" id="487">487</a>
-<a href="#488" id="488">488</a>
-<a href="#489" id="489">489</a>
-<a href="#490" id="490">490</a>
-<a href="#491" id="491">491</a>
-<a href="#492" id="492">492</a>
-<a href="#493" id="493">493</a>
-<a href="#494" id="494">494</a>
-<a href="#495" id="495">495</a>
-<a href="#496" id="496">496</a>
-<a href="#497" id="497">497</a>
-<a href="#498" id="498">498</a>
-<a href="#499" id="499">499</a>
-<a href="#500" id="500">500</a>
-<a href="#501" id="501">501</a>
-<a href="#502" id="502">502</a>
-<a href="#503" id="503">503</a>
-<a href="#504" id="504">504</a>
-<a href="#505" id="505">505</a>
-<a href="#506" id="506">506</a>
-<a href="#507" id="507">507</a>
-<a href="#508" id="508">508</a>
-<a href="#509" id="509">509</a>
-<a href="#510" id="510">510</a>
-<a href="#511" id="511">511</a>
-<a href="#512" id="512">512</a>
-<a href="#513" id="513">513</a>
-<a href="#514" id="514">514</a>
-<a href="#515" id="515">515</a>
-<a href="#516" id="516">516</a>
-<a href="#517" id="517">517</a>
-<a href="#518" id="518">518</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Where the magic happens.
 //!
 //! The editor module contains the main structure of the program: the Editor.
@@ -578,7 +513,6 @@
 //! This logic is handled by the `signal` module, which is called in the (`Editor::init_resize_listener` method).
 //!
 </span><span class="kw">mod </span>command;
-<span class="kw">mod </span>git;
 <span class="kw">mod </span>signal;
 <span class="kw">mod </span>terminal;
 <span class="kw">mod </span>view;
@@ -588,7 +522,6 @@
     fmt::Display,
     io,
     ops::DerefMut,
-    path,
     process::exit,
     sync::{
         mpsc::{<span class="self">self</span>, Receiver, SendError, Sender},
@@ -600,11 +533,10 @@
 
 <span class="kw">use </span>termion::input::TermRead;
 
-<span class="kw">use </span><span class="self">self</span>::{git::Patch, view::FileView};
+<span class="kw">use </span><span class="self">self</span>::view::FileView;
 
 <span class="kw">use </span>{
     command::Command,
-    git::{compute_diff, get_ref_name, Diff},
     terminal::{termion::TermionTerminalDrawer, StatusBarInfos, TerminalDrawer},
     view::View,
 };
@@ -619,19 +551,10 @@
 <span class="doccomment">/// Editor structure
 /// represents the state of the program
 </span><span class="kw">pub struct </span>Editor {
-    <span class="doccomment">/// The path of the file being edited
-    </span>file_path: String,
-    <span class="doccomment">/// The name of the file being edited
-    </span>file_name: Arc&lt;Mutex&lt;String&gt;&gt;,
     <span class="doccomment">/// The current view of the file
     </span>view: Arc&lt;Mutex&lt;View&gt;&gt;,
     <span class="doccomment">/// The mode of the editor
     </span>mode: Arc&lt;Mutex&lt;Mode&gt;&gt;,
-
-    <span class="doccomment">/// Git Branch/Commit/Tag if any
-    </span>git_ref: Arc&lt;Mutex&lt;<span class="prelude-ty">Option</span>&lt;String&gt;&gt;&gt;,
-    <span class="doccomment">/// Git diff since last commit if any
-    </span><span class="kw">pub </span>diff: Arc&lt;Mutex&lt;<span class="prelude-ty">Option</span>&lt;Diff&gt;&gt;&gt;,
 }
 
 <span class="attr">#[derive(Clone)]
@@ -676,84 +599,37 @@
 }
 
 <span class="kw">impl </span>Editor {
-    <span class="doccomment">/// Create a new editor
-    </span><span class="kw">pub fn </span>new(file_path: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>(file_path, file_name, <span class="kw">_</span>) = <span class="self">Self</span>::split_path_name(file_path);
-        <span class="kw">let </span>ref_name = get_ref_name(<span class="kw-2">&amp;</span>file_path);
-        <span class="self">Self </span>{
-            file_path,
-            file_name: <span class="macro">arc_mutex!</span>(file_name),
-            view: <span class="macro">arc_mutex!</span>(View::default()),
-            mode: <span class="macro">arc_mutex!</span>(Mode::Normal),
-            git_ref: <span class="macro">arc_mutex!</span>(ref_name),
-            diff: Arc::new(Mutex::new(<span class="prelude-val">None</span>)),
-        }
-    }
-
     <span class="doccomment">/// Open a file in the editor
-    </span><span class="kw">pub fn </span>open(path: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, std::io::Error&gt; {
-        <span class="kw">let </span>(file_path, file_name, <span class="kw">_</span>) = <span class="self">Self</span>::split_path_name(path);
-
-        <span class="kw">let </span>content = std::fs::read_to_string(path)<span class="question-mark">?</span>;
-        <span class="kw">let </span>view = Arc::new(Mutex::new(View::from(content)));
-
-        <span class="kw">let </span>git_ref = <span class="macro">arc_mutex!</span>(get_ref_name(<span class="kw-2">&amp;</span>file_path));
-
-        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
-            file_path,
-            file_name: <span class="macro">arc_mutex!</span>(file_name),
-            view,
+    </span><span class="kw">pub fn </span>open(path: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            view: <span class="macro">arc_mutex!</span>(View::new(path)),
             mode: <span class="macro">arc_mutex!</span>(Mode::Normal),
-            git_ref,
-            diff: <span class="macro">arc_mutex!</span>(<span class="prelude-val">None</span>),
-        })
-    }
-
-    <span class="doccomment">/// Split a file path into a relative path and a name
-    </span><span class="kw">fn </span>split_path_name(path: <span class="kw-2">&amp;</span>str) -&gt; (String, String, String) {
-        <span class="kw">let </span>path = path::Path::new(path);
-        <span class="kw">let </span><span class="kw-2">mut </span>file_path = path.parent().unwrap().to_str().unwrap_or_default();
-        <span class="kw">if </span>file_path.is_empty() {
-            file_path = <span class="string">"."</span>;
         }
-        <span class="kw">let </span>file_name = path.file_name().unwrap().to_str().unwrap_or_default();
-        <span class="kw">let </span>file_ext = path
-            .extension()
-            .unwrap_or_default()
-            .to_str()
-            .unwrap_or_default();
-
-        (
-            String::from(file_path) + <span class="string">"/"</span>,
-            String::from(file_name),
-            String::from(file_ext),
-        )
     }
 
     <span class="doccomment">/// Save the current file
     </span><span class="kw">fn </span>save(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="kw">let </span>file_name = <span class="self">self</span>.file_name.lock().unwrap();
-        <span class="kw">if </span>file_name.is_empty() {
-            <span class="kw">return</span>;
-        }
-        <span class="kw">let </span>path = String::from(<span class="kw-2">&amp;</span><span class="self">self</span>.file_path) + <span class="kw-2">&amp;</span>file_name;
-        <span class="kw">let </span>content = <span class="self">self</span>.view.lock().unwrap().dump_file();
-        std::fs::write(path.clone() + <span class="string">".tmp"</span>, content).unwrap_or_default();
-        std::fs::rename(path.clone() + <span class="string">".tmp"</span>, path).unwrap_or_default();
+        <span class="kw">let </span>view = <span class="self">self</span>.view.lock().unwrap();
+        <span class="kw">let </span>file_path = view.file_path();
+        <span class="kw">let </span>content = view.dump_file();
+
+        std::fs::write(file_path.clone() + <span class="string">".tmp"</span>, content).unwrap_or_default();
+        std::fs::rename(file_path.clone() + <span class="string">".tmp"</span>, file_path).unwrap_or_default();
     }
 
     <span class="doccomment">/// Rename the current file
     </span><span class="kw">fn </span>rename(<span class="kw-2">&amp;mut </span><span class="self">self</span>, c: <span class="prelude-ty">Option</span>&lt;char&gt;) {
-        <span class="kw">let </span><span class="kw-2">mut </span>file_name = <span class="self">self</span>.file_name.lock().unwrap();
+        <span class="kw">let </span><span class="kw-2">mut </span>view = <span class="self">self</span>.view.lock().unwrap();
+        <span class="kw">let </span><span class="kw-2">mut </span>file_name = view.file_name();
         <span class="kw">match </span>c {
             <span class="prelude-val">None </span>=&gt; {
-                <span class="comment">// delete a char
-                </span>file_name.pop();
+                file_name.pop();
+                view.set_file_name(file_name);
             }
-            <span class="prelude-val">Some</span>(c) =&gt; <span class="kw">match </span>c {
-                <span class="string">' ' </span>| <span class="string">'\'' </span>=&gt; <span class="kw-2">*</span>file_name = file_name.clone() + <span class="string">"_"</span>,
-                <span class="kw">_ </span>=&gt; <span class="kw-2">*</span>file_name = file_name.clone() + <span class="kw-2">&amp;</span>c.to_string(),
-            },
+            <span class="prelude-val">Some</span>(c) =&gt; {
+                file_name.push(c);
+                view.set_file_name(file_name);
+            }
         }
     }
 
@@ -869,28 +745,26 @@
 
     <span class="doccomment">/// Initialize git operations
     </span><span class="kw">fn </span>init_git_thread(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sender: Sender&lt;RefreshOrder&gt;) {
-        <span class="comment">// Initialize the diff
-        </span><span class="self">self</span>.diff = Arc::new(Mutex::new(<span class="prelude-val">None</span>));
-
         <span class="comment">// Spawn a thread to compute the diff in background
         </span><span class="kw">let </span>view = <span class="self">self</span>.view.clone();
-        <span class="kw">let </span>diff = <span class="self">self</span>.diff.clone();
-        <span class="kw">let </span>file_path = <span class="self">self</span>.file_path.clone();
-        <span class="kw">let </span>file_name = <span class="self">self</span>.file_name.clone();
+        <span class="kw">let </span>locked_view = view.lock().unwrap();
+        <span class="kw">if </span><span class="macro">matches!</span>(locked_view.git_ref(), <span class="prelude-val">None</span>) {
+            <span class="comment">// If we are not in a git repository, we don't need to compute the diff
+            </span><span class="kw">return</span>;
+        };
+        drop(locked_view);
+
         thread::spawn({
             <span class="kw">move </span>|| <span class="kw">loop </span>{
-                <span class="kw">let </span>file_name = file_name.lock().unwrap().clone();
-                <span class="kw">let </span>new_diff =
-                    compute_diff(<span class="kw-2">&amp;</span>view.lock().unwrap().dump_file(), <span class="kw-2">&amp;</span>file_path, <span class="kw-2">&amp;</span>file_name).ok();
-                <span class="kw">let </span><span class="kw-2">mut </span>current_diff = diff.lock().unwrap();
+                <span class="kw">let </span><span class="kw-2">mut </span>view = view.lock().unwrap();
+                <span class="kw">let _ </span>= view.refresh_diff();
 
-                <span class="comment">// If the diff has changed, redraw the diff markers
-                </span><span class="kw">if </span>new_diff != <span class="kw-2">*</span>current_diff {
-                    <span class="kw-2">*</span>current_diff = new_diff;
-                    sender.send(RefreshOrder::GitIndicators).unwrap();
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(SendError(<span class="kw">_</span>)) = sender.send(RefreshOrder::GitIndicators) {
+                    <span class="kw">break</span>;
                 }
+
                 <span class="comment">// Drop the lock before sleeping
-                </span>drop(current_diff);
+                </span>drop(view);
                 thread::sleep(Duration::from_millis(<span class="number">250</span>));
             }
         });
@@ -899,17 +773,15 @@
     <span class="doccomment">/// Get the status bar infos
     </span><span class="kw">fn </span>get_status_bar_infos(
         mode: <span class="kw-2">&amp;</span>Arc&lt;Mutex&lt;Mode&gt;&gt;,
-        file_name: <span class="kw-2">&amp;</span>Arc&lt;Mutex&lt;String&gt;&gt;,
-        git_ref: <span class="kw-2">&amp;</span>Arc&lt;Mutex&lt;<span class="prelude-ty">Option</span>&lt;String&gt;&gt;&gt;,
+        file_name: <span class="kw-2">&amp;</span>str,
+        ref_name: <span class="prelude-ty">Option</span>&lt;String&gt;,
     ) -&gt; StatusBarInfos {
         <span class="kw">let </span>mode = mode.lock().unwrap();
-        <span class="kw">let </span>file_name = file_name.lock().unwrap();
-        <span class="kw">let </span>git_ref = git_ref.lock().unwrap();
 
         StatusBarInfos {
-            file_name: file_name.clone(),
+            file_name: file_name.into(),
             mode: mode.clone(),
-            ref_name: git_ref.clone(),
+            ref_name,
         }
     }
 
@@ -917,7 +789,6 @@
     </span><span class="kw">fn </span>refresh_tui(
         tui: <span class="kw-2">&amp;mut </span>TermionTerminalDrawer,
         view: <span class="kw-2">&amp;mut </span>View,
-        diff: <span class="kw-2">&amp;</span>Arc&lt;Mutex&lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;Patch&gt;&gt;&gt;&gt;,
         status_bar_infos: <span class="kw-2">&amp;</span>StatusBarInfos,
         refresh_order: RefreshOrder,
     ) {
@@ -933,14 +804,16 @@
                 tui.move_cursor(view.cursor)
             }
             RefreshOrder::GitIndicators =&gt; {
-                <span class="kw">let </span>locked_diff = diff.lock().unwrap();
-                tui.draw_diff_markers(locked_diff.as_ref().unwrap(), view);
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(diff) = view.diff() {
+                    tui.draw_diff_markers(diff, view);
+                }
             }
             RefreshOrder::Lines(lines) =&gt; tui.draw_lines(view, lines),
             RefreshOrder::AllLines =&gt; {
                 tui.draw(view, status_bar_infos);
-                <span class="kw">let </span>locked_diff = diff.lock().unwrap();
-                tui.draw_diff_markers(locked_diff.as_ref().unwrap(), view);
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(diff) = view.diff() {
+                    tui.draw_diff_markers(diff, view);
+                }
             }
             RefreshOrder::Resize =&gt; {
                 <span class="kw">let </span>(width, height) = tui.get_term_size();
@@ -948,7 +821,7 @@
                 view.width = width;
                 view.height = height;
 
-                <span class="self">Self</span>::refresh_tui(tui, view, diff, status_bar_infos, RefreshOrder::AllLines);
+                <span class="self">Self</span>::refresh_tui(tui, view, status_bar_infos, RefreshOrder::AllLines);
             }
         }
     }
@@ -972,27 +845,27 @@
 
         <span class="comment">// Get the initial status bar infos
         </span><span class="kw">let </span>status_bar_infos =
-            <span class="self">Self</span>::get_status_bar_infos(<span class="kw-2">&amp;</span><span class="self">self</span>.mode, <span class="kw-2">&amp;</span><span class="self">self</span>.file_name, <span class="kw-2">&amp;</span><span class="self">self</span>.git_ref);
+            <span class="self">Self</span>::get_status_bar_infos(<span class="kw-2">&amp;</span><span class="self">self</span>.mode, <span class="kw-2">&amp;</span>locked_view.file_name(), locked_view.git_ref());
 
         <span class="comment">// Draw the initial TUI
         </span>tui.draw(<span class="kw-2">&amp;</span>locked_view, <span class="kw-2">&amp;</span>status_bar_infos);
 
         <span class="comment">// Spawn a thread to draw the TUI in background
         </span><span class="kw">let </span>view = <span class="self">self</span>.view.clone();
-        <span class="kw">let </span>diff = <span class="self">self</span>.diff.clone();
         <span class="kw">let </span>mode = <span class="self">self</span>.mode.clone();
-        <span class="kw">let </span>file_name = <span class="self">self</span>.file_name.clone();
-        <span class="kw">let </span>git_ref = <span class="self">self</span>.git_ref.clone();
         thread::spawn({
             <span class="kw">move </span>|| <span class="kw">loop </span>{
                 <span class="kw">if let </span><span class="prelude-val">Ok</span>(refresh_order) = refresh_receiver.recv() {
                     <span class="kw">let </span><span class="kw-2">mut </span>locked_view = view.lock().unwrap();
-                    <span class="kw">let </span>status_bar_infos = <span class="self">Self</span>::get_status_bar_infos(<span class="kw-2">&amp;</span>mode, <span class="kw-2">&amp;</span>file_name, <span class="kw-2">&amp;</span>git_ref);
+                    <span class="kw">let </span>status_bar_infos = <span class="self">Self</span>::get_status_bar_infos(
+                        <span class="kw-2">&amp;</span>mode,
+                        <span class="kw-2">&amp;</span>locked_view.file_name(),
+                        locked_view.git_ref(),
+                    );
 
                     <span class="self">Self</span>::refresh_tui(
                         <span class="kw-2">&amp;mut </span>tui,
                         locked_view.deref_mut(),
-                        <span class="kw-2">&amp;</span>diff,
                         <span class="kw-2">&amp;</span>status_bar_infos,
                         refresh_order,
                     );
@@ -1008,10 +881,7 @@
         <span class="kw">let </span>(refresh_sender, refresh_receiver) = mpsc::channel::&lt;RefreshOrder&gt;();
 
         <span class="comment">// Initialize git operations if needed
-        </span><span class="kw">let </span>git_ref = <span class="self">self</span>.git_ref.lock().unwrap().clone();
-        <span class="kw">if </span>git_ref.is_some() {
-            <span class="self">self</span>.init_git_thread(refresh_sender.clone())
-        }
+        </span><span class="self">self</span>.init_git_thread(refresh_sender.clone());
 
         <span class="comment">// Initialize the resize signal handler
         </span>signal::init_resize_listener(refresh_sender.clone());
