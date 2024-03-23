@@ -4,13 +4,14 @@ use std::{collections::HashMap, process::Command};
 
 use gix::{self};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PatchType {
     Added,
     Deleted,
     Changed,
 }
 
+#[derive(PartialEq, Debug)]
 pub struct Patch {
     start: usize,
     count: usize,
@@ -195,4 +196,37 @@ fn parse_diff_result(diff: &str) -> Result<Vec<Patch>, Box<dyn std::error::Error
         }
     }
     Ok(result)
+}
+
+mod tests {
+    #[cfg(test)]
+    use super::*;
+
+    #[test]
+    fn test_parse_diff_result() {
+        let diff = "1c1,3\n\
+                         < Hello, World !\n\
+                         ---\n\
+                         > Hello\n\
+                         > World\n\
+                         > !\n\
+                         4a6\n";
+        let patches = parse_diff_result(diff).unwrap();
+        assert_eq!(patches.len(), 2);
+        assert_eq!(
+            patches,
+            vec![
+                Patch {
+                    start: 0,
+                    count: 3,
+                    patch_type: PatchType::Changed
+                },
+                Patch {
+                    start: 5,
+                    count: 1,
+                    patch_type: PatchType::Added
+                }
+            ]
+        );
+    }
 }
