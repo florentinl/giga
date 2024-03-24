@@ -145,9 +145,23 @@ fn get_diff_result(
             PatchType::Deleted
         };
 
+        /*  If patch is a deletion, new_count will be 0 so we hard code it to 1
+            and start will be marked beneath the deleted line.
+
+            However, if patch is addition or change, line will be 1-indexed and we use 0-indexed line
+            so we need to increment it by 1.
+        */
         patches.push(Patch {
-            start: new_start - 1,
-            count: new_count,
+            start: if patch_type == PatchType::Deleted || new_start == 0 {
+                new_start
+            } else {
+                new_start - 1
+            },
+            count: if patch_type == PatchType::Deleted {
+                1
+            } else {
+                new_count
+            },
             patch_type,
         });
     }
