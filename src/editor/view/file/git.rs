@@ -181,7 +181,7 @@ mod tests {
         assert_eq!(
             patches[0],
             Patch {
-                start: 1,
+                start: 0,
                 count: 1,
                 patch_type: PatchType::Added
             }
