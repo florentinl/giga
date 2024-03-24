@@ -1,6 +1,5 @@
-use std::io::Write;
-use std::process::Stdio;
-use std::{collections::HashMap, process::Command};
+use git2::Patch as GitPatch;
+use std::collections::HashMap;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PatchType {
@@ -67,8 +66,7 @@ impl Vcs for Git {
         file_name: &str,
         content: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let diff = get_diff_result(content, file_path, file_name)?;
-        let patches = parse_diff_result(&diff)?;
+        let patches = get_diff_result(content, file_path, file_name)?;
 
         let mut marks = HashMap::new();
 
@@ -110,95 +108,48 @@ fn get_diff_result(
     content: &str,
     file_path: &str,
     file_name: &str,
-) -> Result<String, Box<dyn std::error::Error>> {
-    // Get the file_name relative to the file_path git repository
-    let file_name = Command::new("git")
-        .current_dir(file_path)
-        .args(["ls-files", "--full-name", file_name])
-        .output()?
-        .stdout;
-    let file_name = String::from_utf8_lossy(&file_name).trim().to_string();
+) -> Result<Vec<Patch>, Box<dyn std::error::Error>> {
+    let old_content = std::fs::read_to_string(file_path.to_owned() + file_name);
+    let old_buffer = match &old_content {
+        Ok(content) => content.as_bytes(),
+        Err(_) => b"",
+    };
+    let new_buffer = content.as_bytes();
 
-    if file_name.is_empty() {
-        // It is a new file in the git repository so we return the number of lines
-        // as the number of lines added at the beginning of the file
-        return Ok(format!("0a1,{}", content.lines().count().max(1)));
+    let patch = GitPatch::from_buffers(old_buffer, None, new_buffer, None, None)?;
+
+    let mut patches: Vec<Patch> = vec![];
+
+    for num in 0..patch.num_hunks() {
+        let hunk = patch.hunk(num)?.0;
+
+        let new_start = hunk.new_start() as usize;
+
+        let old_count = hunk.old_lines() as usize;
+        let new_count = hunk.new_lines() as usize;
+
+        /*
+        Let's perform a guess on the patch type:
+        - If the old count is the same as the new count, it's a change
+        - If the old count is less than the new count, it's an addition
+        - If the old count is more than the new count, it's a deletion
+        */
+
+        let patch_type = if old_count == new_count {
+            PatchType::Changed
+        } else if old_count < new_count {
+            PatchType::Added
+        } else {
+            PatchType::Deleted
+        };
+
+        patches.push(Patch {
+            start: new_start - 1,
+            count: new_count,
+            patch_type,
+        });
     }
-
-    // Execute the shell command
-    // It would be better to not rely on bash but I don't know how to emulate the process substitution
-    // with Rust.
-    let mut diff = Command::new("bash")
-        .current_dir(file_path)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .arg("-c")
-        .arg(format!("diff <(git show HEAD:{}) -", file_name))
-        .spawn()?;
-
-    // Write the content to diff on the stdin of the process
-    let diff_input = diff.stdin.as_mut().unwrap();
-    diff_input.write_all(content.as_bytes())?;
-
-    // Wait for the process to finish
-    let diff_output = diff.wait_with_output()?;
-
-    // Check the exit code and parse stdout/stderr accordingly
-    let status_code = diff_output.status.code();
-    if matches!(status_code, Some(0 | 1)) {
-        Ok(String::from_utf8(diff_output.stdout)?)
-    } else {
-        Err(String::from_utf8(diff_output.stderr)?.into())
-    }
-}
-
-/// Parse the diff result and return a vector of Patches
-/// The diff result is a string of the form:
-/// ```diff
-/// 1c1,3
-/// < Hello, World !
-/// ---
-/// > Hello
-/// > World
-/// >
-/// ```
-/// Only the lines starting with digits are parsed.
-fn parse_diff_result(diff: &str) -> Result<Vec<Patch>, Box<dyn std::error::Error>> {
-    let mut result = vec![];
-
-    for line in diff.lines() {
-        // We only care for lines starting with a digit (the line number)
-        if line.starts_with(char::is_numeric) {
-            // Only keep the part after the 'a'/'d'/'c' character since we want to know
-            // the position of the line in the current file.
-            let (_, rhs) = line.split_once(char::is_alphabetic).unwrap_or_default();
-            let mut rhs = rhs.split(',');
-            // Diff is 1-based and we want 0-based
-            let start = rhs
-                .next()
-                .unwrap_or_default()
-                .parse::<usize>()?
-                .saturating_sub(1);
-            let count = rhs
-                .next()
-                .map(|s| s.parse::<usize>().unwrap_or_default().saturating_sub(start))
-                .unwrap_or(1);
-            let patch_type = if line.contains('a') {
-                PatchType::Added
-            } else if line.contains('d') {
-                PatchType::Deleted
-            } else {
-                PatchType::Changed
-            };
-            result.push(Patch {
-                start,
-                count,
-                patch_type,
-            });
-        }
-    }
-    Ok(result)
+    Ok(patches)
 }
 
 mod tests {
@@ -206,30 +157,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_diff_result() {
-        let diff = "1c1,3\n\
-                         < Hello, World !\n\
-                         ---\n\
-                         > Hello\n\
-                         > World\n\
-                         > !\n\
-                         4a6\n";
-        let patches = parse_diff_result(diff).unwrap();
-        assert_eq!(patches.len(), 2);
+    fn test_get_diff_result_new_file() {
+        let content = "Hello, World !";
+        let file_path = "tests";
+        let file_name = "new_file.txt";
+        let patches = get_diff_result(content, file_path, file_name).unwrap();
         assert_eq!(
-            patches,
-            vec![
-                Patch {
-                    start: 0,
-                    count: 3,
-                    patch_type: PatchType::Changed
-                },
-                Patch {
-                    start: 5,
-                    count: 1,
-                    patch_type: PatchType::Added
-                }
-            ]
+            patches[0],
+            Patch {
+                start: 1,
+                count: 1,
+                patch_type: PatchType::Added
+            }
         );
     }
 }
