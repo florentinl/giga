@@ -1,4 +1,4 @@
-use git2::Patch as GitPatch;
+use git2::{DiffOptions, Patch as GitPatch};
 use std::collections::HashMap;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -115,8 +115,10 @@ fn get_diff_result(
         Err(_) => b"",
     };
     let new_buffer = content.as_bytes();
+    let mut options = DiffOptions::default();
+    options.context_lines(0);
 
-    let patch = GitPatch::from_buffers(old_buffer, None, new_buffer, None, None)?;
+    let patch = GitPatch::from_buffers(old_buffer, None, new_buffer, None, Some(&mut options))?;
 
     let mut patches: Vec<Patch> = vec![];
 
