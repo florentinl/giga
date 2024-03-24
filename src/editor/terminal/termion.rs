@@ -160,7 +160,7 @@ impl TerminalDrawer for TermionTerminalDrawer {
 
     /// Draw the diff markers on the left of the screen
     /// - '▐' (green) for added lines
-    /// - '▗' (red) for removed lines
+    /// - '╺' (red) for removed lines
     /// - '▐' (yellow) for modified lines
     /// - ' ' (default) for unchanged lines
     fn draw_diff_markers(&mut self, diff: HashMap<usize, PatchType>, view: &View) {
@@ -178,7 +178,7 @@ impl TerminalDrawer for TermionTerminalDrawer {
                 }
                 Some(PatchType::Deleted) => {
                     print!(self.stdout, color::Fg(color::Red));
-                    print!(self.stdout, "▗");
+                    print!(self.stdout, "╺");
                 }
                 Some(PatchType::Changed) => {
                     print!(self.stdout, color::Fg(color::Yellow));
