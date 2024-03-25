@@ -1,4 +1,4 @@
-use git2::{DiffOptions, Patch as GitPatch};
+use git2::{DiffOptions, ObjectType, Patch as GitPatch};
 use std::collections::HashMap;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -109,11 +109,33 @@ fn get_diff_result(
     file_path: &str,
     file_name: &str,
 ) -> Result<Vec<Patch>, Box<dyn std::error::Error>> {
-    let old_content = std::fs::read_to_string(file_path.to_owned() + file_name);
-    let old_buffer = match &old_content {
-        Ok(content) => content.as_bytes(),
-        Err(_) => b"",
-    };
+    // Get the content of the file at the current commit (HEAD)
+    let mut old_content = String::new();
+
+    // Get path to the repo and the file
+    // content_path is repo_path + file_name
+    let repo_path = std::path::Path::new(file_path);
+    let binding = repo_path.join(file_name);
+    let content_path = binding.as_path();
+
+    // Open the repo and get the HEAD commit
+    let repo = git2::Repository::discover(repo_path)?;
+    let head_commit = repo.head()?.peel_to_commit()?;
+
+    // Get the tree of the HEAD commit and the blob of the file
+    let tree = head_commit.tree()?;
+    let entry = tree.get_path(content_path);
+    if let Ok(entry) = entry {
+        let obj;
+        {
+            obj = repo.find_object(entry.id(), Some(ObjectType::Blob))?;
+        }
+        if let Some(blob) = obj.as_blob() {
+            old_content = std::str::from_utf8(blob.content()).unwrap().to_string();
+        }
+    }
+
+    let old_buffer = old_content.as_bytes();
     let new_buffer = content.as_bytes();
     let mut options = DiffOptions::default();
     options.context_lines(0);
@@ -175,8 +197,8 @@ mod tests {
     #[test]
     fn test_get_diff_result_new_file() {
         let content = "Hello, World !";
-        let file_path = "tests";
-        let file_name = "new_file.txt";
+        let file_path = ".";
+        let file_name = "tests/new_file.txt";
         let patches = get_diff_result(content, file_path, file_name).unwrap();
         assert_eq!(
             patches[0],
