@@ -197,8 +197,8 @@ mod tests {
     #[test]
     fn test_get_diff_result_new_file() {
         let content = "Hello, World !";
-        let file_path = ".";
-        let file_name = "tests/new_file.txt";
+        let file_path = "./tests/";
+        let file_name = "new_file.txt";
         let patches = get_diff_result(content, file_path, file_name).unwrap();
         assert_eq!(
             patches[0],
