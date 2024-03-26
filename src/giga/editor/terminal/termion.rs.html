@@ -382,7 +382,7 @@
 
     <span class="doccomment">/// Draw the diff markers on the left of the screen
     /// - '▐' (green) for added lines
-    /// - '▗' (red) for removed lines
+    /// - '╺' (red) for removed lines
     /// - '▐' (yellow) for modified lines
     /// - ' ' (default) for unchanged lines
     </span><span class="kw">fn </span>draw_diff_markers(<span class="kw-2">&amp;mut </span><span class="self">self</span>, diff: HashMap&lt;usize, PatchType&gt;, view: <span class="kw-2">&amp;</span>View) {
@@ -400,7 +400,7 @@
                 }
                 <span class="prelude-val">Some</span>(PatchType::Deleted) =&gt; {
                     <span class="macro">print!</span>(<span class="self">self</span>.stdout, color::Fg(color::Red));
-                    <span class="macro">print!</span>(<span class="self">self</span>.stdout, <span class="string">"▗"</span>);
+                    <span class="macro">print!</span>(<span class="self">self</span>.stdout, <span class="string">"╺"</span>);
                 }
                 <span class="prelude-val">Some</span>(PatchType::Changed) =&gt; {
                     <span class="macro">print!</span>(<span class="self">self</span>.stdout, color::Fg(color::Yellow));

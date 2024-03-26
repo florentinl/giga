@@ -197,20 +197,32 @@
 <a href="#196" id="196">196</a>
 <a href="#197" id="197">197</a>
 <a href="#198" id="198">198</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::io::Write;
-<span class="kw">use </span>std::process::Stdio;
-<span class="kw">use </span>std::{collections::HashMap, process::Command};
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>git2::{DiffOptions, ObjectType, Patch <span class="kw">as </span>GitPatch};
+<span class="kw">use </span>std::collections::HashMap;
 
-<span class="kw">use </span>gix::{<span class="self">self</span>};
-
-<span class="attr">#[derive(Clone, Copy, Debug)]
+<span class="attr">#[derive(Clone, Copy, Debug, PartialEq)]
 </span><span class="kw">pub enum </span>PatchType {
     Added,
     Deleted,
     Changed,
 }
 
-<span class="kw">pub struct </span>Patch {
+<span class="attr">#[derive(PartialEq, Debug)]
+</span><span class="kw">pub struct </span>Patch {
     start: usize,
     count: usize,
     patch_type: PatchType,
@@ -228,13 +240,13 @@
 }
 
 <span class="kw">pub struct </span>Git {
-    repo: gix::Repository,
+    repo: git2::Repository,
     diff: <span class="prelude-ty">Option</span>&lt;HashMap&lt;usize, PatchType&gt;&gt;,
 }
 
 <span class="kw">impl </span>Git {
     <span class="kw">pub fn </span>open() -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
-        <span class="kw">if let </span><span class="prelude-val">Ok</span>(repo) = gix::discover(<span class="string">"."</span>) {
+        <span class="kw">if let </span><span class="prelude-val">Ok</span>(repo) = git2::Repository::discover(<span class="string">"."</span>) {
             <span class="prelude-val">Some</span>(<span class="self">Self </span>{ repo, diff: <span class="prelude-val">None </span>})
         } <span class="kw">else </span>{
             <span class="prelude-val">None
@@ -243,17 +255,22 @@
 }
 <span class="kw">impl </span>Vcs <span class="kw">for </span>Git {
     <span class="kw">fn </span>get_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
-        <span class="kw">match </span><span class="self">self</span>.repo.head_name().unwrap() {
-            <span class="prelude-val">Some</span>(name) =&gt; {
-                <span class="kw">let </span>reference = name.to_string();
-                <span class="comment">// Remove the "refs/heads/" prefix
-                </span>reference.trim_start_matches(<span class="string">"refs/heads/"</span>).to_string()
+        <span class="kw">match </span><span class="self">self</span>.repo.head() {
+            <span class="prelude-val">Ok</span>(head) =&gt; {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(name) = head.name() {
+                    <span class="comment">// Remove the "refs/heads/" prefix
+                    </span>name.trim_start_matches(<span class="string">"refs/heads/"</span>).to_string()
+                } <span class="kw">else </span>{
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(hash) = head.shorthand() {
+                        <span class="comment">// If the head is a commit hash
+                        </span>hash.to_string()
+                    } <span class="kw">else </span>{
+                        <span class="comment">// If the head is not utf-8 encoded
+                        </span><span class="string">""</span>.to_string()
+                    }
+                }
             }
-            <span class="prelude-val">None </span>=&gt; {
-                <span class="comment">// No branch, it is a detached head
-                </span><span class="kw">let </span>commit = <span class="self">self</span>.repo.head_commit().unwrap();
-                commit.short_id().unwrap().to_string()
-            }
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">"Error while getting the head"</span>),
         }
     }
     <span class="kw">fn </span>compute_diff(
@@ -262,8 +279,7 @@
         file_name: <span class="kw-2">&amp;</span>str,
         content: <span class="kw-2">&amp;</span>str,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
-        <span class="kw">let </span>diff = get_diff_result(content, file_path, file_name)<span class="question-mark">?</span>;
-        <span class="kw">let </span>patches = parse_diff_result(<span class="kw-2">&amp;</span>diff)<span class="question-mark">?</span>;
+        <span class="kw">let </span>patches = get_diff_result(content, file_path, file_name)<span class="question-mark">?</span>;
 
         <span class="kw">let </span><span class="kw-2">mut </span>marks = HashMap::new();
 
@@ -305,94 +321,106 @@
     content: <span class="kw-2">&amp;</span>str,
     file_path: <span class="kw-2">&amp;</span>str,
     file_name: <span class="kw-2">&amp;</span>str,
-) -&gt; <span class="prelude-ty">Result</span>&lt;String, Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
-    <span class="comment">// Get the file_name relative to the file_path git repository
-    </span><span class="kw">let </span>file_name = Command::new(<span class="string">"git"</span>)
-        .current_dir(file_path)
-        .args([<span class="string">"ls-files"</span>, <span class="string">"--full-name"</span>, file_name])
-        .output()<span class="question-mark">?
-        </span>.stdout;
-    <span class="kw">let </span>file_name = String::from_utf8_lossy(<span class="kw-2">&amp;</span>file_name).trim().to_string();
+) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Patch&gt;, Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
+    <span class="comment">// Get the content of the file at the current commit (HEAD)
+    </span><span class="kw">let </span><span class="kw-2">mut </span>old_content = String::new();
 
-    <span class="kw">if </span>file_name.is_empty() {
-        <span class="comment">// It is a new file in the git repository so we return the number of lines
-        // as the number of lines added at the beginning of the file
-        </span><span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="macro">format!</span>(<span class="string">"0a1,{}"</span>, content.lines().count().max(<span class="number">1</span>)));
-    }
+    <span class="comment">// Get path to the repo and the file
+    // content_path is repo_path + file_name
+    </span><span class="kw">let </span>repo_path = std::path::Path::new(file_path);
+    <span class="kw">let </span>binding = repo_path.join(file_name);
+    <span class="kw">let </span>content_path = binding.as_path();
 
-    <span class="comment">// Execute the shell command
-    // It would be better to not rely on bash but I don't know how to emulate the process substitution
-    // with Rust.
-    </span><span class="kw">let </span><span class="kw-2">mut </span>diff = Command::new(<span class="string">"bash"</span>)
-        .current_dir(file_path)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .arg(<span class="string">"-c"</span>)
-        .arg(<span class="macro">format!</span>(<span class="string">"diff &lt;(git show HEAD:{}) -"</span>, file_name))
-        .spawn()<span class="question-mark">?</span>;
+    <span class="comment">// Open the repo and get the HEAD commit
+    </span><span class="kw">let </span>repo = git2::Repository::discover(repo_path)<span class="question-mark">?</span>;
+    <span class="kw">let </span>head_commit = repo.head()<span class="question-mark">?</span>.peel_to_commit()<span class="question-mark">?</span>;
 
-    <span class="comment">// Write the content to diff on the stdin of the process
-    </span><span class="kw">let </span>diff_input = diff.stdin.as_mut().unwrap();
-    diff_input.write_all(content.as_bytes())<span class="question-mark">?</span>;
-
-    <span class="comment">// Wait for the process to finish
-    </span><span class="kw">let </span>diff_output = diff.wait_with_output()<span class="question-mark">?</span>;
-
-    <span class="comment">// Check the exit code and parse stdout/stderr accordingly
-    </span><span class="kw">let </span>status_code = diff_output.status.code();
-    <span class="kw">if </span><span class="macro">matches!</span>(status_code, <span class="prelude-val">Some</span>(<span class="number">0 </span>| <span class="number">1</span>)) {
-        <span class="prelude-val">Ok</span>(String::from_utf8(diff_output.stdout)<span class="question-mark">?</span>)
-    } <span class="kw">else </span>{
-        <span class="prelude-val">Err</span>(String::from_utf8(diff_output.stderr)<span class="question-mark">?</span>.into())
-    }
-}
-
-<span class="doccomment">/// Parse the diff result and return a vector of Patches
-/// The diff result is a string of the form:
-/// ```diff
-/// 1c1,3
-/// &lt; Hello, World !
-/// ---
-/// &gt; Hello
-/// &gt; World
-/// &gt;
-/// ```
-/// Only the lines starting with digits are parsed.
-</span><span class="kw">fn </span>parse_diff_result(diff: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Patch&gt;, Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="macro">vec!</span>[];
-
-    <span class="kw">for </span>line <span class="kw">in </span>diff.lines() {
-        <span class="comment">// We only care for lines starting with a digit (the line number)
-        </span><span class="kw">if </span>line.starts_with(char::is_numeric) {
-            <span class="comment">// Only keep the part after the 'a'/'d'/'c' character since we want to know
-            // the position of the line in the current file.
-            </span><span class="kw">let </span>(<span class="kw">_</span>, rhs) = line.split_once(char::is_alphabetic).unwrap_or_default();
-            <span class="kw">let </span><span class="kw-2">mut </span>rhs = rhs.split(<span class="string">','</span>);
-            <span class="comment">// Diff is 1-based and we want 0-based
-            </span><span class="kw">let </span>start = rhs
-                .next()
-                .unwrap_or_default()
-                .parse::&lt;usize&gt;()<span class="question-mark">?
-                </span>.saturating_sub(<span class="number">1</span>);
-            <span class="kw">let </span>count = rhs
-                .next()
-                .map(|s| s.parse::&lt;usize&gt;().unwrap_or_default().saturating_sub(start))
-                .unwrap_or(<span class="number">1</span>);
-            <span class="kw">let </span>patch_type = <span class="kw">if </span>line.contains(<span class="string">'a'</span>) {
-                PatchType::Added
-            } <span class="kw">else if </span>line.contains(<span class="string">'d'</span>) {
-                PatchType::Deleted
-            } <span class="kw">else </span>{
-                PatchType::Changed
-            };
-            result.push(Patch {
-                start,
-                count,
-                patch_type,
-            });
+    <span class="comment">// Get the tree of the HEAD commit and the blob of the file
+    </span><span class="kw">let </span>tree = head_commit.tree()<span class="question-mark">?</span>;
+    <span class="kw">let </span>entry = tree.get_path(content_path);
+    <span class="kw">if let </span><span class="prelude-val">Ok</span>(entry) = entry {
+        <span class="kw">let </span>obj;
+        {
+            obj = repo.find_object(entry.id(), <span class="prelude-val">Some</span>(ObjectType::Blob))<span class="question-mark">?</span>;
+        }
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(blob) = obj.as_blob() {
+            old_content = std::str::from_utf8(blob.content()).unwrap().to_string();
         }
     }
-    <span class="prelude-val">Ok</span>(result)
+
+    <span class="kw">let </span>old_buffer = old_content.as_bytes();
+    <span class="kw">let </span>new_buffer = content.as_bytes();
+    <span class="kw">let </span><span class="kw-2">mut </span>options = DiffOptions::default();
+    options.context_lines(<span class="number">0</span>);
+
+    <span class="kw">let </span>patch = GitPatch::from_buffers(old_buffer, <span class="prelude-val">None</span>, new_buffer, <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="kw-2">&amp;mut </span>options))<span class="question-mark">?</span>;
+
+    <span class="kw">let </span><span class="kw-2">mut </span>patches: Vec&lt;Patch&gt; = <span class="macro">vec!</span>[];
+
+    <span class="kw">for </span>num <span class="kw">in </span><span class="number">0</span>..patch.num_hunks() {
+        <span class="kw">let </span>hunk = patch.hunk(num)<span class="question-mark">?</span>.<span class="number">0</span>;
+
+        <span class="kw">let </span>new_start = hunk.new_start() <span class="kw">as </span>usize;
+
+        <span class="kw">let </span>old_count = hunk.old_lines() <span class="kw">as </span>usize;
+        <span class="kw">let </span>new_count = hunk.new_lines() <span class="kw">as </span>usize;
+
+        <span class="comment">/*
+        Let's perform a guess on the patch type:
+        - If the old count is the same as the new count, it's a change
+        - If the old count is less than the new count, it's an addition
+        - If the old count is more than the new count, it's a deletion
+        */
+
+        </span><span class="kw">let </span>patch_type = <span class="kw">if </span>old_count == new_count {
+            PatchType::Changed
+        } <span class="kw">else if </span>old_count &lt; new_count {
+            PatchType::Added
+        } <span class="kw">else </span>{
+            PatchType::Deleted
+        };
+
+        <span class="comment">/*  If patch is a deletion, new_count will be 0 so we hard code it to 1
+            and start will be marked beneath the deleted line.
+
+            However, if patch is addition or change, line will be 1-indexed and we use 0-indexed line
+            so we need to increment it by 1.
+        */
+        </span>patches.push(Patch {
+            start: <span class="kw">if </span>patch_type == PatchType::Deleted || new_start == <span class="number">0 </span>{
+                new_start
+            } <span class="kw">else </span>{
+                new_start - <span class="number">1
+            </span>},
+            count: <span class="kw">if </span>patch_type == PatchType::Deleted {
+                <span class="number">1
+            </span>} <span class="kw">else </span>{
+                new_count
+            },
+            patch_type,
+        });
+    }
+    <span class="prelude-val">Ok</span>(patches)
+}
+
+<span class="kw">mod </span>tests {
+    <span class="attr">#[cfg(test)]
+    </span><span class="kw">use super</span>::<span class="kw-2">*</span>;
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_get_diff_result_new_file() {
+        <span class="kw">let </span>content = <span class="string">"Hello, World !"</span>;
+        <span class="kw">let </span>file_path = <span class="string">"./tests/"</span>;
+        <span class="kw">let </span>file_name = <span class="string">"new_file.txt"</span>;
+        <span class="kw">let </span>patches = get_diff_result(content, file_path, file_name).unwrap();
+        <span class="macro">assert_eq!</span>(
+            patches[<span class="number">0</span>],
+            Patch {
+                start: <span class="number">0</span>,
+                count: <span class="number">1</span>,
+                patch_type: PatchType::Added
+            }
+        );
+    }
 }
 </code></pre></div></section></main></body></html>
