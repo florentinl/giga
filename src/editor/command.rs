@@ -272,4 +272,24 @@ mod tests {
             Ok(Command::Insert('à'))
         );
     }
+
+    #[test]
+    fn parse_rename_mode() {
+        assert_eq!(
+            Command::parse(Key::Backspace, &Mode::Rename),
+            Ok(Command::Rename(None))
+        );
+        assert_eq!(
+            Command::parse(Key::Char('a'), &Mode::Rename),
+            Ok(Command::Rename(Some('a')))
+        );
+        assert_eq!(
+            Command::parse(Key::Char('b'), &Mode::Rename),
+            Ok(Command::Rename(Some('b')))
+        );
+        assert_eq!(
+            Command::parse(Key::Char('\n'), &Mode::Rename),
+            Ok(Command::ToggleMode)
+        );
+    }
 }
