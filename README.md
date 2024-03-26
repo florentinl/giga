@@ -8,18 +8,18 @@ A simple modal based text editor written in Rust. It has no ambition at all, it 
 
 ## Installation
 
-make sure you have cargo installed on your machine.
-
-clone the repository:
+If you have cargo installed, you can install Giga by running:
 
 ```Bash
-git clone https://github.com/florentinl/giga.git && cd giga
-````
+cargo install --git https://github.com/florentinl/giga.git
+```
 
-install the binary:
+If you don't have cargo installed, you can download the binary from the [releases page](https://github.com/florentinl/giga/releases) or build it yourself.
 
 ```Bash
-cargo install --path .
+git clone https://github.com/florentinl/giga.git
+cd giga
+cargo build --release
 ```
 
 ## Editor
