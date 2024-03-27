@@ -91,8 +91,7 @@ impl Vcs for Git {
                     return None;
                 }
             }
-            Err(e) => {
-                dbg!("{}", e);
+            Err(_) => {
                 return None;
             }
         };
