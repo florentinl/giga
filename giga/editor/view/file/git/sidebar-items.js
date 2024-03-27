@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["PatchType"],"fn":["get_diff_result"],"mod":["tests"],"struct":["Git","Patch"],"trait":["Vcs"]};
+window.SIDEBAR_ITEMS = {"enum":["PatchType"],"mod":["tests"],"struct":["Git","Patch"],"trait":["Vcs"]};
