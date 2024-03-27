@@ -6,6 +6,7 @@
 
 pub mod file;
 
+use std::process::exit;
 use std::{collections::HashMap, path};
 
 use file::File;
@@ -76,7 +77,15 @@ impl From<String> for View {
 impl FileView for View {
     fn new(file_path: &str) -> Self {
         let (file_dir, file_name, _) = split_path_name(file_path);
-        let content = std::fs::read_to_string(file_path).unwrap_or_default();
+        let content_res = std::fs::read_to_string(file_path);
+        let content;
+        match content_res {
+            Ok(c) => content = c,
+            Err(_) => {
+                eprintln!("Could not read file: {}", file_path);
+                exit(1);
+            }
+        }
         let file = File::from_string(&content, &file_name, &file_dir);
 
         Self {

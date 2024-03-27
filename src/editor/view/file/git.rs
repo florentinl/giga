@@ -84,8 +84,12 @@ impl Vcs for Git {
                     .find_object(entry.id(), Some(ObjectType::Blob))
                     .unwrap();
                 if let Some(blob) = obj.as_blob() {
-                    let content = std::str::from_utf8(blob.content()).unwrap().to_string();
-                    return Some(content);
+                    // ensure the content is utf-8 encoded
+                    let content_res = std::str::from_utf8(blob.content());
+                    match content_res {
+                        Ok(content) => return Some(content.to_string()),
+                        Err(_) => return None,
+                    }
                 } else {
                     // If the object is not a blob
                     return None;
