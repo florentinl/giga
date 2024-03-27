@@ -64,7 +64,7 @@ impl Default for View {
 impl From<String> for View {
     fn from(value: String) -> Self {
         Self {
-            file: File::from_string(&value, "New file", "."),
+            file: File::from_string(&value, "Newfile", "."),
             start_line: 0,
             start_col: 0,
             height: 0,
@@ -81,10 +81,15 @@ impl FileView for View {
         let content;
         match content_res {
             Ok(c) => content = c,
-            Err(_) => {
-                eprintln!("Could not read file: {}", file_path);
-                exit(1);
-            }
+            Err(e) => match e.kind() {
+                std::io::ErrorKind::NotFound => {
+                    content = String::new();
+                }
+                _ => {
+                    eprintln!("Error reading file: {}", e);
+                    exit(1);
+                }
+            },
         }
         let file = File::from_string(&content, &file_name, &file_dir);
 
