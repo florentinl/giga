@@ -48,7 +48,7 @@ impl EditorFile for File {
             file_dir: file_path.into(),
             file_name: "New file".to_string(),
             content: Rope::new(),
-            vcs: Git::open(),
+            vcs: Git::open("."),
         }
     }
 
@@ -61,7 +61,7 @@ impl EditorFile for File {
             file_dir: file_dir.into(),
             file_name: file_name.into(),
             content,
-            vcs: Git::open(),
+            vcs: Git::open("."),
         }
     }
 
