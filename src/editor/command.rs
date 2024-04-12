@@ -11,8 +11,7 @@
 //! It allows for composite commands such as 'I' (go to the beginning of the line
 //! and enter insert mode) or 'A' (go to the end of the line and enter insert mode).
 
-use termion::event::Key;
-
+/*
 use crate::editor::Mode;
 
 /// Commands that can be executed by the editor
@@ -293,3 +292,4 @@ mod tests {
         );
     }
 }
+*/

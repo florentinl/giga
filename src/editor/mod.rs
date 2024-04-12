@@ -39,7 +39,7 @@
 //! The drawing system is handled by the `TerminalDrawer` trait. Which exists
 //! to abstract the drawing system from the rest of the program (for modularity
 //! and mocking purposes). The `TerminalDrawer` trait is implemented in the `terminal`
-//! module. The current implementation uses the termion crate to draw to the terminal.
+//! module. The current implementation uses the tui crate to draw to the terminal.
 //!
 //! ## Git integration
 //!
@@ -59,33 +59,27 @@
 //! This logic is handled by the `signal` module, which is called in the (`Editor::init_resize_listener` method).
 //!
 mod command;
-mod signal;
-mod terminal;
 mod view;
 
-use std::{
-    collections::HashSet,
-    fmt::Display,
-    io,
-    ops::DerefMut,
-    process::exit,
-    sync::{
-        mpsc::{self, Receiver, SendError, Sender},
-        Arc, Mutex,
-    },
-    thread,
-    time::Duration,
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
+use ratatui::{
+    prelude::*,
+    symbols::border,
+    widgets::{block::*, *},
 };
 
-use termion::input::TermRead;
+use std::io;
+
+pub mod tui;
+
+use std::{
+    fmt::Display,
+    sync::{Arc, Mutex},
+};
 
 use self::view::FileView;
 
-use {
-    command::Command,
-    terminal::{termion::TermionTerminalDrawer, StatusBarInfos, TerminalDrawer},
-    view::View,
-};
+use view::View;
 
 /// Macro to create arc mutexes quickly
 macro_rules! arc_mutex {
@@ -101,6 +95,8 @@ pub struct Editor {
     view: Arc<Mutex<View>>,
     /// The mode of the editor
     mode: Arc<Mutex<Mode>>,
+
+    exit: bool,
 }
 
 #[derive(Clone)]
@@ -125,31 +121,13 @@ impl Display for Mode {
     }
 }
 
-pub enum RefreshOrder {
-    /// Terminate the editor
-    Terminate,
-    /// No need to refresh the screen
-    None,
-    /// Refresh the cursor position
-    CursorPos,
-    /// Refresh the given lines
-    Lines(HashSet<usize>),
-    /// Refresh the status bar
-    StatusBar,
-    /// Refresh the git indicators
-    GitIndicators,
-    /// Refresh the whole screen
-    AllLines,
-    /// Refresh the screen after a resize event
-    Resize,
-}
-
 impl Editor {
     /// Open a file in the editor
     pub fn open(path: &str) -> Self {
         Self {
             view: arc_mutex!(View::new(path)),
             mode: arc_mutex!(Mode::Normal),
+            exit: false,
         }
     }
 
@@ -179,275 +157,111 @@ impl Editor {
         }
     }
 
-    /// Execute an editor command
-    /// - Quit: exit the program
-    /// - Move: move the cursor
-    /// - Save: save the file
-    /// - Rename: rename the file
-    /// - ToggleMode: toogle editor mode
-    /// - Insert: insert a character
-    /// - Delete: delete a character
-    fn execute(&mut self, cmd: Command) -> RefreshOrder {
-        match cmd {
-            Command::Quit => {
-                // Doesn't matter as self.terminate() never returns
-                RefreshOrder::Terminate
-            }
-            Command::Move(x, y) => {
-                let scroll = self.view.lock().unwrap().navigate(x, y);
-                if scroll {
-                    RefreshOrder::AllLines
-                } else {
-                    RefreshOrder::CursorPos
-                }
-            }
-            Command::Save => {
-                self.save();
-                RefreshOrder::StatusBar
-            }
-            Command::Rename(c) => {
-                self.rename(c);
-                RefreshOrder::StatusBar
-            }
-            Command::ToggleMode => {
-                self.toggle_mode();
-                RefreshOrder::StatusBar
-            }
-            Command::ToggleRename => {
-                self.toggle_rename();
-                RefreshOrder::StatusBar
-            }
-            Command::Insert(c) => {
-                let mut view = self.view.lock().unwrap();
-                let scroll = view.insert(c);
-                if scroll {
-                    RefreshOrder::AllLines
-                } else {
-                    // Refresh only the current line: self.view.cursor.1
-                    RefreshOrder::Lines(HashSet::from_iter(vec![view.cursor.1]))
-                }
-            }
-            Command::InsertNewLine => {
-                let mut view = self.view.lock().unwrap();
-                let scroll = view.insert_new_line();
-                if scroll {
-                    RefreshOrder::AllLines
-                } else {
-                    // Refresh only the lines below the cursor
-                    RefreshOrder::Lines(HashSet::from_iter(view.cursor.1 - 1..view.height))
-                }
-            }
-            Command::Delete => {
-                let mut view = self.view.lock().unwrap();
-                let scroll = view.delete();
-                if scroll {
-                    // If we scroll (because we deleted a char at the left of the view),
-                    // we need to refresh all lines.
-                    RefreshOrder::AllLines
-                } else {
-                    // Refresh only the lines below the cursor
-                    RefreshOrder::Lines(HashSet::from_iter(view.cursor.1..view.height))
-                }
-            }
-            Command::CommandBlock(cmds) => {
-                cmds.into_iter().fold(RefreshOrder::None, |refr, cmd| {
-                    use RefreshOrder::*;
-                    match (refr, self.execute(cmd)) {
-                        (None, r) | (r, None) => r,
-                        (Lines(mut s1), Lines(s2)) => {
-                            s1.extend(s2);
-                            Lines(s1)
-                        }
-                        _ => AllLines,
-                    }
-                })
-            }
-            Command::DeleteLine => {
-                let mut view = self.view.lock().unwrap();
-                view.delete_line();
-                RefreshOrder::AllLines
-            }
-        }
-    }
-
-    /// Toggle the mode of the editor between normal and insert
-    fn toggle_mode(&mut self) {
-        let mut mode = self.mode.lock().unwrap();
-        *mode = match mode.clone() {
-            Mode::Normal => Mode::Insert,
-            Mode::Insert => Mode::Normal,
-            Mode::Rename => Mode::Normal,
-        }
-    }
-
-    fn toggle_rename(&mut self) {
-        let mut mode = self.mode.lock().unwrap();
-        *mode = match mode.clone() {
-            Mode::Normal => Mode::Rename,
-            Mode::Rename => Mode::Normal,
-            _ => Mode::Normal, // Could not be in insert mode
-        }
-    }
-
-    /// Initialize git operations
-    fn init_git_thread(&mut self, sender: Sender<RefreshOrder>) {
-        // Spawn a thread to compute the diff in background
-        let view = self.view.clone();
-        let locked_view = view.lock().unwrap();
-        if matches!(locked_view.git_ref(), None) {
-            // If we are not in a git repository, we don't need to compute the diff
-            return;
-        };
-        drop(locked_view);
-
-        thread::spawn({
-            move || loop {
-                let mut view = view.lock().unwrap();
-                let _ = view.refresh_diff();
-
-                if let Err(SendError(_)) = sender.send(RefreshOrder::GitIndicators) {
-                    break;
-                }
-
-                // Drop the lock before sleeping
-                drop(view);
-                thread::sleep(Duration::from_millis(250));
-            }
-        });
-    }
-
-    /// Get the status bar infos
-    fn get_status_bar_infos(
-        mode: &Arc<Mutex<Mode>>,
-        file_name: &str,
-        ref_name: Option<String>,
-    ) -> StatusBarInfos {
-        let mode = mode.lock().unwrap();
-
-        StatusBarInfos {
-            file_name: file_name.into(),
-            mode: mode.clone(),
-            ref_name,
-        }
-    }
-
-    /// Refresh the TUI
-    fn refresh_tui(
-        tui: &mut TermionTerminalDrawer,
-        view: &mut View,
-        status_bar_infos: &StatusBarInfos,
-        refresh_order: RefreshOrder,
-    ) {
-        match refresh_order {
-            RefreshOrder::Terminate => {
-                tui.terminate();
-                exit(0);
-            }
-            RefreshOrder::None => (),
-            RefreshOrder::CursorPos => tui.move_cursor(view.cursor),
-            RefreshOrder::StatusBar => {
-                tui.draw_status_bar(status_bar_infos);
-                tui.move_cursor(view.cursor)
-            }
-            RefreshOrder::GitIndicators => {
-                if let Some(diff) = view.diff() {
-                    tui.draw_diff_markers(diff, view);
-                }
-            }
-            RefreshOrder::Lines(lines) => tui.draw_lines(view, lines),
-            RefreshOrder::AllLines => {
-                tui.draw(view, status_bar_infos);
-                if let Some(diff) = view.diff() {
-                    tui.draw_diff_markers(diff, view);
-                }
-            }
-            RefreshOrder::Resize => {
-                let (width, height) = tui.get_term_size();
-
-                view.width = width;
-                view.height = height;
-
-                Self::refresh_tui(tui, view, status_bar_infos, RefreshOrder::AllLines);
-            }
-        }
-    }
-
-    /// # Initialize the tui drawing thread
-    /// This thread listens from three channels:
-    /// - `cmd_rx`: commands refresh orders from the main thread
-    /// - `diff_changed`: a channel that is notified when the diff has changed
-    /// - `resize_rx`: a channel that is notified when the terminal has been resized
-    /// It then draws the TUI accordingly.
-    fn init_tui_thread(&mut self, refresh_receiver: Receiver<RefreshOrder>) {
-        let mut tui = TermionTerminalDrawer::new();
-
-        // Get the terminal size and initialize the view
-        let (width, height) = tui.get_term_size();
-        let mut locked_view = self.view.lock().unwrap();
-
-        // Resize the view
-        locked_view.height = height;
-        locked_view.width = width;
-
-        // Get the initial status bar infos
-        let status_bar_infos =
-            Self::get_status_bar_infos(&self.mode, &locked_view.file_name(), locked_view.git_ref());
-
-        // Draw the initial TUI
-        tui.draw(&locked_view, &status_bar_infos);
-
-        // Spawn a thread to draw the TUI in background
-        let view = self.view.clone();
-        let mode = self.mode.clone();
-        thread::spawn({
-            move || loop {
-                if let Ok(refresh_order) = refresh_receiver.recv() {
-                    let mut locked_view = view.lock().unwrap();
-                    let status_bar_infos = Self::get_status_bar_infos(
-                        &mode,
-                        &locked_view.file_name(),
-                        locked_view.git_ref(),
-                    );
-
-                    Self::refresh_tui(
-                        &mut tui,
-                        locked_view.deref_mut(),
-                        &status_bar_infos,
-                        refresh_order,
-                    );
-                } else {
-                    break;
-                }
-            }
-        });
+    fn exit(&mut self) {
+        self.exit = true;
     }
 
     /// Run the editor loop
-    pub fn run(&mut self) {
-        let (refresh_sender, refresh_receiver) = mpsc::channel::<RefreshOrder>();
-
-        // Initialize git operations if needed
-        self.init_git_thread(refresh_sender.clone());
-
-        // Initialize the resize signal handler
-        signal::init_resize_listener(refresh_sender.clone());
-
-        // Initialize the TUI thread
-        self.init_tui_thread(refresh_receiver);
-
-        // Main loop of the editor (waiting for key events)
-        for key in io::stdin().keys().flatten() {
-            let mode = self.mode.lock().unwrap().clone();
-            // Parse the key
-            if let Ok(cmd) = Command::parse(key, &mode) {
-                // Execute the command
-                let refresh_order = self.execute(cmd);
-
-                // Send the refresh order to the TUI
-                if let Err(SendError(_)) = refresh_sender.send(refresh_order) {
-                    break;
-                }
-            }
+    pub fn run(&mut self, terminal: &mut tui::Tui) -> io::Result<()> {
+        while !self.exit {
+            terminal.draw(|frame| self.render_frame(frame))?;
+            self.handle_events()?;
         }
+        Ok(())
+    }
+    fn render_frame(&self, frame: &mut Frame) {
+        frame.render_widget(self, frame.size());
+    }
+
+    fn handle_events(&mut self) -> io::Result<()> {
+        match event::read()? {
+            // it's important to check that the event is a key press event as
+            // crossterm also emits key release and repeat events on Windows.
+            Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
+                self.handle_key_event(key_event)
+            }
+            _ => {}
+        };
+        Ok(())
+    }
+    fn handle_key_event(&mut self, key_event: KeyEvent) {
+        let mode = self.mode.lock().unwrap().clone();
+        match mode {
+            Mode::Normal => self.handle_normal_key_events(key_event),
+            Mode::Insert => self.handle_insert_key_events(key_event),
+            Mode::Rename => self.handle_rename_key_events(key_event),
+        }
+    }
+
+    fn handle_normal_key_events(&mut self, key_event: KeyEvent) {
+        match key_event.code {
+            KeyCode::Char('i') => {
+                *self.mode.lock().unwrap() = Mode::Insert;
+            }
+            KeyCode::Char('r') => {
+                *self.mode.lock().unwrap() = Mode::Rename;
+            }
+            KeyCode::Char('s') => {
+                self.save();
+            }
+            KeyCode::Char('q') => {
+                self.exit();
+            }
+            _ => {}
+        }
+    }
+    fn handle_insert_key_events(&mut self, key_event: KeyEvent) {
+        match key_event.code {
+            KeyCode::Esc => {
+                *self.mode.lock().unwrap() = Mode::Normal;
+            }
+            _ => {}
+        }
+    }
+    fn handle_rename_key_events(&mut self, key_event: KeyEvent) {
+        match key_event.code {
+            KeyCode::Char(c) => {
+                self.rename(Some(c));
+            }
+            KeyCode::Backspace => {
+                self.rename(None);
+            }
+            KeyCode::Enter => {
+                *self.mode.lock().unwrap() = Mode::Normal;
+            }
+            _ => {}
+        }
+    }
+}
+
+impl Widget for &Editor {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let title = Title::from(self.view.lock().unwrap().get_file_name_padded());
+        let mode = self.mode.lock().unwrap().clone();
+        let style = match mode {
+            Mode::Normal => Style::default().fg(Color::Green),
+            Mode::Insert => Style::default().fg(Color::Yellow),
+            Mode::Rename => Style::default().fg(Color::Red),
+        };
+        let mode_text = Title::from(Line::from(vec![
+            " ".into(),
+            Span::styled(self.mode.lock().unwrap().to_string(), style),
+            " ".into(),
+        ]));
+        let block = Block::default()
+            .title(title.alignment(Alignment::Center))
+            .title(
+                mode_text
+                    .alignment(Alignment::Left)
+                    .position(Position::Bottom),
+            )
+            .borders(Borders::ALL)
+            .border_set(border::ROUNDED);
+
+        let file_text = Text::from(self.view.lock().unwrap().dump_file());
+
+        Paragraph::new(file_text.white())
+            .block(block)
+            .render(area, buf);
     }
 }
