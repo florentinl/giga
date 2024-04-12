@@ -44,6 +44,7 @@ pub trait FileView {
     fn diff(&self) -> Option<HashMap<usize, PatchType>>;
     fn file_path(&self) -> String;
     fn file_name(&self) -> String;
+    fn get_file_name_padded(&self) -> String;
     fn file_dir(&self) -> String;
     fn set_file_name(&mut self, file_name: String);
 }
@@ -215,6 +216,13 @@ impl FileView for View {
 
     fn file_name(&self) -> String {
         self.file.file_name.clone()
+    }
+
+    fn get_file_name_padded(&self) -> String {
+        let mut name = self.file.file_name.clone();
+        name.push(' ');
+        name.insert(0, ' ');
+        name
     }
 
     fn file_dir(&self) -> String {
